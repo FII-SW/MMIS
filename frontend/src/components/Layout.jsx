@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Header from "./Header";
+import HelpAssistant from "./HelpAssistant";
 import { LayoutProvider } from "../contexts/LayoutContext";
 
 function getRoleFromToken() {
@@ -52,7 +53,12 @@ export default function Layout({ children }) {
       <div className="flex h-screen bg-transparent transition-colors">
       {!hideSidebar && (
         <aside className="w-64 shrink-0 bg-white dark:bg-gray-800 shadow-md p-6 space-y-4 transition-colors">
-          <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-6">MMIS</h1>
+          <Link
+            to="/dashboard"
+            className="block text-2xl font-bold text-blue-600 dark:text-blue-400 mb-6 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+          >
+            MMIS
+          </Link>
 
           <nav className="space-y-2">
             {navItems.map((item) => {
@@ -81,11 +87,12 @@ export default function Layout({ children }) {
         <Header showMMIS={false} brandLogo={hideSidebar} />
 
         {/* Page Body — flex-1 + min-h-0 so this column scrolls on short viewports (laptop); sticky bars work reliably */}
-          <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-transparent p-6 transition-colors">
+          <main className="min-h-0 flex-1 overflow-y-auto bg-transparent p-6 transition-colors">
             {children}
           </main>
         </div>
       </div>
+      <HelpAssistant />
     </LayoutProvider>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PageLoadingState from "../components/PageLoadingState";
 import { getProjects } from "../utils/projects";
 
 export default function RestockProjectPage() {
@@ -46,13 +47,13 @@ export default function RestockProjectPage() {
 
   // Check if user is admin
   if (loading) {
-    return <div className="min-h-screen bg-transparent flex items-center justify-center transition-colors">
-      <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-    </div>;
+    return (
+      <PageLoadingState title="Restock" onBack={() => navigate("/dashboard")} />
+    );
   }
 
   if (accessLevel !== "admin") {
-    return <AccessDenied feature="the Restock feature" />;
+    return <AccessDenied feature="the Restock feature" backTo="/dashboard" />;
   }
 
   // Filter projects based on search input

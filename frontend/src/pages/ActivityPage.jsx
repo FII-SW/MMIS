@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import API from "../api";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import StickyBackBar from "../components/StickyBackBar";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { getProjects } from "../utils/projects";
 
 export default function ActivityPage() {
@@ -12,6 +12,7 @@ export default function ActivityPage() {
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedProject, setSelectedProject] = useState("");
   const [selectedTestArea, setSelectedTestArea] = useState("");
@@ -27,10 +28,18 @@ export default function ActivityPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    setLoading(true);
+    setLoadError("");
     API.get(`/transactions/all`)
       .then((res) => {
         setHistory(res.data);
         setFilteredHistory(res.data);
+      })
+      .catch((err) => {
+        console.error("Error loading activity history:", err);
+        setLoadError("Failed to load activity history. Please try again.");
+        setHistory([]);
+        setFilteredHistory([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -190,14 +199,14 @@ export default function ActivityPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 shadow-md transition-colors">
-        <h1 className="text-3xl font-bold">Recent Activity History</h1>
-      </div>
-
-      <StickyBackBar to="/dashboard" label="Back to dashboard" maxWidthClass="w-full max-w-[min(100%,1600px)]" />
+      <PageHeaderWithBack title="Recent Activity History" onBack={() => navigate("/dashboard")} />
 
       <div className="mx-auto w-full max-w-[min(100%,1600px)] px-4 sm:px-6 lg:px-8">
+        {loadError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700/30 dark:bg-red-900/20 dark:text-red-300">
+            {loadError}
+          </div>
+        )}
         {/* STATISTICS CARDS */}
         {!loading && history.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -589,15 +598,6 @@ export default function ActivityPage() {
           </div>
         )}
 
-        <div className="flex justify-center py-6 pb-6">
-          <button
-            type="button"
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 underline"
-            onClick={() => navigate("/dashboard")}
-          >
-            ← Back to dashboard
-          </button>
-        </div>
       </div>
     </div>
   );

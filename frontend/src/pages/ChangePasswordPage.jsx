@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
 
 export default function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -92,10 +93,7 @@ export default function ChangePasswordPage() {
     <div className="min-h-screen bg-transparent">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 text-white text-center py-4 mb-8 shadow-md">
-        <h1 className="text-3xl font-bold">Change Password</h1>
-      </div>
+      <PageHeaderWithBack title="Change Password" onBack={() => navigate("/dashboard")} />
 
       <div className="max-w-md mx-auto px-4">
         <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-200">

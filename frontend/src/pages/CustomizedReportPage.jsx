@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import SearchableSelect from "../components/SearchableSelect";
-import StickyBackBar from "../components/StickyBackBar";
 import { getProjects } from "../utils/projects";
 
 export default function CustomizedReportPage() {
@@ -149,12 +149,7 @@ export default function CustomizedReportPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 shadow-md transition-colors">
-        <h1 className="text-3xl font-bold">Customized Report</h1>
-      </div>
-
-      <StickyBackBar to="/dashboard/reports" label="Back to reports" maxWidthClass="max-w-4xl" />
+      <PageHeaderWithBack title="Customized Report" onBack={() => navigate("/dashboard/reports")} />
 
       {/* FILTER FORM */}
       <div className="max-w-4xl mx-auto px-8 mb-8">
@@ -339,15 +334,6 @@ export default function CustomizedReportPage() {
                 </div>
               </div>
             )}
-            <div className="flex justify-center pt-4 pb-2">
-              <button
-                type="button"
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 underline"
-                onClick={() => navigate("/dashboard/reports")}
-              >
-                ← Back to reports
-              </button>
-            </div>
           </div>
         </div>
       )}

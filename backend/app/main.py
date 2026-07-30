@@ -75,14 +75,15 @@ app.mount("/uploads", StaticFiles(directory=uploads_base_dir), name="uploads")
 cors_origins_env = os.getenv("CORS_ORIGINS", "*")
 if cors_origins_env == "*":
     cors_origins = ["*"]
+    allow_credentials = False
 else:
-    # Split comma-separated origins and strip whitespace
     cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+    allow_credentials = True
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

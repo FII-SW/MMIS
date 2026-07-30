@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import API from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
 
 export default function RequestPage() {
   const [items, setItems] = useState([]);
@@ -57,6 +58,14 @@ export default function RequestPage() {
 
   const handleSearch = (e) => {
     setSearchInput(e.target.value);
+  };
+
+  const handleBack = () => {
+    if (test_area) {
+      navigate(`/dashboard/request/test-area?project=${encodeURIComponent(project)}`);
+    } else {
+      navigate("/dashboard/request");
+    }
   };
 
   const handleSelect = (item) => {
@@ -119,9 +128,7 @@ export default function RequestPage() {
     <div className="min-h-0 flex flex-col bg-transparent transition-colors">
       <Header />
 
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 shadow-md transition-colors relative">
-        <h1 className="text-3xl font-bold">Search Inventory</h1>
-      </div>
+      <PageHeaderWithBack title="Search Inventory" onBack={handleBack} />
 
       <p className="text-center mt-4 text-gray-700 dark:text-gray-300 font-semibold text-lg px-4">
         Project: <span className="text-blue-600 dark:text-blue-400">{project}</span>

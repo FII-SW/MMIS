@@ -5,8 +5,33 @@ from ..database import get_db
 from ..utils.jwt_handler import verify_access_token
 import os
 import shutil
+import uuid
 from pathlib import Path
 from typing import Optional
+
+
+def _uploads_base_dir() -> Path:
+    backend_dir = Path(__file__).resolve().parents[2]
+    return backend_dir / "uploads"
+
+
+def _item_images_dir() -> Path:
+    return _uploads_base_dir() / "item_images"
+
+
+def _safe_path_under(base: Path, relative_url: str) -> Optional[Path]:
+    if not relative_url:
+        return None
+    rel = relative_url.lstrip("/")
+    if rel.startswith("uploads/"):
+        rel = rel[len("uploads/") :]
+    candidate = (base / rel).resolve()
+    try:
+        candidate.relative_to(base.resolve())
+    except ValueError:
+        return None
+    return candidate
+
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
@@ -98,7 +123,8 @@ def update_inventory(item_id: int, item: schemas.InventoryBase, db: Session = De
         raise HTTPException(status_code=404, detail="Item not found")
     
     # Update all fields except quantity (quantity is handled by restock endpoint)
-    update_data = item.dict(exclude={"item_current_quantity"})
+    # item_image_url is only set via dedicated upload endpoints
+    update_data = item.dict(exclude={"item_current_quantity", "item_image_url"})
     for key, value in update_data.items():
         if value is not None:
             setattr(db_item, key, value)
@@ -114,6 +140,9 @@ def request_item(data: schemas.RequestCreate, db: Session = Depends(get_db)):
 
     item_id = data.item_id
     qty = data.quantity
+
+    if qty <= 0:
+        raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
 
     # Lock the row to prevent race conditions
     item = (
@@ -332,25 +361,20 @@ async def upload_item_image(
     db: Session = Depends(get_db)
 ):
     """Upload an image file and return the URL path."""
-    # Get the backend directory
-    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    upload_dir = Path(backend_dir) / "uploads" / "item_images"
+    upload_dir = _item_images_dir()
     upload_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Validate file type
     allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-    file_extension = Path(file.filename).suffix.lower()
-    
+    file_extension = Path(file.filename or "").suffix.lower()
+
     if file_extension not in allowed_extensions:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}"
+            status_code=400,
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}",
         )
-    
-    # Generate unique filename (using timestamp + original filename)
-    import time
-    timestamp = int(time.time() * 1000)  # milliseconds
-    safe_filename = f"{timestamp}_{file.filename}"
+
+    safe_filename = f"{uuid.uuid4().hex}{file_extension}"
     file_path = upload_dir / safe_filename
     
     # Save file
@@ -378,32 +402,31 @@ async def upload_and_update_item_image(
         raise HTTPException(status_code=404, detail="Item not found")
     
     # Get the backend directory
-    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    upload_dir = Path(backend_dir) / "uploads" / "item_images"
+    upload_dir = _item_images_dir()
     upload_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Validate file type
     allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-    file_extension = Path(file.filename).suffix.lower()
-    
+    file_extension = Path(file.filename or "").suffix.lower()
+
     if file_extension not in allowed_extensions:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}"
+            status_code=400,
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}",
         )
-    
+
     # Generate filename using item_id to ensure uniqueness
     safe_filename = f"item_{item_id}{file_extension}"
     file_path = upload_dir / safe_filename
-    
-    # Delete old image if it exists
+
+    # Delete old image if it exists (only under uploads/)
     if item.item_image_url:
-        old_image_path = Path(backend_dir) / item.item_image_url.lstrip("/")
-        if old_image_path.exists() and old_image_path.is_file():
+        old_image_path = _safe_path_under(_uploads_base_dir(), item.item_image_url)
+        if old_image_path and old_image_path.exists() and old_image_path.is_file():
             try:
                 old_image_path.unlink()
             except Exception:
-                pass  # Ignore errors when deleting old file
+                pass
     
     # Save new file
     try:

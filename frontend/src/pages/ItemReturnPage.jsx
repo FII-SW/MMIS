@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import { decodeToken } from "../utils/auth";
 
 export default function ReturnItemPage() {
   const { transaction_id } = useParams();
@@ -17,8 +19,9 @@ export default function ReturnItemPage() {
   // Load token info
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      const payload = JSON.parse(atob(token.split(".")[1]));
+    if (!token) return;
+    const payload = decodeToken(token);
+    if (payload?.employee_id) {
       setEmployeeId(payload.employee_id);
     }
   }, []);
@@ -26,10 +29,7 @@ export default function ReturnItemPage() {
   // Load transaction details
   useEffect(() => {
     API.get(`/transactions/${transaction_id}`)
-      .then((res) => {
-        console.log("Transaction APT response:", res.data);
-        setTx(res.data)
-      })
+      .then((res) => setTx(res.data))
       .catch((err) => console.error("Error loading transaction details:", err));
   }, [transaction_id]);
 
@@ -75,6 +75,10 @@ export default function ReturnItemPage() {
   };
 
   const submitReturn = async () => {
+    if (!employeeId) {
+      alert("Session expired. Please log in again.");
+      return;
+    }
     if (!quantity) {
       alert("Enter return quantity");
       return;
@@ -94,20 +98,7 @@ export default function ReturnItemPage() {
       return;
     }
 
-    console.log("Sending return body:", {
-      item_id: tx.item_id,
-      employee_id: employeeId,
-      fixture_id: tx.fixture_id,
-      quantity_used: Number(quantity),
-      remarks: remarks || null,
-      transaction_type: "return",
-      test_area: tx.test_area,
-      project_name: tx.project_name,
-      request_transaction_id: tx.transaction_id, // Link this return to the specific request transaction
-    });
-
     try {
-      // Send request_transaction_id as a query parameter to link the return to the specific request
       await API.post(`/transactions/return?request_transaction_id=${tx.transaction_id}`, {
         item_id: tx.item_id,
         employee_id: employeeId,
@@ -120,7 +111,7 @@ export default function ReturnItemPage() {
       });
 
       alert("Return successful!");
-      navigate("/dashboard/return");
+      navigate("/dashboard/return/");
 
     } catch (err) {
       console.error(err);
@@ -140,16 +131,21 @@ export default function ReturnItemPage() {
     return `${apiBaseUrl}${imageUrl}`;
   };
 
-  if (!tx) return <h2 className="text-center mt-10">Loading...</h2>;
+  if (!tx) {
+    return (
+      <div className="min-h-screen bg-transparent flex flex-col">
+        <Header />
+        <PageHeaderWithBack title="Return Item" onBack={() => navigate("/dashboard/return/")} />
+        <h2 className="text-center mt-10 text-gray-500 dark:text-gray-400">Loading...</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-transparent flex flex-col">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 text-white text-center py-3 shadow-md">
-        <h1 className="text-2xl font-bold">Return Item</h1>
-      </div>
+      <PageHeaderWithBack title="Return Item" onBack={() => navigate("/dashboard/return/")} />
 
       {/* Main content - fills remaining screen */}
       <div className="flex-1 flex flex-col justify-center max-w-5xl w-full mx-auto px-6 py-4">
@@ -243,7 +239,7 @@ export default function ReturnItemPage() {
           <div className="flex justify-center gap-4 mt-5">
             <button
               className="px-8 py-2.5 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm font-medium transition-colors"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/dashboard/return/")}
             >
               Back
             </button>

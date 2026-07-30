@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import API from "../api";
 import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
 
 export default function RestockNewStockPage() {
@@ -82,13 +84,18 @@ export default function RestockNewStockPage() {
 
   // Check if user is admin
   if (loading) {
-    return <div className="min-h-screen bg-transparent flex items-center justify-center transition-colors">
-      <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-    </div>;
+    return (
+      <PageLoadingState
+        title="New Stock"
+        onBack={() => navigate("/dashboard/restock/project/add-new")}
+      />
+    );
   }
 
   if (accessLevel !== "admin") {
-    return <AccessDenied feature="the Restock feature" />;
+    return (
+      <AccessDenied feature="the Restock feature" backTo="/dashboard/restock/project/add-new" />
+    );
   }
 
   const handleChange = (e) => {
@@ -196,10 +203,7 @@ export default function RestockNewStockPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 mb-8 shadow-md transition-colors">
-        <h1 className="text-3xl font-bold">New Stock</h1>
-      </div>
+      <PageHeaderWithBack title="New Stock" onBack={() => navigate("/dashboard/restock/project/add-new")} />
 
       <div className="max-w-5xl mx-auto px-8">
         {/* FORM */}

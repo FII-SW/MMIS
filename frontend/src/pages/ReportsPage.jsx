@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import StickyBackBar from "../components/StickyBackBar";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
 
 export default function ReportsPage() {
   const navigate = useNavigate();
@@ -9,12 +9,7 @@ export default function ReportsPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 shadow-md transition-colors">
-        <h1 className="text-3xl font-bold">Reports</h1>
-      </div>
-
-      <StickyBackBar to="/dashboard" label="Back to dashboard" maxWidthClass="max-w-4xl" />
+      <PageHeaderWithBack title="Reports" onBack={() => navigate("/dashboard")} />
 
       {/* REPORT OPTIONS */}
       <div className="max-w-4xl mx-auto px-8 mb-8">
@@ -47,16 +42,6 @@ export default function ReportsPage() {
             <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">Spending Report</span>
           </button>
         </div>
-      </div>
-
-      <div className="flex justify-center py-6 pb-8">
-        <button
-          type="button"
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 underline"
-          onClick={() => navigate("/dashboard")}
-        >
-          ← Back to dashboard
-        </button>
       </div>
     </div>
   );

@@ -107,17 +107,8 @@ def get_all(
 
     return transactions
 
-@router.get("/user/{employee_id}")
-def get_user_transactions(employee_id: int, db: Session = Depends(get_db)):
-    """
-    Returns all active (not fully returned) REQUEST transactions for this user.
-    Includes remaining_quantity calculation.
-    """
-    return crud.get_transactions_by_employee(db, employee_id)
-
-
 @router.get("/user/{employee_id}", response_model=list[schemas.TransactionOut])
-def get_user_transactions_full(employee_id: int, db: Session = Depends(get_db)):
+def get_user_transactions(employee_id: int, db: Session = Depends(get_db)):
     """Returns user transactions WITH item details."""
     return crud.get_transactions_by_employee(db, employee_id)
 
@@ -211,16 +202,45 @@ def return_item(
     db: Session = Depends(get_db)
 ):
     """Employee returns an item (increase quantity).
-    
+
     Args:
         t: Transaction data including item_id, employee_id, fixture_id, quantity, etc.
         request_transaction_id: The transaction_id of the original request this return belongs to.
     """
-    print("receiving return request")
-    print(f"Request transaction ID: {request_transaction_id}")
-    print(t)
-    print("end-----------")
-    
+    if t.quantity_used <= 0:
+        raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
+
+    item = db.query(models.Inventory).filter(models.Inventory.item_id == t.item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    if request_transaction_id:
+        original_request = (
+            db.query(models.Transaction)
+            .filter(models.Transaction.transaction_id == request_transaction_id)
+            .first()
+        )
+        if not original_request:
+            raise HTTPException(status_code=404, detail="Original request transaction not found")
+        if original_request.transaction_type != "request":
+            raise HTTPException(status_code=400, detail="Linked transaction is not a request")
+
+        from sqlalchemy import func
+
+        explicit_returns = (
+            db.query(func.coalesce(func.sum(models.Transaction.quantity_used), 0))
+            .filter(models.Transaction.transaction_type == "return")
+            .filter(models.Transaction.remarks.like(f"REQUEST_TX_ID:{request_transaction_id}%"))
+            .scalar()
+            or 0
+        )
+        remaining = original_request.quantity_used - explicit_returns
+        if t.quantity_used > remaining:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot return more than remaining quantity ({remaining})",
+            )
+
     # Add quantity back
     crud.add_item_quantity(db, t.item_id, t.quantity_used)
 

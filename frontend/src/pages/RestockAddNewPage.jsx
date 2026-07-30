@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PageLoadingState from "../components/PageLoadingState";
 
 export default function RestockAddNewPage() {
   const navigate = useNavigate();
@@ -27,14 +28,15 @@ export default function RestockAddNewPage() {
   // Check if user is admin
   if (loading) {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center transition-colors">
-        <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-      </div>
+      <PageLoadingState
+        title="Add New Stock"
+        onBack={() => navigate("/dashboard/restock/project")}
+      />
     );
   }
 
   if (accessLevel !== "admin") {
-    return <AccessDenied feature="the Restock feature" />;
+    return <AccessDenied feature="the Restock feature" backTo="/dashboard/restock/project" />;
   }
 
   return (

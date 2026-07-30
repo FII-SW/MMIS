@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import ProjectSelector from "../components/ProjectSelector";
 import SearchableSelect from "../components/SearchableSelect";
-import StickyBackBar from "../components/StickyBackBar";
 import { getProjects } from "../utils/projects";
 
 export default function LowStockReportPage() {
@@ -233,12 +233,7 @@ export default function LowStockReportPage() {
 
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 shadow-md transition-colors">
-        <h1 className="text-3xl font-bold">Low Stock Report</h1>
-      </div>
-
-      <StickyBackBar to="/dashboard/reports" label="Back to reports" />
+      <PageHeaderWithBack title="Low Stock Report" onBack={() => navigate("/dashboard/reports")} />
 
       {/* FILTERS */}
       <div className="max-w-7xl mx-auto px-10 mb-6">
@@ -488,15 +483,6 @@ export default function LowStockReportPage() {
         </div>
       )}
 
-      <div className="flex justify-center py-6 pb-8">
-        <button
-          type="button"
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 underline"
-          onClick={() => navigate("/dashboard/reports")}
-        >
-          ← Back to reports
-        </button>
-      </div>
     </div>
   );
 }

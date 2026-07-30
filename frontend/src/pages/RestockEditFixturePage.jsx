@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import API from "../api";
 import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
 
 export default function RestockEditFixturePage() {
@@ -150,14 +152,16 @@ export default function RestockEditFixturePage() {
   }, []);
 
   // Check if user is admin
+  const handleBack = () => navigate("/dashboard/restock/project");
+
   if (loading) {
-    return <div className="min-h-screen bg-transparent flex items-center justify-center transition-colors">
-      <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-    </div>;
+    return (
+      <PageLoadingState title="Edit Fixture" onBack={handleBack} />
+    );
   }
 
   if (accessLevel !== "admin") {
-    return <AccessDenied feature="the Restock feature" />;
+    return <AccessDenied feature="the Restock feature" backTo="/dashboard" />;
   }
 
   const handleChange = (e) => {
@@ -202,16 +206,17 @@ export default function RestockEditFixturePage() {
     }
   };
 
-  if (!fixture) return <h2 className="text-center mt-10 text-gray-500 dark:text-gray-400">Loading...</h2>;
+  if (!fixture) {
+    return (
+      <PageLoadingState title="Edit Fixture" onBack={handleBack} message="Loading fixture..." />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 mb-8 shadow-md transition-colors">
-        <h1 className="text-3xl font-bold">Edit Fixture</h1>
-      </div>
+      <PageHeaderWithBack title="Edit Fixture" onBack={handleBack} />
 
       <div className="max-w-2xl mx-auto px-8">
         {/* FORM */}

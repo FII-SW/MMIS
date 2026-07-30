@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import API from "../api";
 import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PageLoadingState from "../components/PageLoadingState";
 import { getProjects } from "../utils/projects";
 
 export default function RestockEditItemPage() {
@@ -108,16 +110,26 @@ export default function RestockEditItemPage() {
       .catch((err) => console.error("Error loading item:", err));
   }, [item_id]);
 
+  const handleBack = () => {
+    let url = `/dashboard/restock/items?project=${encodeURIComponent(project || "")}`;
+    if (test_area) {
+      url += `&test_area=${encodeURIComponent(test_area)}`;
+    }
+    navigate(url);
+  };
+
   // NOW WE CAN DO CONDITIONAL RETURNS AFTER ALL HOOKS
   // Check if user is admin
   if (loading) {
-    return <div className="min-h-screen bg-transparent flex items-center justify-center transition-colors">
-      <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-    </div>;
+    return <PageLoadingState title="Restock" onBack={() => navigate("/dashboard/restock/project")} />;
   }
 
   if (accessLevel !== "admin") {
-    return <AccessDenied feature="the Restock feature" />;
+    return <AccessDenied feature="the Restock feature" backTo="/dashboard" />;
+  }
+
+  if (!item) {
+    return <PageLoadingState title="Restock" onBack={handleBack} message="Loading item..." />;
   }
 
   // Helper function to get full image URL
@@ -261,16 +273,11 @@ export default function RestockEditItemPage() {
     }
   };
 
-  if (!item) return <h2 className="text-center mt-10 text-gray-500 dark:text-gray-400">Loading...</h2>;
-
   return (
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 mb-8 shadow-md transition-colors">
-        <h1 className="text-3xl font-bold">Restock</h1>
-      </div>
+      <PageHeaderWithBack title="Restock" onBack={handleBack} />
 
       <div className="max-w-5xl mx-auto px-8">
         <div className="flex justify-end mb-4">

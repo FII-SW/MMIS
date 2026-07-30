@@ -2,8 +2,9 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
-import StickyBackBar from "../components/StickyBackBar";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { getProjects } from "../utils/projects";
+import { getTestAreas } from "../utils/testAreas";
 
 export default function AlertsPage() {
   const ROWS_PER_PAGE = 20;
@@ -42,7 +43,7 @@ export default function AlertsPage() {
   const customProjects = getProjects();
   const allProjects = [...new Set([...customProjects, ...uniqueProjectsFromData])].sort();
   const uniqueProjects = allProjects;
-  const uniqueTestAreas = [...new Set(allLowStockItems.map(item => item.test_area).filter(Boolean))].sort();
+  const uniqueTestAreas = getTestAreas(allLowStockItems.map((item) => item.test_area));
 
   // Filtered options for dropdowns
   const filteredProjects = uniqueProjects.filter(project =>
@@ -130,12 +131,7 @@ export default function AlertsPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 shadow-md transition-colors">
-        <h1 className="text-3xl font-bold">Low Stock Alert</h1>
-      </div>
-
-      <StickyBackBar to="/dashboard" label="Back to dashboard" maxWidthClass="max-w-6xl" />
+      <PageHeaderWithBack title="Low Stock Alert" onBack={() => navigate("/dashboard")} />
 
       {/* FILTERS */}
       <div className="max-w-6xl mx-auto px-8 mb-8">
@@ -364,16 +360,6 @@ export default function AlertsPage() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="flex justify-center py-6 pb-8">
-        <button
-          type="button"
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 underline"
-          onClick={() => navigate("/dashboard")}
-        >
-          ← Back to dashboard
-        </button>
       </div>
     </div>
   );

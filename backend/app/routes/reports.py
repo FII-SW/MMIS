@@ -105,12 +105,14 @@ def get_weekly_most_used_items(db: Session = Depends(get_db)):
         .filter(models.Transaction.created_at >= week_ago)
         .filter(models.Transaction.transaction_type == "request")
         .group_by(models.Inventory.item_id, models.Inventory.item_name, models.Inventory.item_part_number)
-        .order_by(func.sum(
-            func.case(
-                (models.Transaction.transaction_type == "request", models.Transaction.quantity_used),
-                else_=0
-            )
-        ).desc())
+        .order_by(
+            func.sum(
+                case(
+                    (models.Transaction.transaction_type == "request", models.Transaction.quantity_used),
+                    else_=0,
+                )
+            ).desc()
+        )
         .limit(10)
         .all()
     )

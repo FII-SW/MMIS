@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PageLoadingState from "../components/PageLoadingState";
 
 export default function ProfilePage() {
   const [employeeData, setEmployeeData] = useState(null);
@@ -43,15 +45,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-transparent">
-        <Header />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="text-gray-500 mt-4">Loading profile...</p>
-          </div>
-        </div>
-      </div>
+      <PageLoadingState title="My Profile" onBack={() => navigate("/dashboard")} message="Loading profile..." />
     );
   }
 
@@ -59,16 +53,9 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-transparent">
         <Header />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <p className="text-red-500">Failed to load profile data</p>
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Go to Dashboard
-            </button>
-          </div>
+        <PageHeaderWithBack title="My Profile" onBack={() => navigate("/dashboard")} />
+        <div className="flex items-center justify-center min-h-[40vh] px-4">
+          <p className="text-red-500 dark:text-red-400">Failed to load profile data</p>
         </div>
       </div>
     );
@@ -78,10 +65,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-transparent">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 text-white text-center py-4 mb-8 shadow-md">
-        <h1 className="text-3xl font-bold">My Profile</h1>
-      </div>
+      <PageHeaderWithBack title="My Profile" onBack={() => navigate("/dashboard")} />
 
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
@@ -98,12 +82,9 @@ export default function ProfilePage() {
                 : "U"}
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">
+              <h2 className="text-3xl font-bold text-gray-800">
                 {employeeData.employee_name || "User"}
               </h2>
-              <p className="text-gray-500 text-lg">
-                Employee ID: {employeeData.employee_id}
-              </p>
             </div>
           </div>
 
@@ -116,16 +97,6 @@ export default function ProfilePage() {
               </h3>
 
               <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Employee ID</label>
-                  <p className="text-lg text-gray-800 font-semibold">{employeeData.employee_id}</p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Badge Number</label>
-                  <p className="text-lg text-gray-800">{employeeData.employee_badge_number || "N/A"}</p>
-                </div>
-
                 <div>
                   <label className="text-sm font-medium text-gray-500">Full Name</label>
                   <p className="text-lg text-gray-800">{employeeData.employee_name || "N/A"}</p>
@@ -175,16 +146,10 @@ export default function ProfilePage() {
           <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
             <button
               onClick={() => navigate("/dashboard/change-password")}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center justify-center gap-2"
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center justify-center gap-2"
             >
               <span>🔒</span>
               <span>Change Password</span>
-            </button>
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
-            >
-              Back to Dashboard
             </button>
           </div>
         </div>

@@ -1,5 +1,5 @@
 # backend/app/schemas.py
-from pydantic import BaseModel, validator   # Base class for creating Pydantic data validation models
+from pydantic import BaseModel, validator, Field   # Base class for creating Pydantic data validation models
 from datetime import datetime, date
 from typing import Optional, Union  # Allows defining optional (nullable) fields
 from decimal import Decimal
@@ -60,7 +60,7 @@ class RequestCreate(BaseModel):
     item_id: int
     employee_id: int
     fixture_id: Optional[int] = None
-    quantity: int    
+    quantity: int = Field(gt=0)
 
 # Schema for returning full inventory details to the client
 class InventoryOut(InventoryBase):
@@ -76,7 +76,7 @@ class TransactionBase(BaseModel):
     item_id: int
     employee_id: int
     fixture_id: Optional[int] = None  # Optional for projects that don't require fixtures
-    quantity_used: int
+    quantity_used: int = Field(gt=0)
     transaction_type: str
     remarks: Optional[str] = None
     test_area: Optional[str] = None

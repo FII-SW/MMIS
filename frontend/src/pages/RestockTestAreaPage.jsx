@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PageLoadingState from "../components/PageLoadingState";
 
 export default function RestockTestAreaPage() {
   const navigate = useNavigate();
@@ -28,13 +29,13 @@ export default function RestockTestAreaPage() {
 
   // Check if user is admin
   if (loading) {
-    return <div className="min-h-screen bg-transparent flex items-center justify-center transition-colors">
-      <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-    </div>;
+    return (
+      <PageLoadingState title="Restock" onBack={() => navigate("/dashboard/restock")} />
+    );
   }
 
   if (accessLevel !== "admin") {
-    return <AccessDenied feature="the Restock feature" />;
+    return <AccessDenied feature="the Restock feature" backTo="/dashboard" />;
   }
 
   // Test areas
@@ -43,7 +44,7 @@ export default function RestockTestAreaPage() {
     "BSI_Mobo",
     "FBT_Mobo",
     "ICT_Agora",
-    "FBT_Asahi",
+    "FBT_Agora",
     "TOOLS",
     "ORT",
     "L10_Racks",

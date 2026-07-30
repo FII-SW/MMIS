@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import SearchableSelect from "../components/SearchableSelect";
-import StickyBackBar from "../components/StickyBackBar";
 import { getProjects } from "../utils/projects";
 
 export default function SpendingReportPage() {
@@ -389,12 +389,7 @@ export default function SpendingReportPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 shadow-md transition-colors">
-        <h1 className="text-3xl font-bold">Spending Report</h1>
-      </div>
-
-      <StickyBackBar to="/dashboard/reports" label="Back to reports" />
+      <PageHeaderWithBack title="Spending Report" onBack={() => navigate("/dashboard/reports")} />
 
       {/* FILTERS AND VIEW MODE */}
       <div className="max-w-7xl mx-auto px-8 mb-6">
@@ -660,16 +655,6 @@ export default function SpendingReportPage() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="flex justify-center py-6 pb-8">
-        <button
-          type="button"
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 underline"
-          onClick={() => navigate("/dashboard/reports")}
-        >
-          ← Back to reports
-        </button>
       </div>
     </div>
   );

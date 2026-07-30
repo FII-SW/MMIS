@@ -3,6 +3,7 @@ import API from "../api";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import { decodeToken } from "../utils/auth";
 
 export default function ReturnPage() {
   const [transactions, setTransactions] = useState([]);
@@ -13,8 +14,9 @@ export default function ReturnPage() {
   // Load employee info
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      const payload = JSON.parse(atob(token.split(".")[1]));
+    if (!token) return;
+    const payload = decodeToken(token);
+    if (payload?.employee_id) {
       setEmployeeId(payload.employee_id);
     }
   }, []);
@@ -25,11 +27,6 @@ export default function ReturnPage() {
 
     API.get(`/transactions/user/${employeeId}`)
       .then((res) => {
-        console.log("Fetched transactions:", res.data);
-        // Log each transaction's remaining quantity calculation
-        res.data.forEach(tx => {
-          console.log(`Transaction ${tx.transaction_id}: Requested=${tx.quantity_used}, Remaining=${tx.remaining_quantity}`);
-        });
         setTransactions(res.data);
       })
       .catch((err) => console.error("Error fetching transactions:", err));

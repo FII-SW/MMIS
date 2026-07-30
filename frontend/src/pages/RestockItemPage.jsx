@@ -4,6 +4,8 @@ import API from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PageLoadingState from "../components/PageLoadingState";
 
 export default function RestockItemPage() {
   const [items, setItems] = useState([]);
@@ -76,16 +78,22 @@ export default function RestockItemPage() {
     });
   }, [items, searchInput]);
 
+  const handleBack = () => {
+    if (test_area) {
+      navigate(`/dashboard/restock/test-area?project=${encodeURIComponent(project)}`);
+    } else {
+      navigate("/dashboard/restock/project");
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center transition-colors">
-        <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-      </div>
+      <PageLoadingState title="Restock — select item" onBack={() => navigate("/dashboard/restock/project")} />
     );
   }
 
   if (accessLevel !== "admin") {
-    return <AccessDenied feature="the Restock feature" />;
+    return <AccessDenied feature="the Restock feature" backTo="/dashboard" />;
   }
 
   const skipTestAreaProjects = ["Hi-Lo", "Flying Probe", "Development"];
@@ -93,18 +101,13 @@ export default function RestockItemPage() {
 
   if (!project || (requiresTestArea && !test_area)) {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center transition-colors">
-        <div className="text-center">
+      <div className="min-h-screen bg-transparent transition-colors">
+        <Header />
+        <PageHeaderWithBack title="Restock — select item" onBack={() => navigate("/dashboard/restock")} />
+        <div className="text-center px-4 py-12">
           <p className="text-red-500 dark:text-red-400 mb-4">
             {!project ? "Missing project parameter" : "Missing test area parameter"}
           </p>
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard/restock")}
-            className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-          >
-            Continue to Restock
-          </button>
         </div>
       </div>
     );
@@ -183,9 +186,7 @@ export default function RestockItemPage() {
     <div className="min-h-0 flex flex-col bg-transparent transition-colors">
       <Header />
 
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 shadow-md transition-colors">
-        <h1 className="text-2xl sm:text-3xl font-bold">Restock — select item</h1>
-      </div>
+      <PageHeaderWithBack title="Restock — select item" onBack={handleBack} />
 
       <p className="text-center mt-4 text-gray-700 dark:text-gray-300 font-semibold text-base sm:text-lg px-4">
         Project: <span className="text-blue-600 dark:text-blue-400">{project}</span>

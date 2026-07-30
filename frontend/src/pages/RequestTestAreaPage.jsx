@@ -14,7 +14,7 @@ export default function RequestTestAreaPage() {
     "BSI_Mobo",
     "FBT_Mobo",
     "ICT_Agora",
-    "FBT_Asahi",
+    "FBT_Agora",
     "TOOLS",
     "ORT",
     "L10_Racks",

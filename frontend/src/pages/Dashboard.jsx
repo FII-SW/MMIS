@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
+import { decodeToken } from "../utils/auth";
 
 export default function Dashboard() {
   const [userName, setUserName] = useState("");
@@ -23,8 +24,9 @@ export default function Dashboard() {
   // Extract employee_id from token
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      const payload = JSON.parse(atob(token.split(".")[1]));
+    if (!token) return;
+    const payload = decodeToken(token);
+    if (payload?.employee_id) {
       setEmployeeId(payload.employee_id);
     }
   }, []);
@@ -208,9 +210,6 @@ export default function Dashboard() {
           <h1 className="text-4xl font-bold tracking-wide mb-2">MMIS Dashboard</h1>
           <p className="text-lg opacity-90">
             Welcome back, <span className="font-semibold">{userName || "User"}</span> 👋
-          </p>
-          <p className="opacity-80 mt-1 text-sm">
-            Real-time inventory management insights
           </p>
         </div>
       </div>

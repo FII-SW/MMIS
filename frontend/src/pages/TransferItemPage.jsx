@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PageLoadingState from "../components/PageLoadingState";
 
 export default function TransferItemPage() {
+  const navigate = useNavigate();
   const MIN_SEARCH_LENGTH = 2;
   const [inventoryItems, setInventoryItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,10 +55,7 @@ export default function TransferItemPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-transparent">
-        <Header />
-        <div className="text-center mt-10 text-gray-500 dark:text-gray-400">Loading transfer page...</div>
-      </div>
+      <PageLoadingState title="Transfer" onBack={() => navigate("/dashboard")} message="Loading transfer page..." />
     );
   }
 
@@ -62,9 +63,7 @@ export default function TransferItemPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-4 shadow-md">
-        <h1 className="text-3xl font-bold">Transfer</h1>
-      </div>
+      <PageHeaderWithBack title="Transfer" onBack={() => navigate("/dashboard")} />
 
       <div className="max-w-6xl mx-auto px-6 lg:px-10 pb-8">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6 transition-colors">

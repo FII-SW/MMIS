@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
+import PageHeaderWithBack from "../components/PageHeaderWithBack";
 
 export default function ItemRequestPage() {
   const { item_id } = useParams();
@@ -148,17 +149,34 @@ export default function ItemRequestPage() {
   // Get selected fixture name
   const selectedFixtureName = fixtures.find(fx => String(fx.fixture_id) === String(fixture))?.fixture_name || "";
 
+  const handleBack = () => {
+    if (!project) {
+      navigate("/dashboard/request");
+      return;
+    }
+    let url = `/dashboard/request/search?project=${encodeURIComponent(project)}`;
+    if (test_area) {
+      url += `&test_area=${encodeURIComponent(test_area)}`;
+    }
+    navigate(url);
+  };
+
   // MUST COME AFTER HOOKS
-  if (!item) return <h2 className="text-center mt-10 text-gray-500 dark:text-gray-400">Loading...</h2>;
+  if (!item) {
+    return (
+      <div className="min-h-screen bg-transparent transition-colors">
+        <Header />
+        <PageHeaderWithBack title="Request Item" onBack={handleBack} />
+        <h2 className="text-center mt-10 text-gray-500 dark:text-gray-400">Loading...</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-transparent transition-colors flex flex-col overflow-hidden">
       <Header />
 
-      {/* BLUE HEADER */}
-      <div className="w-full bg-blue-600 dark:bg-blue-800 text-white text-center py-3 shadow-md transition-colors">
-        <h1 className="text-2xl font-bold">Request Item</h1>
-      </div>
+      <PageHeaderWithBack title="Request Item" onBack={handleBack} />
 
       {/* Main content - fills remaining screen */}
       <div className="flex-1 flex flex-col max-w-6xl w-full mx-auto px-6 py-3 overflow-auto">
@@ -353,7 +371,7 @@ export default function ItemRequestPage() {
         <div className="flex justify-center gap-5 mt-4 pb-2">
           <button
             className="px-10 py-2.5 bg-blue-100 dark:bg-gray-700 text-blue-800 dark:text-gray-200 rounded-lg hover:bg-blue-200 dark:hover:bg-gray-600 text-base font-medium border border-blue-200 dark:border-gray-600 transition-colors"
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
           >
             Back
           </button>
