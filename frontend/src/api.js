@@ -41,9 +41,12 @@ API.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || "";
-      const skipRedirect = requestUrl.includes("/auth/me");
+      // Session check only — do not wipe token; page handles fallback admin detection
+      if (requestUrl.includes("/auth/me")) {
+        return Promise.reject(error);
+      }
       clearSession();
-      if (!skipRedirect && window.location.pathname !== "/") {
+      if (window.location.pathname !== "/") {
         window.location.href = "/";
       }
     }

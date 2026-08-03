@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import API from "../api";
 import { getProjects } from "../utils/projects";
+import { getTokenSession } from "../utils/auth";
 
 const TEST_AREAS = [
   "ICT_Mobo",
@@ -58,10 +59,10 @@ export default function DocumentsPage() {
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
 
   const [projects, setProjects] = useState(getProjects());
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [sessionValid, setSessionValid] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(() => getTokenSession()?.role === "admin");
+  const [sessionValid, setSessionValid] = useState(() => !!getTokenSession());
 
-  const [showUploadPanel, setShowUploadPanel] = useState(false);
+  const [showUploadPanel, setShowUploadPanel] = useState(() => getTokenSession()?.role === "admin");
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -76,6 +77,8 @@ export default function DocumentsPage() {
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewType, setPreviewType] = useState("");
   const [previewTitle, setPreviewTitle] = useState("");
+
+  const canManage = isAdmin && sessionValid;
 
   const mergedProjects = useMemo(() => {
     const fromDocs = documents.map((doc) => doc.project_name).filter(Boolean);
@@ -108,15 +111,37 @@ export default function DocumentsPage() {
   }, [visibleDocuments]);
 
   useEffect(() => {
+    const session = getTokenSession();
+    if (!session) {
+      setSessionValid(false);
+      setIsAdmin(false);
+      setShowUploadPanel(false);
+      return;
+    }
+
+    setSessionValid(true);
+    const admin = session.role === "admin";
+    setIsAdmin(admin);
+    if (admin) setShowUploadPanel(true);
+
     API.get("/auth/me")
       .then((res) => {
         setSessionValid(true);
-        setIsAdmin((res.data.role || "").toLowerCase() === "admin");
+        const serverAdmin = (res.data.role || "").toLowerCase() === "admin";
+        setIsAdmin(serverAdmin);
+        if (serverAdmin) setShowUploadPanel(true);
       })
-      .catch(() => {
-        setSessionValid(false);
-        setIsAdmin(false);
-        setError("Your session expired. Please sign out and log in again to upload documents.");
+      .catch((err) => {
+        // Keep UI based on JWT when /auth/me unavailable or mismatched deploy
+        setSessionValid(true);
+        setIsAdmin(session.role === "admin");
+        if (session.role === "admin") setShowUploadPanel(true);
+        const status = err?.response?.status;
+        if (status === 401 && session.role === "admin") {
+          setError(
+            "Server could not verify your session. Try logging out and back in, then upload again."
+          );
+        }
       });
   }, []);
 
@@ -423,15 +448,15 @@ export default function DocumentsPage() {
                 >
                   {showPinnedOnly ? "⭐ Pinned Only" : "☆ Show Pinned"}
                 </button>
-                {sessionValid && isAdmin && (
+                {canManage && (
                   <>
                     <button
                       type="button"
                       onClick={() => setShowUploadPanel((prev) => !prev)}
                       className="whitespace-nowrap px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow"
-                      title="Admins can upload documents"
+                      title="Show or hide upload form"
                     >
-                      ⬆ Upload
+                      {showUploadPanel ? "Hide Upload" : "⬆ Upload"}
                     </button>
                   </>
                 )}
@@ -450,19 +475,19 @@ export default function DocumentsPage() {
               className="w-full px-4 py-3 text-base bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg"
             />
           </div>
-          {sessionValid && isAdmin && (
+          {canManage && (
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-3">
-              🛡️ Admin mode: Upload, edit, and delete actions are enabled.
+              🛡️ Admin mode: Upload, pin, and delete actions are enabled. Drag and drop files in the upload area below.
             </p>
           )}
-          {sessionValid === false && (
+          {!sessionValid && (
             <p className="text-xs text-amber-700 dark:text-amber-300 mt-3">
-              Sign in again to upload or manage documents.
+              Please sign in to upload or manage documents.
             </p>
           )}
         </div>
 
-        {sessionValid && isAdmin && showUploadPanel && (
+        {canManage && showUploadPanel && (
           <form
             onSubmit={handleUpload}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 mb-5 border border-blue-100 dark:border-gray-700"
@@ -619,8 +644,17 @@ export default function DocumentsPage() {
             <div className="text-4xl mb-2">📁</div>
             <p className="text-gray-600 dark:text-gray-300 font-medium">No documents found</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Try changing filters or upload a document for this project.
+              Try changing filters{canManage ? " or upload a document using the form above." : "."}
             </p>
+            {canManage && !showUploadPanel && (
+              <button
+                type="button"
+                onClick={() => setShowUploadPanel(true)}
+                className="mt-4 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+              >
+                Open upload area
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-5">
@@ -650,7 +684,7 @@ export default function DocumentsPage() {
                         <div className="flex flex-wrap gap-2">
                           <button type="button" onClick={() => handleDownload(doc)} className="px-3 py-1 rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300">Download</button>
                           {isPreviewSupported(doc.file_type) && <button type="button" onClick={() => handlePreview(doc)} className="px-3 py-1 rounded-md bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300">Preview</button>}
-                          {sessionValid && isAdmin && (
+                          {canManage && (
                             <>
                               <button type="button" onClick={() => handleTogglePin(doc)} className="px-3 py-1 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">{doc.is_pinned ? "Unpin" : "Pin"}</button>
                               <button type="button" onClick={() => handleDelete(doc)} className="px-3 py-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300">Delete</button>
@@ -688,7 +722,7 @@ export default function DocumentsPage() {
                         <div className="flex flex-wrap gap-2">
                           <button type="button" onClick={() => handleDownload(doc)} className="px-3 py-1 rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300">Download</button>
                           {isPreviewSupported(doc.file_type) && <button type="button" onClick={() => handlePreview(doc)} className="px-3 py-1 rounded-md bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300">Preview</button>}
-                          {sessionValid && isAdmin && (
+                          {canManage && (
                             <>
                               <button type="button" onClick={() => handleTogglePin(doc)} className="px-3 py-1 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">{doc.is_pinned ? "Unpin" : "Pin"}</button>
                               <button type="button" onClick={() => handleDelete(doc)} className="px-3 py-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300">Delete</button>

@@ -15,3 +15,19 @@ export function decodeToken(token) {
 export function clearSession() {
   localStorage.removeItem("token");
 }
+
+/** Read role and employee_id from a valid local JWT (does not verify signature). */
+export function getTokenSession() {
+  const token = localStorage.getItem("token");
+  const payload = decodeToken(token);
+  if (!payload) return null;
+  return {
+    employee_id: payload.employee_id,
+    role: String(payload.role || "").toLowerCase(),
+    username: payload.sub,
+  };
+}
+
+export function isAdminUser() {
+  return getTokenSession()?.role === "admin";
+}

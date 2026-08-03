@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import { useNotifications } from "../contexts/NotificationContext";
 
 export default function ItemRequestPage() {
   const { item_id } = useParams();
@@ -26,6 +27,7 @@ export default function ItemRequestPage() {
   const [fixtureSearch, setFixtureSearch] = useState("");
   const [showFixtureDropdown, setShowFixtureDropdown] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { addNotification } = useNotifications();
 
   useEffect(() => {
     try {
@@ -110,11 +112,12 @@ export default function ItemRequestPage() {
 
       const response = await API.post("/inventory/request", requestData);
 
-      // Check if transfer was used
-      if (response.data && response.data.transfer_used) {
-        alert(`Request submitted! ${response.data.transferred_from_other_projects} units were automatically transferred from other projects.`);
+      if (response.data?.transfer_used) {
+        addNotification(
+          `Request submitted: ${response.data.transferred_from_other_projects} unit(s) auto-transferred from other projects for ${item?.item_name || "item"}.`
+        );
       } else {
-      alert("Request submitted!");
+        addNotification(`Request submitted: ${quantity} × ${item?.item_name || "item"} (${project}${test_area ? ` · ${test_area}` : ""}).`);
       }
       navigate("/dashboard");
     } catch (err) {

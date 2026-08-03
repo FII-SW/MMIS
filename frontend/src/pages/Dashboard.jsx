@@ -1,12 +1,14 @@
 // frontend/src/pages/Dashboard.jsx
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import API from "../api";
 import { decodeToken } from "../utils/auth";
+import FlashBanner from "../components/FlashBanner";
 
 export default function Dashboard() {
   const [userName, setUserName] = useState("");
   const [employeeId, setEmployeeId] = useState(null);
+  const [flash, setFlash] = useState(null);
   const [stats, setStats] = useState({
     totalItems: 0,
     lowStockCount: 0,
@@ -20,6 +22,17 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.flashMessage) {
+      setFlash({
+        message: location.state.flashMessage,
+        type: location.state.flashType || "info",
+      });
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
 
   // Extract employee_id from token
   useEffect(() => {
@@ -204,6 +217,8 @@ export default function Dashboard() {
 
   return (
     <>
+      <FlashBanner message={flash?.message} type={flash?.type} onDismiss={() => setFlash(null)} />
+
       {/* Welcome Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900 text-white rounded-xl p-8 shadow-lg mb-8 transition-colors">
         <div>

@@ -4,10 +4,12 @@ import API from "../api";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { decodeToken } from "../utils/auth";
+import { useNotifications } from "../contexts/NotificationContext";
 
 export default function ReturnItemPage() {
   const { transaction_id } = useParams();
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
 
   const [tx, setTx] = useState(null);
   const [quantity, setQuantity] = useState("");
@@ -110,9 +112,10 @@ export default function ReturnItemPage() {
         project_name: tx.project_name,
       });
 
-      alert("Return successful!");
+      addNotification(
+        `Return recorded: ${quantity} unit(s) of ${tx?.item_name || "item"} returned to ${tx?.project_name || "inventory"}.`
+      );
       navigate("/dashboard/return/");
-
     } catch (err) {
       console.error(err);
       alert("Return failed");

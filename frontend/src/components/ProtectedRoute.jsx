@@ -18,7 +18,16 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   const role = payload.role;
 
   if (allowedRoles && !allowedRoles.includes(role)) {
-    return <Navigate to="/dashboard" replace />;
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+        state={{
+          flashMessage: "You do not have permission to open that page. Contact your admin if you need access.",
+          flashType: "warning",
+        }}
+      />
+    );
   }
 
   return (

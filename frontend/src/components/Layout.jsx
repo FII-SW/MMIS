@@ -5,14 +5,13 @@ import Header from "./Header";
 import HelpAssistant from "./HelpAssistant";
 import { LayoutProvider } from "../contexts/LayoutContext";
 
+import { decodeToken } from "../utils/auth";
+
 function getRoleFromToken() {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-    return JSON.parse(atob(token.split(".")[1])).role;
-  } catch {
-    return null;
-  }
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  const payload = decodeToken(token);
+  return payload?.role || null;
 }
 
 export default function Layout({ children }) {
@@ -32,17 +31,19 @@ export default function Layout({ children }) {
   };
 
   const navItems = useMemo(() => {
+    const role = getRoleFromToken();
+    const isAdmin = role === "admin";
     const base = [
       { path: "/dashboard", label: "Dashboard" },
       { path: "/dashboard/request", label: "Request" },
       { path: "/dashboard/return", label: "Return" },
-      { path: "/dashboard/restock", label: "Restock" },
+      ...(isAdmin ? [{ path: "/dashboard/restock", label: "Restock" }] : []),
       { path: "/dashboard/alerts", label: "Low Stock Alerts" },
       { path: "/dashboard/reports", label: "Reports" },
       { path: "/dashboard/activity", label: "Activity History" },
       { path: "/dashboard/documents", label: "Documents" },
     ];
-    if (getRoleFromToken() === "admin") {
+    if (isAdmin) {
       base.push({ path: "/dashboard/transfer", label: "Transfer" });
     }
     return base;
