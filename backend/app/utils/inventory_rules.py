@@ -2,6 +2,23 @@
 
 SKIP_TEST_AREA_PROJECTS = frozenset({"Hi-Lo", "Flying Probe", "Development"})
 
+# Keep in sync with frontend src/utils/projects.js DEFAULT_PROJECTS
+DEFAULT_PROJECTS = (
+    "Astoria",
+    "Athena",
+    "Turin",
+    "Bondi Beach",
+    "Development",
+    "Zebra Beach",
+    "Mandolin Beach",
+    "Gulp",
+    "Xena",
+    "Asahi",
+    "Humu Beach",
+    "Hi-Lo",
+    "Flying Probe",
+)
+
 DEFAULT_TEST_AREAS = (
     "ICT_Mobo",
     "BSI_Mobo",

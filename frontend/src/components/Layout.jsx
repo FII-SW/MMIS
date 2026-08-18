@@ -88,7 +88,7 @@ export default function Layout({ children }) {
         <Header showMMIS={false} brandLogo={hideSidebar} />
 
         {/* Page Body — flex-1 + min-h-0 so this column scrolls on short viewports (laptop); sticky bars work reliably */}
-          <main className="min-h-0 flex-1 overflow-y-auto bg-transparent p-6 transition-colors">
+          <main className="min-h-0 flex-1 overflow-y-auto bg-transparent p-4 transition-colors">
             {children}
           </main>
         </div>

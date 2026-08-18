@@ -1,6 +1,6 @@
 // src/components/Header.jsx
 import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import API from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useIsInsideLayout } from "../contexts/LayoutContext";
@@ -15,9 +15,13 @@ export default function Header({ showMMIS = true, brandLogo = false }) {
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const isInsideLayout = useIsInsideLayout();
   const { notifications, unreadCount, markAllRead, clearAll } = useNotifications();
+
+  const isDashboard =
+    location.pathname === "/dashboard" || location.pathname === "/dashboard/";
 
   // Load employee info from token
   useEffect(() => {
@@ -90,25 +94,38 @@ export default function Header({ showMMIS = true, brandLogo = false }) {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow p-4 flex justify-between items-center transition-colors">
+    <header className="bg-white dark:bg-gray-800 shadow px-4 py-2.5 flex justify-between items-center gap-3 transition-colors shrink-0">
       {brandLogo ? (
         <span
-          className="text-2xl font-bold text-blue-600 dark:text-blue-400 cursor-pointer shrink-0"
+          className="text-xl font-bold text-blue-600 dark:text-blue-400 cursor-pointer shrink-0"
           onClick={() => navigate("/dashboard")}
         >
           MMIS
         </span>
       ) : showMMIS ? (
         <span
-          className="text-2xl font-bold text-blue-600 dark:text-blue-400 cursor-pointer"
+          className="text-xl font-bold text-blue-600 dark:text-blue-400 cursor-pointer shrink-0"
           onClick={() => navigate("/dashboard")}
         >
           MMIS
         </span>
+      ) : isInsideLayout && isDashboard ? (
+        <div className="flex-1 min-w-0 pl-1">
+          <h1 className="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight truncate">
+            Dashboard
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-snug truncate">
+            Welcome back,{" "}
+            <span className="font-semibold text-gray-700 dark:text-gray-200">
+              {userName || "User"}
+            </span>{" "}
+            👋
+          </p>
+        </div>
       ) : (
-        <div />
+        <div className="flex-1" />
       )}
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Transfer notifications — left of theme toggle */}
         <div className="relative" ref={notificationRef}>
           <button
@@ -199,7 +216,7 @@ export default function Header({ showMMIS = true, brandLogo = false }) {
         <div className="relative" ref={menuRef}>
           <div
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="w-12 h-12 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center font-semibold text-gray-800 dark:text-gray-200 text-lg cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
+            className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center font-semibold text-gray-800 dark:text-gray-200 text-sm cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
           >
             {getInitials(userName)}
           </div>

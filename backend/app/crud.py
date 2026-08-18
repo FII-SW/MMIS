@@ -119,14 +119,25 @@ def find_matching_inventory(db: Session, item: schemas.InventoryBase):
     return None
 
 
+def insert_new_inventory_item(db: Session, item: schemas.InventoryBase):
+    """
+    Always insert a new inventory row (New Stock flow).
+
+    Does not match or update existing items — use restock on an existing item to add quantity.
+    Items with the same name/project/test area but different part number or description
+    are stored as separate rows.
+    """
+    payload = item.model_dump() if hasattr(item, "model_dump") else item.dict()
+    db_item = models.Inventory(**payload)
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
 def create_inventory_item(db: Session, item: schemas.InventoryBase, *, confirm_merge: bool = False):
     """
-    Insert a new inventory row.
-
-    Only merges quantity when ALL identity fields match AND confirm_merge=True
-    (user intentionally adding to an exact duplicate). Otherwise always creates a new row.
-
-    Returns (db_item, is_new_item).
+    Insert or optionally merge into an exact duplicate (legacy; New Stock uses insert_new_inventory_item).
     """
     existing = find_matching_inventory(db, item)
     if existing:
@@ -139,17 +150,12 @@ def create_inventory_item(db: Session, item: schemas.InventoryBase, *, confirm_m
             f"DUPLICATE_ITEM:{existing.item_id}:{existing.item_current_quantity}"
         )
 
-    payload = item.model_dump() if hasattr(item, "model_dump") else item.dict()
-    db_item = models.Inventory(**payload)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item, True
+    return insert_new_inventory_item(db, item), True
 
 
 def create_or_update_inventory(db: Session, item: schemas.InventoryBase):
-    """Deprecated alias — always creates; use create_inventory_item with confirm_merge for merges."""
-    return create_inventory_item(db, item, confirm_merge=False)
+    """Deprecated alias — always creates a new row."""
+    return insert_new_inventory_item(db, item), True
 
 def subtract_item_quantity(db: Session, item_id: int, qty: int):
     """Decrease item quantity atomically (for Request)."""

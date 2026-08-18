@@ -185,7 +185,7 @@ export default function RestockNewStockPage() {
     }
   };
 
-  const submitInventory = async (imageUrl, confirmMerge = false) => {
+  const submitInventory = async (imageUrl) => {
     const res = await API.post("/inventory/", {
       item_name: formData.item_name.trim(),
       project_name: formData.project_name.trim(),
@@ -201,7 +201,6 @@ export default function RestockNewStockPage() {
       item_life_cycle: parseInt(formData.item_life_cycle) || null,
       item_image_url: imageUrl || null,
       employee_id: employeeId,
-      confirm_merge: confirmMerge,
     });
     return res;
   };
@@ -221,31 +220,9 @@ export default function RestockNewStockPage() {
         }
       }
 
-      let res;
-      try {
-        res = await submitInventory(imageUrl, false);
-      } catch (err) {
-        if (err?.response?.status === 409) {
-          const detail = err.response.data?.detail;
-          const existingId = detail?.existing_item_id;
-          const existingQty = detail?.existing_quantity;
-          const merge = window.confirm(
-            `An identical item already exists (ID ${existingId}, qty ${existingQty}).\n\n` +
-              `Add ${formData.item_current_quantity} to that item?\n\n` +
-              `Choose Cancel to go back and change name, part number, test area, or description to create a separate item.`
-          );
-          if (!merge) return;
-          res = await submitInventory(imageUrl, true);
-        } else {
-          throw err;
-        }
-      }
+      const res = await submitInventory(imageUrl);
 
-      alert(
-        res.data?.is_new_item === false
-          ? `Quantity added to existing item (now ${res.data.item_current_quantity} total).`
-          : `New item created successfully (ID ${res.data.item_id}).`
-      );
+      alert(`New item created successfully (ID ${res.data.item_id}).`);
       navigate("/dashboard/restock");
     } catch (err) {
       console.error(err);
@@ -265,6 +242,8 @@ export default function RestockNewStockPage() {
         <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow p-6 mb-8 transition-colors">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Fields marked with <span className="text-red-600 dark:text-red-400">*</span> are required.
+            Each submission creates a <strong>new inventory row</strong> for any project — Astoria, Mandolin Beach, Hi-Lo, custom projects, etc.
+            Similar names in the same project do not update existing stock. Use <strong>Restock → Existing item</strong> to add quantity.
           </p>
           <div className="grid grid-cols-2 gap-6 mb-6">
             {/* LEFT COLUMN */}

@@ -64,7 +64,7 @@ def get_single_item(item_id: int, db: Session = Depends(get_db)):
 
 @router.post("/")
 def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
-    """Add new inventory item and create transaction record (admin only)."""
+    """Add new inventory item (admin only). Always inserts a new row for every project."""
     admin = require_admin(request)
     employee_id = employee_id_from_token(admin)
     def _require_text(field: str, label: str):
@@ -85,7 +85,7 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
 
     data["test_area"] = test_area or None
 
-    # Normalize identity fields before compare/insert (all projects & test areas)
+    # Normalize fields before insert (same rules for every project and test area)
     for field in ("item_name", "project_name", "item_part_number", "item_description"):
         raw = data.get(field)
         if raw is not None:
@@ -93,7 +93,7 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
     if data.get("item_name") is None:
         raise HTTPException(status_code=400, detail="Item name is required")
 
-    confirm_merge = bool(data.pop("confirm_merge", False))
+    data.pop("confirm_merge", None)
 
     if data.get("item_current_quantity") is None:
         raise HTTPException(status_code=400, detail="Current quantity is required")
@@ -118,24 +118,7 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
         if not default_fixture:
             raise HTTPException(status_code=400, detail="No fixtures available. Please create at least one fixture.")
 
-    try:
-        db_item, is_new_item = crud.create_inventory_item(db, item, confirm_merge=confirm_merge)
-    except ValueError as exc:
-        msg = str(exc)
-        if msg.startswith("DUPLICATE_ITEM:"):
-            _, item_id, qty = msg.split(":", 2)
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "message": (
-                        "An item with the same name, project, test area, part number, "
-                        "and description already exists. Use Restock on that item or confirm merge."
-                    ),
-                    "existing_item_id": int(item_id),
-                    "existing_quantity": int(qty),
-                },
-            )
-        raise HTTPException(status_code=400, detail=msg)
+    db_item = crud.insert_new_inventory_item(db, item)
 
     # Create transaction record if employee_id is provided (for activity history)
     if employee_id and default_fixture:
@@ -145,7 +128,7 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
             fixture_id=default_fixture.fixture_id,
             quantity_used=item.item_current_quantity,
             transaction_type="restock",
-            remarks="New item added" if is_new_item else "Quantity added to matching existing item",
+            remarks="New item added",
             test_area=item.test_area,
             project_name=item.project_name,
         )
@@ -169,8 +152,8 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
         "item_life_cycle": db_item.item_life_cycle,
         "item_image_url": db_item.item_image_url,
         "created_at": db_item.created_at,
-        "is_new_item": is_new_item,
-        "message": "New item created" if is_new_item else "Quantity added to existing matching item",
+        "is_new_item": True,
+        "message": "New item created",
     }
 
 
