@@ -7,6 +7,7 @@
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy import func
 from . import models, schemas
 from datetime import date, timedelta
 
@@ -29,8 +30,15 @@ def create_employee(db: Session, emp: schemas.EmployeeCreate, hashed_pw: str):
     return new_emp
 
 def get_employee_by_username(db: Session, username: str):
-    """Find employee by username for login."""
-    return db.query(models.Employee).filter(models.Employee.employee_username == username).first()
+    """Find employee by username for login (trimmed, case-insensitive)."""
+    normalized = (username or "").strip()
+    if not normalized:
+        return None
+    return (
+        db.query(models.Employee)
+        .filter(func.lower(models.Employee.employee_username) == normalized.lower())
+        .first()
+    )
 
 def get_admin_users(db: Session):
     """Get all admin users with email addresses."""

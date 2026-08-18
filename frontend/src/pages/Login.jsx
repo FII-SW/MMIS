@@ -20,8 +20,17 @@ export default function Login() {
       const res = await API.post("/auth/login", { username, password });
       localStorage.setItem("token", res.data.access_token);
       navigate("/dashboard");
-    } catch {
-      setError("Invalid username or password");
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 500) {
+        setError("Server error during sign-in. Contact your admin or try again shortly.");
+      } else if (status === 401) {
+        setError("Invalid username or password");
+      } else if (!err?.response) {
+        setError("Cannot reach the server. Check your network or VPN.");
+      } else {
+        setError("Invalid username or password");
+      }
     } finally {
       setLoading(false);
     }

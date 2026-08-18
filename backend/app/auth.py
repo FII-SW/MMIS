@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+import logging
 from . import crud, models
 from .database import get_db
 from .utils.jwt_handler import create_access_token
 from .utils.password_utils import verify_stored_password, normalize_password_for_storage, is_bcrypt_hash
 from .utils.auth_deps import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -18,9 +21,21 @@ class LoginRequest(BaseModel):
 @router.post("/login")
 def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     """Employee login using JSON data (not form-encoded)."""
-    user = crud.get_employee_by_username(db, credentials.username)
+    username = (credentials.username or "").strip()
+    if not username or not credentials.password:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    if not user or not verify_stored_password(credentials.password, user.employee_password):
+    user = crud.get_employee_by_username(db, username)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    try:
+        password_ok = verify_stored_password(credentials.password, user.employee_password)
+    except Exception:
+        logger.exception("Password verification failed for user %s", username)
+        raise HTTPException(status_code=500, detail="Login temporarily unavailable. Contact your admin.")
+
+    if not password_ok:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     # Upgrade legacy plain-text passwords to bcrypt on successful login
