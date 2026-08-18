@@ -5,7 +5,6 @@
 # session and performs the necessary DB operation.
 # --------------------------------------------------------------
 
-from xml.parsers.expat import model
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from . import models, schemas
@@ -80,6 +79,22 @@ def _inventory_identity_key(item) -> tuple:
     )
 
 
+def inventory_catalog_key(item) -> tuple:
+    """Catalog identity across projects (name, part number, description)."""
+    return (
+        _normalize_inventory_field(item.item_name),
+        _normalize_inventory_field(item.item_part_number),
+        _normalize_inventory_field(item.item_description),
+    )
+
+
+def is_same_catalog_item(source, candidate) -> bool:
+    """True when candidate is the same catalog item in another location."""
+    if source.item_id == candidate.item_id:
+        return False
+    return inventory_catalog_key(source) == inventory_catalog_key(candidate)
+
+
 def find_matching_inventory(db: Session, item: schemas.InventoryBase):
     """
     Find an existing row that matches on name, project, test area, part number, and description.
@@ -94,7 +109,6 @@ def find_matching_inventory(db: Session, item: schemas.InventoryBase):
 
     candidates = (
         db.query(models.Inventory)
-        .filter(models.Inventory.item_name == item.item_name)
         .filter(models.Inventory.project_name == item.project_name)
         .all()
     )
@@ -105,25 +119,37 @@ def find_matching_inventory(db: Session, item: schemas.InventoryBase):
     return None
 
 
-def create_or_update_inventory(db: Session, item: schemas.InventoryBase):
+def create_inventory_item(db: Session, item: schemas.InventoryBase, *, confirm_merge: bool = False):
     """
-    If an identical item exists (name, project, test area, part number, description all match),
-    add quantity to that row. Otherwise insert a new inventory record.
+    Insert a new inventory row.
+
+    Only merges quantity when ALL identity fields match AND confirm_merge=True
+    (user intentionally adding to an exact duplicate). Otherwise always creates a new row.
 
     Returns (db_item, is_new_item).
     """
-    db_item = find_matching_inventory(db, item)
-    if db_item:
-        db_item.item_current_quantity += item.item_current_quantity
-        db.commit()
-        db.refresh(db_item)
-        return db_item, False
+    existing = find_matching_inventory(db, item)
+    if existing:
+        if confirm_merge:
+            existing.item_current_quantity += item.item_current_quantity
+            db.commit()
+            db.refresh(existing)
+            return existing, False
+        raise ValueError(
+            f"DUPLICATE_ITEM:{existing.item_id}:{existing.item_current_quantity}"
+        )
 
-    db_item = models.Inventory(**item.dict())
+    payload = item.model_dump() if hasattr(item, "model_dump") else item.dict()
+    db_item = models.Inventory(**payload)
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
     return db_item, True
+
+
+def create_or_update_inventory(db: Session, item: schemas.InventoryBase):
+    """Deprecated alias — always creates; use create_inventory_item with confirm_merge for merges."""
+    return create_inventory_item(db, item, confirm_merge=False)
 
 def subtract_item_quantity(db: Session, item_id: int, qty: int):
     """Decrease item quantity atomically (for Request)."""

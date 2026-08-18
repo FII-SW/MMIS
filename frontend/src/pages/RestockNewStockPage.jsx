@@ -185,6 +185,27 @@ export default function RestockNewStockPage() {
     }
   };
 
+  const submitInventory = async (imageUrl, confirmMerge = false) => {
+    const res = await API.post("/inventory/", {
+      item_name: formData.item_name.trim(),
+      project_name: formData.project_name.trim(),
+      item_part_number: formData.item_part_number.trim(),
+      item_description: formData.item_description.trim() || null,
+      test_area: formData.test_area.trim() || null,
+      item_unit: formData.item_unit || null,
+      item_current_quantity: parseInt(formData.item_current_quantity, 10),
+      item_unit_price: formData.item_unit_price || null,
+      item_min_count: parseInt(formData.item_min_count) || 0,
+      item_manufacturer: formData.item_manufacturer || null,
+      item_type: formData.item_type || null,
+      item_life_cycle: parseInt(formData.item_life_cycle) || null,
+      item_image_url: imageUrl || null,
+      employee_id: employeeId,
+      confirm_merge: confirmMerge,
+    });
+    return res;
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) {
       return;
@@ -196,37 +217,40 @@ export default function RestockNewStockPage() {
       if (selectedFile) {
         imageUrl = await handleImageUpload();
         if (!imageUrl && !formData.item_image_url) {
-          // User selected file but upload failed, and no manual URL provided
-          return; // Don't proceed if upload failed
+          return;
         }
       }
 
-      const res = await API.post("/inventory/", {
-        item_name: formData.item_name.trim(),
-        project_name: formData.project_name.trim(),
-        item_part_number: formData.item_part_number.trim(),
-        item_description: formData.item_description.trim() || null,
-        test_area: formData.test_area.trim() || null,
-        item_unit: formData.item_unit || null,
-        item_current_quantity: parseInt(formData.item_current_quantity, 10),
-        item_unit_price: formData.item_unit_price || null,
-        item_min_count: parseInt(formData.item_min_count) || 0,
-        item_manufacturer: formData.item_manufacturer || null,
-        item_type: formData.item_type || null,
-        item_life_cycle: parseInt(formData.item_life_cycle) || null,
-        item_image_url: imageUrl || null,
-        employee_id: employeeId,
-      });
+      let res;
+      try {
+        res = await submitInventory(imageUrl, false);
+      } catch (err) {
+        if (err?.response?.status === 409) {
+          const detail = err.response.data?.detail;
+          const existingId = detail?.existing_item_id;
+          const existingQty = detail?.existing_quantity;
+          const merge = window.confirm(
+            `An identical item already exists (ID ${existingId}, qty ${existingQty}).\n\n` +
+              `Add ${formData.item_current_quantity} to that item?\n\n` +
+              `Choose Cancel to go back and change name, part number, test area, or description to create a separate item.`
+          );
+          if (!merge) return;
+          res = await submitInventory(imageUrl, true);
+        } else {
+          throw err;
+        }
+      }
 
       alert(
         res.data?.is_new_item === false
-          ? `Matching item found — quantity updated (now ${res.data.item_current_quantity} total).`
-          : "New stock item added successfully!"
+          ? `Quantity added to existing item (now ${res.data.item_current_quantity} total).`
+          : `New item created successfully (ID ${res.data.item_id}).`
       );
       navigate("/dashboard/restock");
     } catch (err) {
       console.error(err);
-      alert(err?.response?.data?.detail || "Failed to add new stock item");
+      const detail = err?.response?.data?.detail;
+      alert(typeof detail === "string" ? detail : detail?.message || "Failed to add new stock item");
     }
   };
 
@@ -265,7 +289,7 @@ export default function RestockNewStockPage() {
                   value={formData.project_name}
                   onChange={handleChange}
                   placeholder="Select Project Name"
-                  className={`w-full p-2 ${fieldErrors.project_name ? "ring-2 ring-red-500 rounded" : ""}`}
+                  inputClassName={fieldClass("project_name")}
                   required
                 />
                 {fieldErrors.project_name && (

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from .. import crud, schemas, models
 from ..database import get_db
-from ..utils.jwt_handler import verify_access_token
+from ..utils.auth_deps import get_current_user, require_admin, employee_id_from_token
 from ..utils.inventory_rules import project_requires_test_area
 import os
 import shutil
@@ -37,22 +37,6 @@ def _safe_path_under(base: Path, relative_url: str) -> Optional[Path]:
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
 
-def _require_admin_for_transfer(request: Request):
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization token")
-    token = auth_header.split(" ", 1)[1].strip()
-    payload = verify_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    if str(payload.get("role", "")).lower() != "admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Only admins can transfer inventory between projects",
-        )
-    return payload
-
-
 @router.get("/", response_model=list[schemas.InventoryOut])
 def get_inventory(
     project: str | None = None,
@@ -79,8 +63,10 @@ def get_single_item(item_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/")
-def add_inventory(data: dict, db: Session = Depends(get_db)):
-    """Add new inventory item and create transaction record if employee_id provided."""
+def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
+    """Add new inventory item and create transaction record (admin only)."""
+    admin = require_admin(request)
+    employee_id = employee_id_from_token(admin)
     def _require_text(field: str, label: str):
         value = data.get(field)
         if value is None or not str(value).strip():
@@ -99,6 +85,16 @@ def add_inventory(data: dict, db: Session = Depends(get_db)):
 
     data["test_area"] = test_area or None
 
+    # Normalize identity fields before compare/insert (all projects & test areas)
+    for field in ("item_name", "project_name", "item_part_number", "item_description"):
+        raw = data.get(field)
+        if raw is not None:
+            data[field] = str(raw).strip() or None
+    if data.get("item_name") is None:
+        raise HTTPException(status_code=400, detail="Item name is required")
+
+    confirm_merge = bool(data.pop("confirm_merge", False))
+
     if data.get("item_current_quantity") is None:
         raise HTTPException(status_code=400, detail="Current quantity is required")
     try:
@@ -108,21 +104,38 @@ def add_inventory(data: dict, db: Session = Depends(get_db)):
     if qty < 0:
         raise HTTPException(status_code=400, detail="Current quantity must be 0 or greater")
 
-    # Extract employee_id if provided
-    employee_id = data.get("employee_id")
+    # Extract employee_id from JWT (ignore client-supplied value)
+    data.pop("employee_id", None)
     
     # Create InventoryBase from the data
     item_data = {k: v for k, v in data.items() if k != "employee_id"}
     item = schemas.InventoryBase(**item_data)
-    
+
     # Get first available fixture before creating inventory (needed for transaction)
     default_fixture = None
     if employee_id:
         default_fixture = db.query(models.Fixture).first()
         if not default_fixture:
             raise HTTPException(status_code=400, detail="No fixtures available. Please create at least one fixture.")
-    
-    db_item, is_new_item = crud.create_or_update_inventory(db, item)
+
+    try:
+        db_item, is_new_item = crud.create_inventory_item(db, item, confirm_merge=confirm_merge)
+    except ValueError as exc:
+        msg = str(exc)
+        if msg.startswith("DUPLICATE_ITEM:"):
+            _, item_id, qty = msg.split(":", 2)
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": (
+                        "An item with the same name, project, test area, part number, "
+                        "and description already exists. Use Restock on that item or confirm merge."
+                    ),
+                    "existing_item_id": int(item_id),
+                    "existing_quantity": int(qty),
+                },
+            )
+        raise HTTPException(status_code=400, detail=msg)
 
     # Create transaction record if employee_id is provided (for activity history)
     if employee_id and default_fixture:
@@ -162,8 +175,9 @@ def add_inventory(data: dict, db: Session = Depends(get_db)):
 
 
 @router.put("/{item_id}")
-def update_inventory(item_id: int, item: schemas.InventoryBase, db: Session = Depends(get_db)):
-    """Update an existing inventory item by ID."""
+def update_inventory(item_id: int, item: schemas.InventoryBase, request: Request, db: Session = Depends(get_db)):
+    """Update an existing inventory item by ID (admin only)."""
+    require_admin(request)
     db_item = db.query(models.Inventory).filter(models.Inventory.item_id == item_id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -182,7 +196,9 @@ def update_inventory(item_id: int, item: schemas.InventoryBase, db: Session = De
 
 
 @router.post("/request")
-def request_item(data: schemas.RequestCreate, db: Session = Depends(get_db)):
+def request_item(data: schemas.RequestCreate, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request)
+    employee_id = employee_id_from_token(user)
 
     item_id = data.item_id
     qty = data.quantity
@@ -208,7 +224,7 @@ def request_item(data: schemas.RequestCreate, db: Session = Depends(get_db)):
         
         transaction = models.Transaction(
             item_id=item_id,
-            employee_id=data.employee_id,
+            employee_id=employee_id,
             fixture_id=data.fixture_id,
             quantity_used=qty,
             test_area=item.test_area,
@@ -225,17 +241,19 @@ def request_item(data: schemas.RequestCreate, db: Session = Depends(get_db)):
             "transfer_used": False
         }
     
-    # Not enough stock in current project - check other projects
-    available_in_other_projects = (
+    # Not enough stock in current project - check other projects for same catalog item
+    other_project_candidates = (
         db.query(models.Inventory)
         .filter(
-            models.Inventory.item_name == item.item_name,
             models.Inventory.item_id != item_id,
-            models.Inventory.item_current_quantity > 0
+            models.Inventory.item_current_quantity > 0,
         )
         .order_by(models.Inventory.item_current_quantity.desc())
         .all()
     )
+    available_in_other_projects = [
+        c for c in other_project_candidates if crud.is_same_catalog_item(item, c)
+    ]
     
     if not available_in_other_projects:
         raise HTTPException(
@@ -280,7 +298,7 @@ def request_item(data: schemas.RequestCreate, db: Session = Depends(get_db)):
         # Create transfer transaction for source project
         transfer_tx_source = models.Transaction(
             item_id=source_item_locked.item_id,
-            employee_id=data.employee_id,
+            employee_id=employee_id,
             fixture_id=data.fixture_id,
             quantity_used=transfer_qty,
             test_area=source_item_locked.test_area,
@@ -293,7 +311,7 @@ def request_item(data: schemas.RequestCreate, db: Session = Depends(get_db)):
         # Create transfer transaction for destination project
         transfer_tx_dest = models.Transaction(
             item_id=item_id,
-            employee_id=data.employee_id,
+            employee_id=employee_id,
             fixture_id=data.fixture_id,
             quantity_used=transfer_qty,
             test_area=item.test_area,
@@ -318,7 +336,7 @@ def request_item(data: schemas.RequestCreate, db: Session = Depends(get_db)):
     # Create final request transaction for the full quantity
     final_request_tx = models.Transaction(
         item_id=item_id,
-        employee_id=data.employee_id,
+        employee_id=employee_id,
         fixture_id=data.fixture_id,
         quantity_used=qty,
         test_area=item.test_area,
@@ -342,18 +360,17 @@ def request_item(data: schemas.RequestCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/restock")
-def restock_item(data: dict, db: Session = Depends(get_db)):
-    """Restock an item by adding quantity."""
+def restock_item(data: dict, request: Request, db: Session = Depends(get_db)):
+    """Restock an item by adding quantity (admin only)."""
+    admin = require_admin(request)
+    employee_id = employee_id_from_token(admin)
+
     item_id = data.get("item_id")
     quantity = data.get("quantity")
     remarks = data.get("remarks", "")
-    employee_id = data.get("employee_id")
 
     if not item_id or quantity is None:
         raise HTTPException(status_code=400, detail="item_id and quantity are required")
-
-    if not employee_id:
-        raise HTTPException(status_code=400, detail="employee_id is required")
 
     if quantity <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
@@ -403,10 +420,12 @@ def restock_item(data: dict, db: Session = Depends(get_db)):
 
 @router.post("/upload-image")
 async def upload_item_image(
+    request: Request,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Upload an image file and return the URL path."""
+    """Upload an image file and return the URL path (admin only)."""
+    require_admin(request)
     upload_dir = _item_images_dir()
     upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -438,10 +457,12 @@ async def upload_item_image(
 @router.post("/upload-image/{item_id}")
 async def upload_and_update_item_image(
     item_id: int,
+    request: Request,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Upload an image for a specific inventory item and update the database."""
+    """Upload an image for a specific inventory item and update the database (admin only)."""
+    require_admin(request)
     # Verify item exists
     item = db.query(models.Inventory).filter(models.Inventory.item_id == item_id).first()
     if not item:
@@ -498,18 +519,18 @@ def get_alternative_items(item_id: int, db: Session = Depends(get_db)):
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    # Find same items in other projects
-    alternatives = (
+    # Find same catalog items in other projects
+    candidates = (
         db.query(models.Inventory)
         .filter(
-            models.Inventory.item_name == item.item_name,
             models.Inventory.item_id != item_id,
-            models.Inventory.item_current_quantity > 0
+            models.Inventory.item_current_quantity > 0,
         )
         .order_by(models.Inventory.item_current_quantity.desc())
         .all()
     )
-    
+    alternatives = [c for c in candidates if crud.is_same_catalog_item(item, c)]
+
     return alternatives
 
 
@@ -517,15 +538,16 @@ def get_alternative_items(item_id: int, db: Session = Depends(get_db)):
 @router.post("/transfer")
 def transfer_item(data: dict, request: Request, db: Session = Depends(get_db)):
     """Explicitly transfer items from one project to another (admin only)."""
-    _require_admin_for_transfer(request)
+    admin = require_admin(request)
+    employee_id = employee_id_from_token(admin)
+
     source_item_id = data.get("source_item_id")
     dest_item_id = data.get("dest_item_id")
     quantity = data.get("quantity")
-    employee_id = data.get("employee_id")
     fixture_id = data.get("fixture_id")
     remarks = data.get("remarks", "")
-    
-    if not all([source_item_id, dest_item_id, quantity, employee_id, fixture_id]):
+
+    if not all([source_item_id, dest_item_id, quantity, fixture_id]):
         raise HTTPException(status_code=400, detail="Missing required fields")
     
     if quantity <= 0:
@@ -549,8 +571,11 @@ def transfer_item(data: dict, request: Request, db: Session = Depends(get_db)):
     if not source_item or not dest_item:
         raise HTTPException(status_code=404, detail="Source or destination item not found")
     
-    if source_item.item_name != dest_item.item_name:
-        raise HTTPException(status_code=400, detail="Items must have the same name")
+    if not crud.is_same_catalog_item(source_item, dest_item):
+        raise HTTPException(
+            status_code=400,
+            detail="Items must have the same name, part number, and description",
+        )
     
     if source_item.item_current_quantity < quantity:
         raise HTTPException(

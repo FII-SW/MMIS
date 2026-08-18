@@ -20,3 +20,17 @@ def require_self_or_admin(request: Request, employee_id: int) -> dict:
     if role != "admin" and token_employee_id != employee_id:
         raise HTTPException(status_code=403, detail="Not authorized to modify this account")
     return payload
+
+
+def require_admin(request: Request) -> dict:
+    payload = get_current_user(request)
+    if str(payload.get("role", "")).lower() != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return payload
+
+
+def employee_id_from_token(payload: dict) -> int:
+    employee_id = payload.get("employee_id")
+    if employee_id is None:
+        raise HTTPException(status_code=401, detail="Invalid token: missing employee_id")
+    return int(employee_id)

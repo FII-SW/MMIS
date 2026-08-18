@@ -1,22 +1,19 @@
 # backend/app/routes/transactions.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from .. import crud, schemas, models
 from ..database import get_db
+from ..utils.auth_deps import get_current_user, employee_id_from_token
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
 @router.post("/request")
-def request_item(t: schemas.TransactionBase, db: Session = Depends(get_db)):
-    """Employee requests an item (decrease quantity)."""
-    updated_item = crud.subtract_item_quantity(db, t.item_id, t.quantity_used)
-    if not updated_item:
-        raise HTTPException(status_code=400, detail="Insufficient stock or invalid item")
-    
-
-    
-    crud.create_transaction(db, t)
-    return {"message": "Request confirmed", "item": updated_item.item_name}
+def request_item(t: schemas.TransactionBase, request: Request, db: Session = Depends(get_db)):
+    """Deprecated: use POST /inventory/request instead."""
+    raise HTTPException(
+        status_code=410,
+        detail="This endpoint is deprecated. Use POST /inventory/request instead.",
+    )
 
 
 @router.get("/all")
@@ -198,15 +195,15 @@ def get_transaction(transaction_id: int, db: Session = Depends(get_db)):
 @router.post("/return")
 def return_item(
     t: schemas.TransactionBase,
+    request: Request,
     request_transaction_id: int = Query(None, description="The transaction_id of the original request this return belongs to"),
     db: Session = Depends(get_db)
 ):
-    """Employee returns an item (increase quantity).
+    """Employee returns an item (increase quantity)."""
+    user = get_current_user(request)
+    employee_id = employee_id_from_token(user)
+    role = str(user.get("role", "")).lower()
 
-    Args:
-        t: Transaction data including item_id, employee_id, fixture_id, quantity, etc.
-        request_transaction_id: The transaction_id of the original request this return belongs to.
-    """
     if t.quantity_used <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
 
@@ -224,6 +221,12 @@ def return_item(
             raise HTTPException(status_code=404, detail="Original request transaction not found")
         if original_request.transaction_type != "request":
             raise HTTPException(status_code=400, detail="Linked transaction is not a request")
+
+        if role != "admin" and original_request.employee_id != employee_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to return items for this request",
+            )
 
         from sqlalchemy import func
 
@@ -256,7 +259,7 @@ def return_item(
     # Create the return transaction
     new_tx = models.Transaction(
         item_id=t.item_id,
-        employee_id=t.employee_id,
+        employee_id=employee_id,
         fixture_id=t.fixture_id,
         quantity_used=t.quantity_used,
         transaction_type="return",

@@ -17,12 +17,16 @@ const saveProjects = (projects) => {
   }
 };
 
+const DEFAULT_INPUT_CLASS =
+  "w-full p-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors";
+
 export default function ProjectSelector({
   value = "",
   onChange,
   placeholder = "Select Project Name",
   required = false,
   className = "",
+  inputClassName = "",
   showAddNew = true,
 }) {
   const [projects, setProjects] = useState(getProjects());
@@ -148,8 +152,10 @@ export default function ProjectSelector({
     setTimeout(() => setShowDropdown(false), 200);
   };
 
+  const resolvedInputClass = inputClassName || className || DEFAULT_INPUT_CLASS;
+
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div className="relative w-full" ref={containerRef}>
       <input
         type="text"
         value={searchValue}
@@ -157,7 +163,7 @@ export default function ProjectSelector({
         onFocus={handleInputFocus}
         onBlur={handleInputBlur}
         placeholder={placeholder}
-        className={`w-full p-3 border dark:border-gray-600 dark:bg-gray-700 dark:text-white border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${className}`}
+        className={resolvedInputClass}
         required={required}
       />
       {showDropdown && (
