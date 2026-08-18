@@ -62,17 +62,68 @@ def get_item(db: Session, item_id: int):
     """Return a single inventory item."""
     return db.query(models.Inventory).filter(models.Inventory.item_id == item_id).first()
 
+def _normalize_inventory_field(value) -> str:
+    """Normalize text fields for identity comparison (None and blank treated as empty)."""
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _inventory_identity_key(item) -> tuple:
+    """Identity tuple: all must match to treat as the same inventory record."""
+    return (
+        _normalize_inventory_field(item.item_name),
+        _normalize_inventory_field(item.project_name),
+        _normalize_inventory_field(item.test_area),
+        _normalize_inventory_field(item.item_part_number),
+        _normalize_inventory_field(item.item_description),
+    )
+
+
+def find_matching_inventory(db: Session, item: schemas.InventoryBase):
+    """
+    Find an existing row that matches on name, project, test area, part number, and description.
+    Returns None if any identity field differs (those cases must create a new item).
+
+    Scoped by project first, then compared in Python so NULL/empty test areas and all
+    test area values (ICT_Mobo, FBT_Agora, etc.) behave consistently for every project.
+    """
+    key = _inventory_identity_key(item)
+    if not key[0] or not key[1]:
+        return None
+
+    candidates = (
+        db.query(models.Inventory)
+        .filter(models.Inventory.item_name == item.item_name)
+        .filter(models.Inventory.project_name == item.project_name)
+        .all()
+    )
+
+    for db_item in candidates:
+        if _inventory_identity_key(db_item) == key:
+            return db_item
+    return None
+
+
 def create_or_update_inventory(db: Session, item: schemas.InventoryBase):
-    """If item exists (same name), update quantity; else, insert new."""
-    db_item = db.query(models.Inventory).filter(models.Inventory.item_name == item.item_name).first()
+    """
+    If an identical item exists (name, project, test area, part number, description all match),
+    add quantity to that row. Otherwise insert a new inventory record.
+
+    Returns (db_item, is_new_item).
+    """
+    db_item = find_matching_inventory(db, item)
     if db_item:
         db_item.item_current_quantity += item.item_current_quantity
-    else:
-        db_item = models.Inventory(**item.dict())
-        db.add(db_item)
+        db.commit()
+        db.refresh(db_item)
+        return db_item, False
+
+    db_item = models.Inventory(**item.dict())
+    db.add(db_item)
     db.commit()
     db.refresh(db_item)
-    return db_item
+    return db_item, True
 
 def subtract_item_quantity(db: Session, item_id: int, qty: int):
     """Decrease item quantity atomically (for Request)."""

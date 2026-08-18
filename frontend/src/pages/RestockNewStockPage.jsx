@@ -6,37 +6,16 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
+import { getProjects } from "../utils/projects";
+import { getTestAreas } from "../utils/testAreas";
+import { projectRequiresTestArea } from "../utils/inventoryRules";
 
 export default function RestockNewStockPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const project = params.get("project");
 
-  // Available options for dropdowns
-  const projects = [
-    "Common",
-    "Astoria",
-    "Athena",
-    "Turin",
-    "Bondi Beach",
-    "Zebra Beach",
-    "Mandolin Beach",
-    "Gulp",
-    "Xena",
-    "Asahi",
-    "Humu Beach",
-  ];
-
-  const testAreas = [
-    "ICT_Mobo",
-    "BSI_Mobo",
-    "FBT_Mobo",
-    "ICT_Agora",
-    "FBT_Agora",
-    "TOOLS",
-    "ORT",
-    "L10_Racks",
-  ];
+  const testAreas = getTestAreas();
 
   const itemTypes = [
     "part",
@@ -65,6 +44,20 @@ export default function RestockNewStockPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const fieldClass = (key) =>
+    `w-full p-2 border rounded transition-colors dark:bg-gray-700 dark:text-white ${
+      fieldErrors[key]
+        ? "border-red-500 dark:border-red-500"
+        : "border-gray-300 dark:border-gray-600"
+    }`;
+
+  const RequiredLabel = ({ children }) => (
+    <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">
+      {children} <span className="text-red-600 dark:text-red-400">*</span>
+    </label>
+  );
 
   // Load employee_id and access level
   useEffect(() => {
@@ -104,6 +97,41 @@ export default function RestockNewStockPage() {
       ...prev,
       [name]: value,
     }));
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.item_name.trim()) {
+      errors.item_name = "Name is required.";
+    }
+    if (!formData.project_name.trim()) {
+      errors.project_name = "Project name is required.";
+    }
+    if (!formData.item_part_number.trim()) {
+      errors.item_part_number = "Part number is required.";
+    }
+    const needsTestArea = projectRequiresTestArea(formData.project_name);
+    if (needsTestArea && !formData.test_area.trim()) {
+      errors.test_area = "Test area is required for this project.";
+    }
+    const qtyRaw = formData.item_current_quantity;
+    if (qtyRaw === "" || qtyRaw === null || qtyRaw === undefined) {
+      errors.item_current_quantity = "Current quantity is required.";
+    } else {
+      const qty = Number(qtyRaw);
+      if (Number.isNaN(qty) || qty < 0) {
+        errors.item_current_quantity = "Enter a valid quantity (0 or greater).";
+      }
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleFileChange = (e) => {
@@ -158,8 +186,7 @@ export default function RestockNewStockPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.item_name || !formData.item_current_quantity) {
-      alert("Please fill in required fields (Item Name and Current Quantity)");
+    if (!validateForm()) {
       return;
     }
 
@@ -174,28 +201,32 @@ export default function RestockNewStockPage() {
         }
       }
 
-      await API.post("/inventory/", {
-        item_name: formData.item_name,
-        project_name: formData.project_name,
-        item_part_number: formData.item_part_number || null,
-        item_description: formData.item_description || null,
-        test_area: formData.test_area || null,
+      const res = await API.post("/inventory/", {
+        item_name: formData.item_name.trim(),
+        project_name: formData.project_name.trim(),
+        item_part_number: formData.item_part_number.trim(),
+        item_description: formData.item_description.trim() || null,
+        test_area: formData.test_area.trim() || null,
         item_unit: formData.item_unit || null,
-        item_current_quantity: parseInt(formData.item_current_quantity),
+        item_current_quantity: parseInt(formData.item_current_quantity, 10),
         item_unit_price: formData.item_unit_price || null,
         item_min_count: parseInt(formData.item_min_count) || 0,
         item_manufacturer: formData.item_manufacturer || null,
         item_type: formData.item_type || null,
         item_life_cycle: parseInt(formData.item_life_cycle) || null,
         item_image_url: imageUrl || null,
-        employee_id: employeeId,  // Include employee_id for activity history
+        employee_id: employeeId,
       });
 
-      alert("New stock item added successfully!");
+      alert(
+        res.data?.is_new_item === false
+          ? `Matching item found — quantity updated (now ${res.data.item_current_quantity} total).`
+          : "New stock item added successfully!"
+      );
       navigate("/dashboard/restock");
     } catch (err) {
       console.error(err);
-      alert("Failed to add new stock item");
+      alert(err?.response?.data?.detail || "Failed to add new stock item");
     }
   };
 
@@ -208,38 +239,52 @@ export default function RestockNewStockPage() {
       <div className="max-w-5xl mx-auto px-8">
         {/* FORM */}
         <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow p-6 mb-8 transition-colors">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Fields marked with <span className="text-red-600 dark:text-red-400">*</span> are required.
+          </p>
           <div className="grid grid-cols-2 gap-6 mb-6">
             {/* LEFT COLUMN */}
             <div className="space-y-4">
               <div>
-                <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Name</label>
+                <RequiredLabel>Name</RequiredLabel>
                 <input
                   type="text"
                   name="item_name"
                   value={formData.item_name}
                   onChange={handleChange}
-                  className="w-full p-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded transition-colors"
+                  className={fieldClass("item_name")}
                   required
                 />
+                {fieldErrors.item_name && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.item_name}</p>
+                )}
               </div>
               <div>
-                <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Project Name</label>
+                <RequiredLabel>Project Name</RequiredLabel>
                 <ProjectSelector
                   value={formData.project_name}
                   onChange={handleChange}
                   placeholder="Select Project Name"
-                  className="w-full p-2"
+                  className={`w-full p-2 ${fieldErrors.project_name ? "ring-2 ring-red-500 rounded" : ""}`}
+                  required
                 />
+                {fieldErrors.project_name && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.project_name}</p>
+                )}
               </div>
               <div>
-                <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Part Number</label>
+                <RequiredLabel>Part Number</RequiredLabel>
                 <input
                   type="text"
                   name="item_part_number"
                   value={formData.item_part_number}
                   onChange={handleChange}
-                  className="w-full p-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded transition-colors"
+                  className={fieldClass("item_part_number")}
+                  required
                 />
+                {fieldErrors.item_part_number && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.item_part_number}</p>
+                )}
               </div>
               <div>
                 <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Description</label>
@@ -248,24 +293,39 @@ export default function RestockNewStockPage() {
                   name="item_description"
                   value={formData.item_description}
                   onChange={handleChange}
-                  className="w-full p-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded transition-colors"
+                  className={fieldClass("item_description")}
                 />
               </div>
               <div>
-                <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Test Area</label>
+                {projectRequiresTestArea(formData.project_name) ? (
+                  <RequiredLabel>Test Area</RequiredLabel>
+                ) : (
+                  <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">
+                    Test Area <span className="text-gray-400 font-normal">(not used for this project)</span>
+                  </label>
+                )}
                 <select
                   name="test_area"
                   value={formData.test_area}
                   onChange={handleChange}
-                  className="w-full p-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded transition-colors"
+                  className={fieldClass("test_area")}
+                  disabled={!projectRequiresTestArea(formData.project_name)}
+                  required={projectRequiresTestArea(formData.project_name)}
                 >
-                  <option value="">Select Test Area</option>
+                  <option value="">
+                    {projectRequiresTestArea(formData.project_name)
+                      ? "Select Test Area"
+                      : "Not required"}
+                  </option>
                   {testAreas.map((area) => (
                     <option key={area} value={area}>
                       {area}
                     </option>
                   ))}
                 </select>
+                {fieldErrors.test_area && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.test_area}</p>
+                )}
               </div>
               <div>
                 <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Unit</label>
@@ -283,15 +343,19 @@ export default function RestockNewStockPage() {
             {/* RIGHT COLUMN */}
             <div className="space-y-4">
               <div>
-                <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Current Quantity</label>
+                <RequiredLabel>Current Quantity</RequiredLabel>
                 <input
                   type="number"
                   name="item_current_quantity"
                   value={formData.item_current_quantity}
                   onChange={handleChange}
-                  className="w-full p-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded transition-colors"
+                  className={fieldClass("item_current_quantity")}
+                  min="0"
                   required
                 />
+                {fieldErrors.item_current_quantity && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldErrors.item_current_quantity}</p>
+                )}
               </div>
               <div>
                 <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Unit Price</label>

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from .. import crud, schemas, models
 from ..database import get_db
 from ..utils.jwt_handler import verify_access_token
+from ..utils.inventory_rules import project_requires_test_area
 import os
 import shutil
 import uuid
@@ -80,6 +81,33 @@ def get_single_item(item_id: int, db: Session = Depends(get_db)):
 @router.post("/")
 def add_inventory(data: dict, db: Session = Depends(get_db)):
     """Add new inventory item and create transaction record if employee_id provided."""
+    def _require_text(field: str, label: str):
+        value = data.get(field)
+        if value is None or not str(value).strip():
+            raise HTTPException(status_code=400, detail=f"{label} is required")
+
+    _require_text("item_name", "Item name")
+    _require_text("project_name", "Project name")
+    _require_text("item_part_number", "Part number")
+
+    project_name = str(data.get("project_name", "")).strip()
+    test_area_raw = data.get("test_area")
+    test_area = str(test_area_raw).strip() if test_area_raw is not None else ""
+
+    if project_requires_test_area(project_name) and not test_area:
+        raise HTTPException(status_code=400, detail="Test area is required for this project")
+
+    data["test_area"] = test_area or None
+
+    if data.get("item_current_quantity") is None:
+        raise HTTPException(status_code=400, detail="Current quantity is required")
+    try:
+        qty = int(data.get("item_current_quantity"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Current quantity must be a valid number")
+    if qty < 0:
+        raise HTTPException(status_code=400, detail="Current quantity must be 0 or greater")
+
     # Extract employee_id if provided
     employee_id = data.get("employee_id")
     
@@ -94,8 +122,8 @@ def add_inventory(data: dict, db: Session = Depends(get_db)):
         if not default_fixture:
             raise HTTPException(status_code=400, detail="No fixtures available. Please create at least one fixture.")
     
-    db_item = crud.create_or_update_inventory(db, item)
-    
+    db_item, is_new_item = crud.create_or_update_inventory(db, item)
+
     # Create transaction record if employee_id is provided (for activity history)
     if employee_id and default_fixture:
         transaction = models.Transaction(
@@ -103,16 +131,34 @@ def add_inventory(data: dict, db: Session = Depends(get_db)):
             employee_id=employee_id,
             fixture_id=default_fixture.fixture_id,
             quantity_used=item.item_current_quantity,
-            transaction_type="restock",  # Using "restock" for new items added
-            remarks="New item added",
+            transaction_type="restock",
+            remarks="New item added" if is_new_item else "Quantity added to matching existing item",
             test_area=item.test_area,
             project_name=item.project_name,
         )
         db.add(transaction)
         db.commit()
         db.refresh(db_item)
-    
-    return db_item
+
+    return {
+        "item_id": db_item.item_id,
+        "item_name": db_item.item_name,
+        "item_description": db_item.item_description,
+        "item_part_number": db_item.item_part_number,
+        "item_current_quantity": db_item.item_current_quantity,
+        "item_min_count": db_item.item_min_count,
+        "item_unit": db_item.item_unit,
+        "item_unit_price": db_item.item_unit_price,
+        "item_manufacturer": db_item.item_manufacturer,
+        "item_type": db_item.item_type,
+        "test_area": db_item.test_area,
+        "project_name": db_item.project_name,
+        "item_life_cycle": db_item.item_life_cycle,
+        "item_image_url": db_item.item_image_url,
+        "created_at": db_item.created_at,
+        "is_new_item": is_new_item,
+        "message": "New item created" if is_new_item else "Quantity added to existing matching item",
+    }
 
 
 @router.put("/{item_id}")
