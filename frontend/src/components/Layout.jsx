@@ -42,6 +42,7 @@ export default function Layout({ children }) {
       { path: "/dashboard/reports", label: "Reports" },
       { path: "/dashboard/activity", label: "Activity History" },
       { path: "/dashboard/documents", label: "Documents" },
+      { path: "/dashboard/maintenance", label: "Maintenance" },
     ];
     if (isAdmin) {
       base.push({ path: "/dashboard/transfer", label: "Transfer" });

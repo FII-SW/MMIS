@@ -28,6 +28,10 @@ import SpendingReportPage from "./pages/SpendingReportPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import ProfilePage from "./pages/ProfilePage";
 import TransferItemPage from "./pages/TransferItemPage";
+import MaintenancePage from "./pages/MaintenancePage";
+import MaintenanceTestAreaPage from "./pages/MaintenanceTestAreaPage";
+import MaintenanceWorkPage from "./pages/MaintenanceWorkPage";
+import MaintenanceFixtureDetailPage from "./pages/MaintenanceFixtureDetailPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import Layout from "./components/Layout";
 
@@ -59,6 +63,10 @@ export default function App() {
         <Route path="/dashboard/reports/spending" element={withLayout(["admin", "user"], <SpendingReportPage />)} />
         <Route path="/dashboard/activity" element={withLayout(["admin", "user"], <ActivityPage />)} />
         <Route path="/dashboard/documents" element={withLayout(["admin", "user"], <DocumentsPage />)} />
+        <Route path="/dashboard/maintenance" element={withLayout(["admin", "user"], <MaintenancePage />)} />
+        <Route path="/dashboard/maintenance/test-area" element={withLayout(["admin", "user"], <MaintenanceTestAreaPage />)} />
+        <Route path="/dashboard/maintenance/work" element={withLayout(["admin", "user"], <MaintenanceWorkPage />)} />
+        <Route path="/dashboard/maintenance/fixture/:fixture_id" element={withLayout(["admin", "user"], <MaintenanceFixtureDetailPage />)} />
         <Route path="/dashboard/change-password" element={withLayout(["admin", "user"], <ChangePasswordPage />)} />
         <Route path="/dashboard/profile" element={withLayout(["admin", "user"], <ProfilePage />)} />
 
