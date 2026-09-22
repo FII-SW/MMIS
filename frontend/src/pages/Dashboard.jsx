@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import API from "../api";
 import FlashBanner from "../components/FlashBanner";
+import DashboardItemSearch from "../components/DashboardItemSearch";
+import DashboardQuickActions from "../components/DashboardQuickActions";
 
 export default function Dashboard() {
   const [flash, setFlash] = useState(null);
@@ -13,9 +15,9 @@ export default function Dashboard() {
     requests: 0,
     returns: 0,
     restocks: 0,
+    todayActivity: 0,
   });
-  const [projectStats, setProjectStats] = useState([]);
-  const [testAreaStats, setTestAreaStats] = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -31,39 +33,38 @@ export default function Dashboard() {
     }
   }, [location, navigate]);
 
-  // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Fetch all inventory
         const inventoryRes = await API.get("/inventory/");
         const allItems = inventoryRes.data || [];
-        
-        // Fetch low stock items
+        setInventory(Array.isArray(allItems) ? allItems : []);
+
         const lowStockRes = await API.get("/alerts/low-stock");
         const lowStockItems = lowStockRes.data || [];
-        
-        // Fetch recent transactions
+
         const transactionsRes = await API.get("/transactions/all");
         const allTransactions = transactionsRes.data || [];
-        
-        // Calculate statistics
-        const requests = allTransactions.filter(t => t.transaction_type?.toLowerCase() === "request").length;
-        const returns = allTransactions.filter(t => t.transaction_type?.toLowerCase() === "return").length;
-        const restocks = allTransactions.filter(t => t.transaction_type?.toLowerCase() === "restock").length;
-        
-        // Calculate today's activity (transactions from today only)
+
+        const requests = allTransactions.filter(
+          (t) => t.transaction_type?.toLowerCase() === "request"
+        ).length;
+        const returns = allTransactions.filter(
+          (t) => t.transaction_type?.toLowerCase() === "return"
+        ).length;
+        const restocks = allTransactions.filter(
+          (t) => t.transaction_type?.toLowerCase() === "restock"
+        ).length;
+
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // Start of today
-        
-        const todayTransactions = allTransactions.filter(t => {
+        today.setHours(0, 0, 0, 0);
+
+        const todayTransactions = allTransactions.filter((t) => {
           const transactionDate = new Date(t.created_at);
           transactionDate.setHours(0, 0, 0, 0);
           return transactionDate.getTime() === today.getTime();
         });
-        
-        const todayActivity = todayTransactions.length;
-        
+
         setStats({
           totalItems: allItems.length,
           lowStockCount: lowStockItems.length,
@@ -71,71 +72,9 @@ export default function Dashboard() {
           requests,
           returns,
           restocks,
-          todayActivity, // Add today's activity count
+          todayActivity: todayTransactions.length,
         });
-        
-        // Calculate project statistics
-        const projectMap = {};
-        allTransactions.forEach(t => {
-          const project = t.project_name || "Unknown";
-          if (!projectMap[project]) {
-            projectMap[project] = {
-              name: project,
-              total: 0,
-              requests: 0,
-              returns: 0,
-              restocks: 0,
-            };
-          }
-          projectMap[project].total++;
-          const type = t.transaction_type?.toLowerCase();
-          if (type === "request") projectMap[project].requests++;
-          else if (type === "return") projectMap[project].returns++;
-          else if (type === "restock") projectMap[project].restocks++;
-        });
-        const projectArray = Object.values(projectMap)
-          .sort((a, b) => b.total - a.total)
-          .slice(0, 5); // Top 5 projects
-        setProjectStats(projectArray);
-        
-        // Calculate test area statistics
-        const testAreaMap = {};
-        // Valid test area names (complete names only)
-        const validTestAreas = [
-          "ICT_Mobo", "BSI_Mobo", "FBT_Mobo", 
-          "ICT_Agora", "FBT_Agora", "TOOLS", "ORT", "L10_Racks"
-        ];
-        
-        allTransactions.forEach(t => {
-          const testArea = t.test_area || "Unknown";
-          // Only include complete test area names (those with underscore or in valid list)
-          // Filter out incomplete names like "BSI", "FBT", "ICT" without suffix
-          if (testArea === "Unknown" || 
-              (!testArea.includes("_") && !validTestAreas.includes(testArea)) ||
-              (testArea === "BSI" || testArea === "FBT" || testArea === "ICT")) {
-            return; // Skip incomplete test area names
-          }
-          if (!testAreaMap[testArea]) {
-            testAreaMap[testArea] = {
-              name: testArea,
-              total: 0,
-              requests: 0,
-              returns: 0,
-              restocks: 0,
-            };
-          }
-          testAreaMap[testArea].total++;
-          const type = t.transaction_type?.toLowerCase();
-          if (type === "request") testAreaMap[testArea].requests++;
-          else if (type === "return") testAreaMap[testArea].returns++;
-          else if (type === "restock") testAreaMap[testArea].restocks++;
-        });
-        const testAreaArray = Object.values(testAreaMap)
-          .sort((a, b) => b.total - a.total)
-          .slice(0, 5); // Top 5 test areas
-        setTestAreaStats(testAreaArray);
-        
-        // Get recent 5 transactions (newest first)
+
         const recentSorted = [...allTransactions].sort((a, b) => {
           const aTime = new Date(a.created_at || 0).getTime();
           const bTime = new Date(b.created_at || 0).getTime();
@@ -186,15 +125,13 @@ export default function Dashboard() {
     return "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
   };
 
-  // Calculate percentage for low stock
-  const lowStockPercentage = stats.totalItems > 0 
-    ? Math.round((stats.lowStockCount / stats.totalItems) * 100) 
-    : 0;
+  const lowStockPercentage =
+    stats.totalItems > 0
+      ? Math.round((stats.lowStockCount / stats.totalItems) * 100)
+      : 0;
 
   return (
     <>
-      <FlashBanner message={flash?.message} type={flash?.type} onDismiss={() => setFlash(null)} />
-
       <FlashBanner message={flash?.message} type={flash?.type} onDismiss={() => setFlash(null)} />
 
       {loading ? (
@@ -204,9 +141,10 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
+          <DashboardItemSearch inventory={inventory} />
+
           {/* Key Metrics Cards — compact for 14" laptops */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-            {/* Total Inventory Items */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500 hover:shadow-md transition-all">
               <div className="flex items-center justify-between">
                 <div>
@@ -218,8 +156,10 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Low Stock Alerts */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate("/dashboard/alerts")}>
+            <div
+              className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500 hover:shadow-md transition-all cursor-pointer"
+              onClick={() => navigate("/dashboard/alerts")}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Low Stock</p>
@@ -235,8 +175,10 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Total Transactions */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-purple-500 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate("/dashboard/activity")}>
+            <div
+              className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-purple-500 hover:shadow-md transition-all cursor-pointer"
+              onClick={() => navigate("/dashboard/activity")}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Transactions</p>
@@ -247,7 +189,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Today's Activity */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-green-500 hover:shadow-md transition-all">
               <div className="flex items-center justify-between">
                 <div>
@@ -264,7 +205,6 @@ export default function Dashboard() {
 
           {/* Recent Activity & Quick Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Recent Activity */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -296,16 +236,22 @@ export default function Dashboard() {
                             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
                               {activity.item_name || "Item"}
                             </p>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${getTransactionTypeBadge(activity.transaction_type)}`}>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${getTransactionTypeBadge(activity.transaction_type)}`}
+                            >
                               {activity.transaction_type || "N/A"}
                             </span>
                           </div>
                           <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                            {activity.project_name || "Project"}{activity.test_area ? ` • ${activity.test_area}` : ""} • {formatDate(activity.created_at)}
+                            {activity.project_name || "Project"}
+                            {activity.test_area ? ` • ${activity.test_area}` : ""} •{" "}
+                            {formatDate(activity.created_at)}
                           </p>
                         </div>
                       </div>
-                      <div className={`text-sm font-semibold shrink-0 ml-2 ${getTransactionTypeColor(activity.transaction_type)}`}>
+                      <div
+                        className={`text-sm font-semibold shrink-0 ml-2 ${getTransactionTypeColor(activity.transaction_type)}`}
+                      >
                         {activity.transaction_type?.toLowerCase() === "request" ? "-" : "+"}
                         {activity.quantity_used}
                       </div>
@@ -315,40 +261,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <h3 className="text-base font-bold text-gray-800 dark:text-gray-200 mb-3">Quick Actions</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => navigate("/dashboard/request")}
-                  className="p-3 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg text-center transition"
-                >
-                  <div className="text-2xl mb-1">📤</div>
-                  <div className="text-xs font-semibold text-blue-700 dark:text-blue-400">Request Item</div>
-                </button>
-                <button
-                  onClick={() => navigate("/dashboard/return")}
-                  className="p-3 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg text-center transition"
-                >
-                  <div className="text-2xl mb-1">📥</div>
-                  <div className="text-xs font-semibold text-green-700 dark:text-green-400">Return Item</div>
-                </button>
-                <button
-                  onClick={() => navigate("/dashboard/restock")}
-                  className="p-3 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg text-center transition"
-                >
-                  <div className="text-2xl mb-1">📦</div>
-                  <div className="text-xs font-semibold text-purple-700 dark:text-purple-400">Restock</div>
-                </button>
-                <button
-                  onClick={() => navigate("/dashboard/reports")}
-                  className="p-3 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg text-center transition"
-                >
-                  <div className="text-2xl mb-1">📊</div>
-                  <div className="text-xs font-semibold text-orange-700 dark:text-orange-400">Reports</div>
-                </button>
-              </div>
-            </div>
+            <DashboardQuickActions lowStockCount={stats.lowStockCount} />
           </div>
         </>
       )}
