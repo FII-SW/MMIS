@@ -7,6 +7,7 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
+import FixtureDescriptorFields from "../components/FixtureDescriptorFields";
 
 export default function RestockNewFixturePage() {
   const navigate = useNavigate();
@@ -54,6 +55,8 @@ export default function RestockNewFixturePage() {
     fixture_number: "", // User enters only the number part
     asset_tag: "",
     fixture_serial_number: "",
+    manufacturer: "",
+    production_line: "",
   });
   const [employeeId, setEmployeeId] = useState(null);
 
@@ -170,6 +173,8 @@ export default function RestockNewFixturePage() {
         test_area: formData.test_area,
         asset_tag: formData.asset_tag || "",
         fixture_serial_number: formData.fixture_serial_number || "",
+        manufacturer: formData.manufacturer.trim() || null,
+        production_line: formData.production_line.trim() || null,
         employee_id: employeeId,  // Include employee_id for activity history
       });
 
@@ -299,6 +304,12 @@ export default function RestockNewFixturePage() {
                 placeholder="Enter fixture serial number (optional)"
               />
             </div>
+
+            <FixtureDescriptorFields
+              manufacturer={formData.manufacturer}
+              productionLine={formData.production_line}
+              onChange={(name, value) => setFormData((prev) => ({ ...prev, [name]: value }))}
+            />
           </div>
         </div>
 

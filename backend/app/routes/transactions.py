@@ -211,6 +211,7 @@ def return_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
+    original_request = None
     if request_transaction_id:
         original_request = (
             db.query(models.Transaction)
@@ -260,7 +261,7 @@ def return_item(
     new_tx = models.Transaction(
         item_id=t.item_id,
         employee_id=employee_id,
-        fixture_id=t.fixture_id,
+        fixture_id=t.fixture_id or (original_request.fixture_id if original_request else None),
         quantity_used=t.quantity_used,
         transaction_type="return",
         remarks=remarks_with_tx_id,

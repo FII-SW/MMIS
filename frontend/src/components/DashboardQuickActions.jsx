@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../api";
 import { isAdminUser } from "../utils/auth";
 
 const ACTIONS = [
@@ -24,11 +25,12 @@ const ACTIONS = [
   {
     id: "maintenance",
     label: "Maintenance",
-    description: "Find fixtures by area",
+    description: "Fixture PM & history",
     path: "/dashboard/maintenance",
     icon: "🛠️",
     tone: "slate",
     roles: ["admin", "user"],
+    badgeKey: "overduePmCount",
   },
   {
     id: "alerts",
@@ -104,10 +106,19 @@ export default function DashboardQuickActions({ lowStockCount = 0 }) {
   const isAdmin = isAdminUser();
   const role = isAdmin ? "admin" : "user";
 
+  const [overduePmCount, setOverduePmCount] = useState(0);
+
+  useEffect(() => {
+    API.get("/maintenance/summary")
+      .then((res) => setOverduePmCount(res.data?.totals?.overdue || 0))
+      .catch(() => setOverduePmCount(0));
+  }, []);
+
   const actions = useMemo(
     () => ACTIONS.filter((action) => action.roles.includes(role)),
     [role]
   );
+  const badgeCounts = { lowStockCount, overduePmCount };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
@@ -122,8 +133,8 @@ export default function DashboardQuickActions({ lowStockCount = 0 }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {actions.map((action) => {
-          const badge =
-            action.badgeKey === "lowStockCount" && lowStockCount > 0 ? lowStockCount : null;
+          const count = action.badgeKey ? badgeCounts[action.badgeKey] : 0;
+          const badge = count > 0 ? count : null;
 
           return (
             <button

@@ -14,11 +14,13 @@ export default function ItemRequestPage() {
   const queryParams = new URLSearchParams(location.search);
   const project = queryParams.get("project");
   const test_area = queryParams.get("test_area");
+  const presetFixtureId = queryParams.get("fixture_id") || "";
+  const fromMaintenance = queryParams.get("from") === "maintenance";
 
   // Hooks MUST be here
   const [item, setItem] = useState(null);
   const [fixtures, setFixtures] = useState([]);
-  const [fixture, setFixture] = useState("");
+  const [fixture, setFixture] = useState(presetFixtureId);
   const [quantity, setQuantity] = useState("");
   const [alternativeItems, setAlternativeItems] = useState([]);
   const [showAlternatives, setShowAlternatives] = useState(false);
@@ -85,6 +87,13 @@ export default function ItemRequestPage() {
       .catch((err) => console.error("Error loading fixtures:", err));
   }, [project, test_area, requiresFixture]);
 
+  const maintenanceFixtureUrl = (fixtureId) => {
+    const query = new URLSearchParams();
+    if (project) query.set("project", project);
+    if (test_area) query.set("test_area", test_area);
+    return `/dashboard/maintenance/fixture/${fixtureId}?${query.toString()}`;
+  };
+
   const submitRequest = async () => {
     // Validation: fixture required only for projects that need it
     if (requiresFixture && !fixture) {
@@ -119,7 +128,11 @@ export default function ItemRequestPage() {
       } else {
         addNotification(`Request submitted: ${quantity} × ${item?.item_name || "item"} (${project}${test_area ? ` · ${test_area}` : ""}).`);
       }
-      navigate("/dashboard");
+      if (fromMaintenance && requestData.fixture_id) {
+        navigate(`${maintenanceFixtureUrl(requestData.fixture_id)}&tab=spare-parts`);
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       console.error(err);
       const errorMessage = err.response?.data?.detail || "Failed to submit request";
@@ -160,6 +173,12 @@ export default function ItemRequestPage() {
     let url = `/dashboard/request/search?project=${encodeURIComponent(project)}`;
     if (test_area) {
       url += `&test_area=${encodeURIComponent(test_area)}`;
+    }
+    if (presetFixtureId) {
+      url += `&fixture_id=${encodeURIComponent(presetFixtureId)}`;
+    }
+    if (fromMaintenance) {
+      url += "&from=maintenance";
     }
     navigate(url);
   };

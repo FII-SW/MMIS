@@ -1,18 +1,45 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import API from "../api";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
+import PMChecklistForm from "../components/maintenance/PMChecklistForm";
+import PMHistory from "../components/maintenance/PMHistory";
+import SparePartsHistory from "../components/maintenance/SparePartsHistory";
+import FixtureDetailsPanel from "../components/maintenance/FixtureDetailsPanel";
+import { formatDate } from "../components/maintenance/formatDate";
+import { pmTypeLabel } from "../components/maintenance/pmTypes";
+import { describeDue } from "../components/maintenance/pmStatus";
+import PMStatusBadge from "../components/maintenance/PMStatusBadge";
+import { useNotifications } from "../contexts/NotificationContext";
 
-function Field({ label, value }) {
+function PMStatusCard({ title, entry, onStart }) {
   return (
-    <div>
-      <label className="block mb-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
-        {label}
-      </label>
-      <div className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 break-words">
-        {value || "—"}
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{title}</p>
+        <PMStatusBadge state={entry?.state || "never"} label={describeDue(entry)} />
       </div>
+      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+        <dt className="text-gray-500 dark:text-gray-400">Last done</dt>
+        <dd className="text-gray-800 dark:text-gray-200">
+          {formatDate(entry?.last_performed_at)}
+          {entry?.last_result === "failed" && (
+            <span className="ml-1 font-semibold text-red-600 dark:text-red-400">(failed tasks)</span>
+          )}
+        </dd>
+        <dt className="text-gray-500 dark:text-gray-400">Technician</dt>
+        <dd className="truncate text-gray-800 dark:text-gray-200">{entry?.last_performed_by || "—"}</dd>
+        <dt className="text-gray-500 dark:text-gray-400">Next due</dt>
+        <dd className="text-gray-800 dark:text-gray-200">{formatDate(entry?.next_due_at)}</dd>
+      </dl>
+      <button
+        type="button"
+        onClick={onStart}
+        className="mt-3 w-full rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+      >
+        Record {title}
+      </button>
     </div>
   );
 }
@@ -20,13 +47,45 @@ function Field({ label, value }) {
 export default function MaintenanceFixtureDetailPage() {
   const { fixture_id } = useParams();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const project = params.get("project");
   const testArea = params.get("test_area");
+  const { addNotification } = useNotifications();
 
   const [fixture, setFixture] = useState(null);
+  const [pmStatus, setPmStatus] = useState(null);
+  const [pmRecords, setPmRecords] = useState([]);
+  const [spareParts, setSpareParts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const pmTypes = pmStatus?.pm_types || [];
+  const tabs = [
+    { id: "details", label: "Details" },
+    ...pmTypes.map((type) => ({ id: type, label: pmTypeLabel(type) })),
+    { id: "history", label: `PM History (${pmRecords.length})` },
+    { id: "spare-parts", label: `Spare Parts (${spareParts.length})` },
+  ];
+  const requestedTab = params.get("tab") || "details";
+  const activeTab = tabs.some((t) => t.id === requestedTab) ? requestedTab : "details";
+
+  const setActiveTab = (tab) => {
+    const next = new URLSearchParams(params);
+    next.set("tab", tab);
+    setParams(next, { replace: true });
+  };
+
+  const loadHistory = useCallback(() => {
+    return Promise.all([
+      API.get(`/maintenance/fixtures/${fixture_id}/pm-status`),
+      API.get(`/maintenance/fixtures/${fixture_id}/pm-records`),
+      API.get(`/maintenance/fixtures/${fixture_id}/spare-parts`),
+    ]).then(([statusRes, recordsRes, partsRes]) => {
+      setPmStatus(statusRes.data);
+      setPmRecords(recordsRes.data || []);
+      setSpareParts(partsRes.data || []);
+    });
+  }, [fixture_id]);
 
   useEffect(() => {
     if (!fixture_id) return;
@@ -34,14 +93,16 @@ export default function MaintenanceFixtureDetailPage() {
     setLoading(true);
     setError("");
     API.get(`/fixtures/${fixture_id}`)
-      .then((res) => setFixture(res.data))
+      .then((res) => {
+        setFixture(res.data);
+        return loadHistory();
+      })
       .catch((err) => {
         console.error("Error loading fixture:", err);
-        setFixture(null);
-        setError("Failed to load fixture details.");
+        setError(err?.response?.status === 404 ? "Fixture not found." : "Failed to load fixture details.");
       })
       .finally(() => setLoading(false));
-  }, [fixture_id]);
+  }, [fixture_id, loadHistory]);
 
   const handleBack = () => {
     const query = new URLSearchParams();
@@ -51,23 +112,44 @@ export default function MaintenanceFixtureDetailPage() {
     navigate(`/dashboard/maintenance/work${qs ? `?${qs}` : ""}`);
   };
 
+  const handleRequestPart = () => {
+    const query = new URLSearchParams();
+    query.set("project", fixture.project_name || project || "");
+    const area = fixture.test_area || testArea;
+    if (area) query.set("test_area", area);
+    query.set("fixture_id", String(fixture.fixture_id));
+    query.set("from", "maintenance");
+    navigate(`/dashboard/request/search?${query.toString()}`);
+  };
+
+  const handlePMSaved = async (record) => {
+    addNotification(`${pmTypeLabel(record.pm_type)} recorded for ${fixture.fixture_name} (${record.overall_result.toUpperCase()}).`);
+    try {
+      await loadHistory();
+    } catch (err) {
+      console.error("Error refreshing PM history:", err);
+    }
+    setActiveTab("history");
+  };
+
+  const handleRecordDeleted = async () => {
+    addNotification(`PM record deleted for ${fixture.fixture_name}.`);
+    try {
+      await loadHistory();
+    } catch (err) {
+      console.error("Error refreshing PM history:", err);
+    }
+  };
+
   if (loading) {
-    return (
-      <PageLoadingState
-        title="Maintenance"
-        onBack={handleBack}
-        message="Loading fixture details..."
-      />
-    );
+    return <PageLoadingState title="Maintenance" onBack={handleBack} message="Loading fixture details..." />;
   }
 
   if (error || !fixture) {
     return (
       <div className="min-h-screen bg-transparent transition-colors">
         <PageHeaderWithBack title="Maintenance" onBack={handleBack} />
-        <p className="text-center text-red-600 dark:text-red-400 mt-10">
-          {error || "Fixture not found."}
-        </p>
+        <p className="mt-10 text-center text-red-600 dark:text-red-400">{error || "Fixture not found."}</p>
       </div>
     );
   }
@@ -76,21 +158,90 @@ export default function MaintenanceFixtureDetailPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <PageHeaderWithBack title="Maintenance" onBack={handleBack} />
 
-      <div className="max-w-2xl mx-auto px-4 pb-8">
-        <p className="text-center font-semibold text-gray-700 dark:text-gray-300 mb-1 text-lg">
-          Fixture Details
-        </p>
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-6">
-          {fixture.fixture_name}
-        </p>
+      <div className="mx-auto max-w-5xl space-y-4 px-2 pb-8">
+        <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="truncate text-lg font-semibold text-gray-800 dark:text-gray-100">{fixture.fixture_name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {fixture.project_name} · {fixture.test_area} · Asset {fixture.asset_tag || "—"}
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                {fixture.production_line || "Line not set"}
+              </span>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                {fixture.manufacturer || "Manufacturer not set"}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleRequestPart}
+            className="shrink-0 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+          >
+            Request spare part
+          </button>
+        </div>
 
-        <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow p-6 space-y-5">
-          <Field label="Fixture ID" value={fixture.fixture_id} />
-          <Field label="Fixture Name" value={fixture.fixture_name} />
-          <Field label="Project Name" value={fixture.project_name} />
-          <Field label="Test Area" value={fixture.test_area} />
-          <Field label="Asset Tag" value={fixture.asset_tag} />
-          <Field label="Serial Number" value={fixture.fixture_serial_number} />
+        {pmTypes.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {pmTypes.map((type) => (
+              <PMStatusCard
+                key={type}
+                title={pmTypeLabel(type)}
+                entry={pmStatus.status[type]}
+                onStart={() => setActiveTab(type)}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+            PM checklists are configured for FBT (weekly, biweekly) and ICT (monthly) fixtures only.
+          </p>
+        )}
+
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300"
+                    : "border-transparent text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-4">
+            {activeTab === "details" && (
+              <FixtureDetailsPanel
+                fixture={fixture}
+                onUpdated={(updated) => {
+                  setFixture(updated);
+                  addNotification(`Updated production info for ${updated.fixture_name}.`);
+                }}
+              />
+            )}
+            {pmTypes.includes(activeTab) && (
+              <PMChecklistForm
+                key={activeTab}
+                fixture={fixture}
+                pmType={activeTab}
+                lastEntry={pmStatus?.status?.[activeTab]}
+                onSaved={handlePMSaved}
+              />
+            )}
+            {activeTab === "history" && (
+              <PMHistory records={pmRecords} fixture={fixture} onDeleted={handleRecordDeleted} />
+            )}
+            {activeTab === "spare-parts" && <SparePartsHistory entries={spareParts} />}
+          </div>
         </div>
       </div>
     </div>

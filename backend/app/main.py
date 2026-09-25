@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 from .database import Base, engine
-from .routes import employees, inventory, transactions, reports, alerts, activity, fixtures, documents
+from .routes import employees, inventory, transactions, reports, alerts, activity, fixtures, documents, maintenance
 from . import auth
 from .utils.scheduler import start_scheduler, stop_scheduler
 import os
@@ -58,6 +58,24 @@ def ensure_project_documents_columns():
 
 ensure_project_documents_columns()
 
+
+def ensure_fixture_descriptor_columns():
+    """Backward-compatible migration for fixture manufacturer / production line."""
+    inspector = inspect(engine)
+    try:
+        columns = {col["name"] for col in inspector.get_columns("fixtures")}
+    except Exception:
+        return
+
+    with engine.begin() as conn:
+        if "manufacturer" not in columns:
+            conn.execute(text("ALTER TABLE fixtures ADD COLUMN manufacturer VARCHAR(100)"))
+        if "production_line" not in columns:
+            conn.execute(text("ALTER TABLE fixtures ADD COLUMN production_line VARCHAR(50)"))
+
+
+ensure_fixture_descriptor_columns()
+
 # Create uploads directory if it doesn't exist (relative to backend directory)
 # Get the backend directory (parent of app directory)
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -98,6 +116,7 @@ app.include_router(alerts.router)
 app.include_router(activity.router)
 app.include_router(fixtures.router)
 app.include_router(documents.router)
+app.include_router(maintenance.router)
 
 @app.get("/")
 def root():

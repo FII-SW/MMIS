@@ -7,3 +7,4 @@ python-jose
 pydantic
 python-multipart
 apscheduler
+reportlab>=4.0

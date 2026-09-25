@@ -6,6 +6,7 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
+import FixtureDescriptorFields from "../components/FixtureDescriptorFields";
 
 export default function RestockEditFixturePage() {
   const { fixture_id } = useParams();
@@ -20,6 +21,8 @@ export default function RestockEditFixturePage() {
     fixture_number: "", // Extracted number from fixture_name
     asset_tag: "",
     fixture_serial_number: "",
+    manufacturer: "",
+    production_line: "",
   });
   const [accessLevel, setAccessLevel] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -116,6 +119,8 @@ export default function RestockEditFixturePage() {
           fixture_number: fixtureNumber,
           asset_tag: fixtureData.asset_tag || "",
           fixture_serial_number: fixtureData.fixture_serial_number || "",
+          manufacturer: fixtureData.manufacturer || "",
+          production_line: fixtureData.production_line || "",
         });
         setProjectSearch(projectName);
         setTestAreaSearch(testArea);
@@ -196,6 +201,8 @@ export default function RestockEditFixturePage() {
         test_area: formData.test_area,
         asset_tag: formData.asset_tag || "",
         fixture_serial_number: formData.fixture_serial_number || "",
+        manufacturer: formData.manufacturer.trim() || null,
+        production_line: formData.production_line.trim() || null,
       });
 
       alert("Fixture updated successfully!");
@@ -341,6 +348,12 @@ export default function RestockEditFixturePage() {
                 placeholder="Enter fixture serial number (optional)"
               />
             </div>
+
+            <FixtureDescriptorFields
+              manufacturer={formData.manufacturer}
+              productionLine={formData.production_line}
+              onChange={(name, value) => setFormData((prev) => ({ ...prev, [name]: value }))}
+            />
           </div>
         </div>
 

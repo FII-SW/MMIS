@@ -31,6 +31,8 @@ class Fixture(Base):
     project_name = Column(String(100), nullable=False)
     asset_tag = Column(String(50), nullable=True)
     fixture_serial_number = Column(String(50), nullable=True)
+    manufacturer = Column(String(100), nullable=True)
+    production_line = Column(String(50), nullable=True)
 
     # Relationship: one fixture → many transactions
     transactions = relationship("Transaction", back_populates="fixture")
@@ -89,6 +91,24 @@ class Report(Base):
     quantity_used = Column(Integer)
     current_quantity = Column(Integer)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class FixturePMRecord(Base):
+    __tablename__ = "fixture_pm_records"
+
+    pm_id = Column(Integer, primary_key=True, index=True)
+    fixture_id = Column(Integer, ForeignKey("fixtures.fixture_id"), nullable=False, index=True)
+    pm_type = Column(String(20), nullable=False, index=True)
+    overall_result = Column(String(20), nullable=False)
+    # JSON list of {item_id, section, task, result}; stores the checklist as performed
+    checklist_results = Column(Text, nullable=False)
+    notes = Column(Text, nullable=True)
+    parts_replaced = Column(Text, nullable=True)
+    indysoft_recorded = Column(Boolean, nullable=False, default=False)
+    project_name = Column(String(100))
+    test_area = Column(String(20))
+    performed_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
+    performed_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class ProjectDocument(Base):

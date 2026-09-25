@@ -128,6 +128,18 @@ class FixtureBase(BaseModel):
     project_name: str
     asset_tag: Optional[str] = ""
     fixture_serial_number: Optional[str] = ""
+    manufacturer: Optional[str] = None
+    production_line: Optional[str] = None
+
+class FixtureDescriptorsUpdate(BaseModel):
+    manufacturer: Optional[str] = None
+    production_line: Optional[str] = None
+
+class FixtureDescriptorsBulkItem(FixtureDescriptorsUpdate):
+    fixture_id: int
+
+class FixtureDescriptorsBulkUpdate(BaseModel):
+    updates: list[FixtureDescriptorsBulkItem]
 
 class FixtureOut(FixtureBase):
     fixture_id: int

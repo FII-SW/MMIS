@@ -13,6 +13,8 @@ export default function RequestPage() {
 
   const project = params.get("project");
   const test_area = params.get("test_area");
+  const presetFixtureId = params.get("fixture_id");
+  const fromMaintenance = params.get("from") === "maintenance";
 
   // Load items from backend with filtering
   useEffect(() => {
@@ -61,7 +63,12 @@ export default function RequestPage() {
   };
 
   const handleBack = () => {
-    if (test_area) {
+    if (fromMaintenance && presetFixtureId) {
+      const query = new URLSearchParams();
+      if (project) query.set("project", project);
+      if (test_area) query.set("test_area", test_area);
+      navigate(`/dashboard/maintenance/fixture/${presetFixtureId}?${query.toString()}`);
+    } else if (test_area) {
       navigate(`/dashboard/request/test-area?project=${encodeURIComponent(project)}`);
     } else {
       navigate("/dashboard/request");
@@ -72,6 +79,12 @@ export default function RequestPage() {
     let url = `/dashboard/request/item/${item.item_id}?project=${encodeURIComponent(project)}`;
     if (test_area) {
       url += `&test_area=${encodeURIComponent(test_area)}`;
+    }
+    if (presetFixtureId) {
+      url += `&fixture_id=${encodeURIComponent(presetFixtureId)}`;
+    }
+    if (fromMaintenance) {
+      url += "&from=maintenance";
     }
     navigate(url);
   };
