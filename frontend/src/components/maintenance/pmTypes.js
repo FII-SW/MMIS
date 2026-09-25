@@ -2,6 +2,7 @@ export const PM_TYPE_LABELS = {
   weekly: "Weekly PM",
   biweekly: "Biweekly PM",
   monthly: "Monthly PM",
+  quarterly: "Quarterly PM",
 };
 
 export function pmTypeLabel(pmType) {

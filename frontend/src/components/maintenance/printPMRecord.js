@@ -62,12 +62,16 @@ export function printPMRecord(record, fixture) {
     ${rows}
   </table>
   <div class="notes"><b>Notes:</b> ${escapeHtml(record.notes || "(none)")}
-<b>Parts replaced:</b> ${escapeHtml(record.parts_replaced || "(none)")}</div>
+<b>Parts replaced:</b> ${escapeHtml(record.parts_replaced || "(none)")}${
+    record.parts?.length
+      ? `\n<b>Parts taken from stock:</b> ${escapeHtml(
+          record.parts.map((p) => `${p.quantity}x ${p.item_name}${p.item_part_number ? ` (${p.item_part_number})` : ""}`).join(", ")
+        )}`
+      : ""
+  }</div>
   <div class="footer">
     <div><b>Date:</b> ${escapeHtml(formatDateTime(record.performed_at))}</div>
-    <div><b>Technician:</b> ${escapeHtml(record.performed_by || "Unknown")}</div>
-    <div><b>Registered in IndySoft:</b> ${record.indysoft_recorded ? "Yes" : "No"}</div>
-  </div>
+    <div><b>Name:</b> ${escapeHtml(record.performed_by || "Unknown")}</div>  </div>
   <script>window.onload = function () { window.print(); };</script>
 </body>
 </html>`;

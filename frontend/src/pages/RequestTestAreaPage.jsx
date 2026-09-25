@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 export default function RequestTestAreaPage() {
   const navigate = useNavigate();
@@ -8,17 +9,7 @@ export default function RequestTestAreaPage() {
 
   const project = params.get("project");
 
-  // Test areas
-  const testAreas = [
-    "ICT_Mobo",
-    "BSI_Mobo",
-    "FBT_Mobo",
-    "ICT_Agora",
-    "FBT_Agora",
-    "TOOLS",
-    "ORT",
-    "L10_Racks",
-  ];
+  const testAreas = DEFAULT_TEST_AREAS;
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">

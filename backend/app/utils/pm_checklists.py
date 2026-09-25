@@ -1,12 +1,20 @@
 """Preventive maintenance checklists per test area family (FBT, ICT)."""
 
-PM_TYPES = ("weekly", "biweekly", "monthly")
-PM_INTERVAL_DAYS = {"weekly": 7, "biweekly": 14, "monthly": 30}
+PM_TYPES = ("weekly", "biweekly", "monthly", "quarterly")
+PM_INTERVAL_DAYS = {"weekly": 7, "biweekly": 14, "monthly": 30, "quarterly": 90}
 # A PM counts as "due soon" once it is within this many days of its due date.
-PM_DUE_SOON_DAYS = {"weekly": 2, "biweekly": 3, "monthly": 5}
+PM_DUE_SOON_DAYS = {"weekly": 2, "biweekly": 3, "monthly": 5, "quarterly": 10}
 # A second record of the same PM type inside this window needs explicit confirmation.
 PM_DUPLICATE_WINDOW_HOURS = 12
-PM_TYPE_LABELS = {"weekly": "Weekly PM", "biweekly": "Biweekly PM", "monthly": "Monthly PM"}
+PM_TYPE_LABELS = {
+    "weekly": "Weekly PM",
+    "biweekly": "Biweekly PM",
+    "monthly": "Monthly PM",
+    "quarterly": "Quarterly PM",
+}
+# Recording the key PM type also completes the listed types
+# (the FBT biweekly checklist includes every weekly task).
+PM_COVERS = {"biweekly": ("weekly",)}
 RESULT_VALUES = ("passed", "failed", "na")
 PM_DIVISION = "SMC TEST ENG"
 
@@ -127,6 +135,11 @@ def is_fbt_test_area(test_area: str | None) -> bool:
 
 def is_ict_test_area(test_area: str | None) -> bool:
     return _family(test_area) == "ICT"
+
+
+def configured_pm_types() -> set[str]:
+    """PM types that have a checklist in at least one test area family."""
+    return {pm_type for config in _CHECKLISTS.values() for pm_type in config}
 
 
 def get_pm_types(test_area: str | None) -> list[str]:

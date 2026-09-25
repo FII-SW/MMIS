@@ -16,6 +16,8 @@ export const getTestAreas = (fromData = []) => {
   return [...new Set([...DEFAULT_TEST_AREAS, ...fromItems])].sort();
 };
 
-/** Test areas shown in Maintenance flow (TOOLS excluded). */
-export const getMaintenanceTestAreas = (fromData = []) =>
-  getTestAreas(fromData).filter((area) => area !== "TOOLS");
+/** Test areas shown in Maintenance flow (TOOLS excluded), in the same order as Request. */
+export const getMaintenanceTestAreas = (fromData = []) => {
+  const extras = fromData.filter((area) => area && !DEFAULT_TEST_AREAS.includes(area)).sort();
+  return [...new Set([...DEFAULT_TEST_AREAS, ...extras])].filter((area) => area !== "TOOLS");
+};

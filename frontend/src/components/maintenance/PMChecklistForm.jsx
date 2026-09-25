@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import API from "../../api";
 import { formatDateTime } from "./formatDate";
 import { describeDue } from "./pmStatus";
+import PMPartsPicker from "./PMPartsPicker";
 
 const RESULT_OPTIONS = [
   { value: "passed", label: "Passed", active: "bg-green-600 text-white border-green-600" },
@@ -25,7 +26,7 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
   const [results, setResults] = useState({});
   const [notes, setNotes] = useState("");
   const [partsReplaced, setPartsReplaced] = useState("");
-  const [indysoftRecorded, setIndysoftRecorded] = useState(false);
+  const [stockParts, setStockParts] = useState([]);
   const [draftRestored, setDraftRestored] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -46,8 +47,11 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
           setResults(restored);
           setNotes(draft.notes || "");
           setPartsReplaced(draft.partsReplaced || "");
-          setIndysoftRecorded(Boolean(draft.indysoftRecorded));
-          setDraftRestored(Object.keys(restored).length > 0 || Boolean(draft.notes || draft.partsReplaced));
+          setStockParts(Array.isArray(draft.stockParts) ? draft.stockParts : []);
+          setDraftRestored(
+            Object.keys(restored).length > 0 ||
+              Boolean(draft.notes || draft.partsReplaced || draft.stockParts?.length)
+          );
         }
       })
       .catch((err) => {
@@ -59,19 +63,20 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
 
   useEffect(() => {
     if (!checklist) return;
-    const hasContent = Object.keys(results).length > 0 || notes.trim() || partsReplaced.trim();
+    const hasContent =
+      Object.keys(results).length > 0 || notes.trim() || partsReplaced.trim() || stockParts.length > 0;
     if (hasContent) {
-      localStorage.setItem(draftKey, JSON.stringify({ results, notes, partsReplaced, indysoftRecorded }));
+      localStorage.setItem(draftKey, JSON.stringify({ results, notes, partsReplaced, stockParts }));
     } else {
       localStorage.removeItem(draftKey);
     }
-  }, [checklist, draftKey, results, notes, partsReplaced, indysoftRecorded]);
+  }, [checklist, draftKey, results, notes, partsReplaced, stockParts]);
 
   const resetForm = () => {
     setResults({});
     setNotes("");
     setPartsReplaced("");
-    setIndysoftRecorded(false);
+    setStockParts([]);
     setDraftRestored(false);
     setSubmitError("");
     localStorage.removeItem(draftKey);
@@ -118,7 +123,7 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
       results: Object.entries(results).map(([item_id, result]) => ({ item_id, result })),
       notes: notes.trim() || null,
       parts_replaced: partsReplaced.trim() || null,
-      indysoft_recorded: indysoftRecorded,
+      parts: stockParts,
     };
     const url = `/maintenance/fixtures/${fixture.fixture_id}/pm-records`;
 
@@ -250,9 +255,7 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
         </div>
       ))}
 
-      {checklist.note && checklist.note !== checklist.indysoft_note && (
-        <p className="text-xs text-gray-600 dark:text-gray-400">{checklist.note}</p>
-      )}
+      {checklist.note && <p className="text-xs text-gray-600 dark:text-gray-400">{checklist.note}</p>}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
@@ -275,24 +278,13 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
             value={partsReplaced}
             onChange={(e) => setPartsReplaced(e.target.value)}
             rows={3}
-            placeholder="e.g. 2x DIMM interposer, 1x TIM PAD"
+            placeholder="Parts not tracked in MMIS inventory"
             className="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           />
         </div>
       </div>
 
-      <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={indysoftRecorded}
-          onChange={(e) => setIndysoftRecorded(e.target.checked)}
-          className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <span>
-          Also registered in IndySoft
-          <span className="block text-xs text-gray-500 dark:text-gray-400">{checklist.indysoft_note}</span>
-        </span>
-      </label>
+      <PMPartsPicker fixture={fixture} parts={stockParts} onChange={setStockParts} />
 
       {submitError && <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>}
 

@@ -56,7 +56,7 @@ function csvCell(value) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-export function exportPMHistoryCsv(records, fixture) {
+export function exportPMHistoryCsv(records, fixture, fileLabel) {
   const header = [
     "PM ID",
     "Fixture",
@@ -66,26 +66,28 @@ export function exportPMHistoryCsv(records, fixture) {
     "Date",
     "Result",
     "Entered By",
-    "Registered in IndySoft",
     "Failed Tasks",
     "Notes",
     "Parts Replaced",
+    "Parts From Stock",
+    "Voided",
   ];
   const rows = records.map((record) => [
     record.pm_id,
-    fixture?.fixture_name || record.fixture_id,
+    fixture?.fixture_name || record.fixture_name || record.fixture_id,
     record.project_name,
     record.test_area,
     pmTypeLabel(record.pm_type),
     formatDateTime(record.performed_at),
     RESULT_TEXT[record.overall_result] || record.overall_result,
     record.performed_by || "Unknown",
-    record.indysoft_recorded ? "Yes" : "No",
     record.checklist.filter((item) => item.result === "failed").map((item) => item.task).join("; "),
     record.notes || "",
     record.parts_replaced || "",
+    (record.parts || []).map((part) => `${part.quantity} x ${part.item_name}`).join("; "),
+    record.voided ? `Yes: ${record.void_reason || ""}` : "",
   ]);
   const csv = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
-  const name = safeName(fixture?.fixture_name || "fixture");
+  const name = safeName(fileLabel || fixture?.fixture_name || "fixture");
   saveBlob(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }), `PM_History_${name}_${localDateStamp()}.csv`);
 }

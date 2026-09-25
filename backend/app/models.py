@@ -33,6 +33,13 @@ class Fixture(Base):
     fixture_serial_number = Column(String(50), nullable=True)
     manufacturer = Column(String(100), nullable=True)
     production_line = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
+    # PM paused = fixture out of service (spare, down, sent out); excluded from overdue counts
+    pm_paused = Column(Boolean, nullable=False, default=False, server_default="false")
+    pm_pause_reason = Column(String(255), nullable=True)
+    pm_paused_at = Column(DateTime(timezone=True), nullable=True)
+    pm_paused_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
+    pm_resumed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationship: one fixture → many transactions
     transactions = relationship("Transaction", back_populates="fixture")
@@ -72,6 +79,8 @@ class Transaction(Base):
     test_area = Column(String(20))
     project_name = Column(String(100))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Set when the part was taken from stock while recording a PM
+    pm_id = Column(Integer, ForeignKey("fixture_pm_records.pm_id"), nullable=True, index=True)
 
     # Define relationships to other tables
     employee = relationship("Employee", back_populates="transactions") # Many-to-one with Employee
@@ -108,7 +117,44 @@ class FixturePMRecord(Base):
     project_name = Column(String(100))
     test_area = Column(String(20))
     performed_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
-    performed_at = Column(DateTime(timezone=True), server_default=func.now())
+    performed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    # Voided records stay for audit but no longer count toward PM status
+    voided = Column(Boolean, nullable=False, default=False, server_default="false")
+    voided_at = Column(DateTime(timezone=True), nullable=True)
+    voided_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
+    void_reason = Column(Text, nullable=True)
+    edited_at = Column(DateTime(timezone=True), nullable=True)
+    edited_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
+
+
+class PMRecordAudit(Base):
+    __tablename__ = "pm_record_audit"
+
+    audit_id = Column(Integer, primary_key=True, index=True)
+    pm_id = Column(Integer, ForeignKey("fixture_pm_records.pm_id"), nullable=False, index=True)
+    action = Column(String(20), nullable=False)  # edit | void
+    employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
+    # JSON: {"reason": ...} for void, {"changes": {field: {"from": ..., "to": ...}}} for edit
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PMIssue(Base):
+    """A failed PM task that stays open until it is fixed or passes in a later PM."""
+
+    __tablename__ = "pm_issues"
+
+    issue_id = Column(Integer, primary_key=True, index=True)
+    pm_id = Column(Integer, ForeignKey("fixture_pm_records.pm_id"), nullable=False, index=True)
+    fixture_id = Column(Integer, ForeignKey("fixtures.fixture_id"), nullable=False, index=True)
+    pm_type = Column(String(20), nullable=False)
+    item_id = Column(String(50), nullable=False)
+    task = Column(Text, nullable=False)
+    status = Column(String(20), nullable=False, default="open", server_default="open", index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
+    resolution_note = Column(Text, nullable=True)
 
 
 class ProjectDocument(Base):

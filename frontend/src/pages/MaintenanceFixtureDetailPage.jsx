@@ -11,6 +11,9 @@ import { formatDate } from "../components/maintenance/formatDate";
 import { pmTypeLabel } from "../components/maintenance/pmTypes";
 import { describeDue } from "../components/maintenance/pmStatus";
 import PMStatusBadge from "../components/maintenance/PMStatusBadge";
+import PMPauseControl from "../components/maintenance/PMPauseControl";
+import PMIssuesList from "../components/maintenance/PMIssuesList";
+import { isAdminUser } from "../utils/auth";
 import { useNotifications } from "../contexts/NotificationContext";
 
 function PMStatusCard({ title, entry, onStart }) {
@@ -24,11 +27,14 @@ function PMStatusCard({ title, entry, onStart }) {
         <dt className="text-gray-500 dark:text-gray-400">Last done</dt>
         <dd className="text-gray-800 dark:text-gray-200">
           {formatDate(entry?.last_performed_at)}
+          {entry?.covered_by && (
+            <span className="ml-1 text-gray-500 dark:text-gray-400">(via {pmTypeLabel(entry.covered_by)})</span>
+          )}
           {entry?.last_result === "failed" && (
             <span className="ml-1 font-semibold text-red-600 dark:text-red-400">(failed tasks)</span>
           )}
         </dd>
-        <dt className="text-gray-500 dark:text-gray-400">Technician</dt>
+        <dt className="text-gray-500 dark:text-gray-400">Name</dt>
         <dd className="truncate text-gray-800 dark:text-gray-200">{entry?.last_performed_by || "—"}</dd>
         <dt className="text-gray-500 dark:text-gray-400">Next due</dt>
         <dd className="text-gray-800 dark:text-gray-200">{formatDate(entry?.next_due_at)}</dd>
@@ -56,8 +62,10 @@ export default function MaintenanceFixtureDetailPage() {
   const [pmStatus, setPmStatus] = useState(null);
   const [pmRecords, setPmRecords] = useState([]);
   const [spareParts, setSpareParts] = useState([]);
+  const [openIssues, setOpenIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const isAdmin = isAdminUser();
 
   const pmTypes = pmStatus?.pm_types || [];
   const tabs = [
@@ -80,12 +88,22 @@ export default function MaintenanceFixtureDetailPage() {
       API.get(`/maintenance/fixtures/${fixture_id}/pm-status`),
       API.get(`/maintenance/fixtures/${fixture_id}/pm-records`),
       API.get(`/maintenance/fixtures/${fixture_id}/spare-parts`),
-    ]).then(([statusRes, recordsRes, partsRes]) => {
+      API.get("/maintenance/issues", { params: { fixture_id, status: "open" } }).catch(() => ({ data: [] })),
+    ]).then(([statusRes, recordsRes, partsRes, issuesRes]) => {
       setPmStatus(statusRes.data);
       setPmRecords(recordsRes.data || []);
       setSpareParts(partsRes.data || []);
+      setOpenIssues(issuesRes.data || []);
     });
   }, [fixture_id]);
+
+  const refresh = async () => {
+    try {
+      await loadHistory();
+    } catch (err) {
+      console.error("Error refreshing PM data:", err);
+    }
+  };
 
   useEffect(() => {
     if (!fixture_id) return;
@@ -124,21 +142,18 @@ export default function MaintenanceFixtureDetailPage() {
 
   const handlePMSaved = async (record) => {
     addNotification(`${pmTypeLabel(record.pm_type)} recorded for ${fixture.fixture_name} (${record.overall_result.toUpperCase()}).`);
-    try {
-      await loadHistory();
-    } catch (err) {
-      console.error("Error refreshing PM history:", err);
-    }
+    await refresh();
     setActiveTab("history");
   };
 
-  const handleRecordDeleted = async () => {
-    addNotification(`PM record deleted for ${fixture.fixture_name}.`);
-    try {
-      await loadHistory();
-    } catch (err) {
-      console.error("Error refreshing PM history:", err);
-    }
+  const handleRecordChanged = async () => {
+    addNotification(`PM record updated for ${fixture.fixture_name}.`);
+    await refresh();
+  };
+
+  const handlePauseChanged = async (paused) => {
+    addNotification(`PM ${paused ? "paused" : "resumed"} for ${fixture.fixture_name}.`);
+    await refresh();
   };
 
   if (loading) {
@@ -182,6 +197,33 @@ export default function MaintenanceFixtureDetailPage() {
             Request spare part
           </button>
         </div>
+
+        <PMPauseControl
+          fixtureId={fixture.fixture_id}
+          status={pmStatus}
+          isAdmin={isAdmin}
+          onChanged={handlePauseChanged}
+        />
+
+        {openIssues.length > 0 && (
+          <div className="overflow-hidden rounded-xl border border-orange-300 bg-white shadow-sm dark:border-orange-800 dark:bg-gray-800">
+            <div className="border-b border-orange-200 bg-orange-50 px-4 py-2.5 dark:border-orange-800 dark:bg-orange-900/20">
+              <p className="text-sm font-bold text-orange-800 dark:text-orange-200">
+                ⚠ {openIssues.length} open issue{openIssues.length === 1 ? "" : "s"} from failed PM tasks
+              </p>
+              <p className="text-xs text-orange-700 dark:text-orange-300">
+                Mark each one fixed when it&apos;s repaired. It also closes automatically when the task passes in a later PM.
+              </p>
+            </div>
+            <PMIssuesList
+              issues={openIssues}
+              onResolved={(issue) => {
+                setOpenIssues((prev) => prev.filter((i) => i.issue_id !== issue.issue_id));
+                addNotification(`Issue fixed on ${fixture.fixture_name}: ${issue.task}`);
+              }}
+            />
+          </div>
+        )}
 
         {pmTypes.length > 0 ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -238,7 +280,7 @@ export default function MaintenanceFixtureDetailPage() {
               />
             )}
             {activeTab === "history" && (
-              <PMHistory records={pmRecords} fixture={fixture} onDeleted={handleRecordDeleted} />
+              <PMHistory records={pmRecords} fixture={fixture} onChanged={handleRecordChanged} />
             )}
             {activeTab === "spare-parts" && <SparePartsHistory entries={spareParts} />}
           </div>

@@ -1,11 +1,6 @@
-<<<<<<< HEAD
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
-=======
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
->>>>>>> b7ecb7ede324c9df3c549bbb461b70ad9760e56c
 import { isAdminUser } from "../utils/auth";
 
 const ACTIONS = [
@@ -30,19 +25,12 @@ const ACTIONS = [
   {
     id: "maintenance",
     label: "Maintenance",
-<<<<<<< HEAD
     description: "Fixture PM & history",
-=======
-    description: "Find fixtures by area",
->>>>>>> b7ecb7ede324c9df3c549bbb461b70ad9760e56c
     path: "/dashboard/maintenance",
     icon: "🛠️",
     tone: "slate",
     roles: ["admin", "user"],
-<<<<<<< HEAD
     badgeKey: "overduePmCount",
-=======
->>>>>>> b7ecb7ede324c9df3c549bbb461b70ad9760e56c
   },
   {
     id: "alerts",
@@ -118,25 +106,19 @@ export default function DashboardQuickActions({ lowStockCount = 0 }) {
   const isAdmin = isAdminUser();
   const role = isAdmin ? "admin" : "user";
 
-<<<<<<< HEAD
   const [overduePmCount, setOverduePmCount] = useState(0);
 
   useEffect(() => {
-    API.get("/maintenance/summary")
-      .then((res) => setOverduePmCount(res.data?.totals?.overdue || 0))
+    API.get("/maintenance/reminders")
+      .then((res) => setOverduePmCount(res.data?.overdue || 0))
       .catch(() => setOverduePmCount(0));
   }, []);
 
-=======
->>>>>>> b7ecb7ede324c9df3c549bbb461b70ad9760e56c
   const actions = useMemo(
     () => ACTIONS.filter((action) => action.roles.includes(role)),
     [role]
   );
-<<<<<<< HEAD
   const badgeCounts = { lowStockCount, overduePmCount };
-=======
->>>>>>> b7ecb7ede324c9df3c549bbb461b70ad9760e56c
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
@@ -151,13 +133,8 @@ export default function DashboardQuickActions({ lowStockCount = 0 }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {actions.map((action) => {
-<<<<<<< HEAD
           const count = action.badgeKey ? badgeCounts[action.badgeKey] : 0;
           const badge = count > 0 ? count : null;
-=======
-          const badge =
-            action.badgeKey === "lowStockCount" && lowStockCount > 0 ? lowStockCount : null;
->>>>>>> b7ecb7ede324c9df3c549bbb461b70ad9760e56c
 
           return (
             <button

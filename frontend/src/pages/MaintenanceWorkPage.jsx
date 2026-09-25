@@ -3,14 +3,24 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import API from "../api";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
-import PMStatusBadge from "../components/maintenance/PMStatusBadge";
 import BulkDescriptorEditor from "../components/maintenance/BulkDescriptorEditor";
+import FixturePMTable from "../components/maintenance/FixturePMTable";
+import useStickyState from "../components/maintenance/useStickyState";
 import { isAdminUser } from "../utils/auth";
-import { formatDate } from "../components/maintenance/formatDate";
 import { fixtureDetailUrl } from "../components/maintenance/links";
-import { PM_STATES, PM_STATE_META, describeDue } from "../components/maintenance/pmStatus";
+import {
+  PM_STATES,
+  PM_STATE_META,
+  PM_STATE_RANK as STATE_RANK,
+  activePMCount,
+} from "../components/maintenance/pmStatus";
+import { PM_TYPE_LABELS } from "../components/maintenance/pmTypes";
 
-const STATE_RANK = { overdue: 0, never: 1, due_soon: 2, ok: 3 };
+const PAGE_SIZES = [25, 50, 100];
+const PM_TYPE_ORDER = Object.keys(PM_TYPE_LABELS);
+
+const naturalCompare = (a, b) =>
+  (a || "").localeCompare(b || "", undefined, { numeric: true, sensitivity: "base" });
 
 function urgencyCompare(a, b) {
   const rankA = a.pm.state ? STATE_RANK[a.pm.state] : 9;
@@ -19,61 +29,63 @@ function urgencyCompare(a, b) {
   const dueA = a.pm.days_until_due ?? Infinity;
   const dueB = b.pm.days_until_due ?? Infinity;
   if (dueA !== dueB) return dueA - dueB;
-  return (a.fixture_name || "").localeCompare(b.fixture_name || "");
+  return naturalCompare(a.fixture_name, b.fixture_name);
 }
 
-function FixtureCard({ fixture, onOpen }) {
-  const { pm } = fixture;
-  const accent = pm.state ? PM_STATE_META[pm.state].dot : "bg-gray-200 dark:bg-gray-700";
+function textCompare(field) {
+  return (a, b) => {
+    const valueA = a[field];
+    const valueB = b[field];
+    if (!valueA && valueB) return 1;
+    if (valueA && !valueB) return -1;
+    return naturalCompare(valueA, valueB) || naturalCompare(a.fixture_name, b.fixture_name);
+  };
+}
 
+const COMPARATORS = {
+  urgency: urgencyCompare,
+  name: (a, b) => naturalCompare(a.fixture_name, b.fixture_name),
+  line: textCompare("production_line"),
+  manufacturer: textCompare("manufacturer"),
+};
+
+const SORT_OPTIONS = [
+  { value: "urgency", label: "Most urgent first" },
+  { value: "name", label: "Fixture name" },
+  { value: "line", label: "Production line" },
+  { value: "manufacturer", label: "Manufacturer" },
+];
+
+function StatTile({ label, value, total, active, onClick, meta }) {
+  const pct = total ? Math.round((value / total) * 100) : 0;
   return (
     <button
       type="button"
-      onClick={onOpen}
-      className="relative overflow-hidden text-left bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow-md p-4 pl-5 hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-500 transition-all"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`relative flex flex-col items-start rounded-xl border p-3 text-left shadow-sm transition-all ${
+        meta ? meta.tile : "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200"
+      } ${active ? "ring-2 ring-blue-600 ring-offset-2 dark:ring-offset-gray-900 shadow-md" : "hover:shadow-md"}`}
     >
-      <span className={`absolute inset-y-0 left-0 w-1.5 ${accent}`} />
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="font-bold text-gray-800 dark:text-gray-200 leading-tight">{fixture.fixture_name}</h3>
-        <span className="shrink-0 text-xs font-mono text-gray-400 dark:text-gray-500">#{fixture.fixture_id}</span>
-      </div>
-      <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400 truncate">
-        Asset {fixture.asset_tag || "—"} · S/N {fixture.fixture_serial_number || "—"}
-      </p>
-      <div className="mt-1.5 flex flex-wrap gap-1">
-        {fixture.production_line && (
-          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
-            {fixture.production_line}
-          </span>
-        )}
-        {fixture.manufacturer && (
-          <span className="max-w-full truncate rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-            {fixture.manufacturer}
-          </span>
-        )}
-      </div>
-
-      {pm.pm_types.length > 0 ? (
-        <ul className="mt-3 space-y-1.5">
-          {pm.pm_types.map((type) => {
-            const entry = pm.status[type];
-            return (
-              <li key={type} className="flex items-center justify-between gap-2 text-xs">
-                <span className="font-medium text-gray-700 dark:text-gray-300">{entry.label}</span>
-                <span className="flex items-center gap-2">
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {entry.last_performed_at ? `Last ${formatDate(entry.last_performed_at)}` : ""}
-                  </span>
-                  <PMStatusBadge state={entry.state} label={describeDue(entry)} />
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">No PM checklist for this test area</p>
-      )}
+      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
+        {meta && <span className={`h-2 w-2 rounded-full ${meta.dot}`} />}
+        {label}
+      </span>
+      <span className="mt-1 text-2xl font-bold leading-none">{value}</span>
+      <span className="mt-1 text-[11px] opacity-75">{meta ? `${pct}% of fixtures` : "Show all fixtures"}</span>
     </button>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.45 4.39l3.08 3.08a.75.75 0 11-1.06 1.06l-3.08-3.08A7 7 0 012 9z"
+        clipRule="evenodd"
+      />
+    </svg>
   );
 }
 
@@ -82,14 +94,18 @@ export default function MaintenanceWorkPage() {
   const [params, setParams] = useSearchParams();
   const project = params.get("project");
   const testArea = params.get("test_area");
+  const allMode = !project && params.get("all") === "1";
   const stateFilter = params.get("status") || "all";
 
   const [fixtures, setFixtures] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("urgency");
+  const [sortKey, setSortKey] = useStickyState("mmis:pm-work:sort", "urgency");
+  const [sortDir, setSortDir] = useStickyState("mmis:pm-work:sort-dir", "asc");
   const [lineFilter, setLineFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useStickyState("mmis:pm-work:page-size", PAGE_SIZES[0]);
   const [bulkEditing, setBulkEditing] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const isAdmin = isAdminUser();
@@ -113,14 +129,14 @@ export default function MaintenanceWorkPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!project) {
+    if (!project && !allMode) {
       navigate("/dashboard/maintenance", { replace: true });
       return;
     }
 
     setLoading(true);
     setError("");
-    const query = { project };
+    const query = allMode ? { pm_only: true } : { project };
     if (testArea) query.test_area = testArea;
     API.get("/maintenance/overview", { params: query })
       .then((res) => {
@@ -134,7 +150,7 @@ export default function MaintenanceWorkPage() {
         setError("Failed to load fixtures. Please try again.");
       })
       .finally(() => setLoading(false));
-  }, [project, testArea, navigate]);
+  }, [project, testArea, allMode, navigate]);
 
   const setStateFilter = (value) => {
     const next = new URLSearchParams(params);
@@ -164,19 +180,60 @@ export default function MaintenanceWorkPage() {
         fx.fixture_serial_number,
         fx.manufacturer,
         fx.production_line,
+        fx.project_name,
+        fx.test_area,
         String(fx.fixture_id),
       ].some((value) => (value || "").toLowerCase().includes(q));
     });
-    const sorted = [...filtered];
-    if (sortBy === "urgency") sorted.sort(urgencyCompare);
-    else sorted.sort((a, b) => (a.fixture_name || "").localeCompare(b.fixture_name || ""));
+    const compare = COMPARATORS[sortKey] || urgencyCompare;
+    const sorted = [...filtered].sort(compare);
+    if (sortDir === "desc") sorted.reverse();
     return sorted;
-  }, [fixtures, search, stateFilter, lineFilter, sortBy]);
+  }, [fixtures, search, stateFilter, lineFilter, sortKey, sortDir]);
 
-  if (!project) return null;
+  const pmTypeColumns = useMemo(() => {
+    const present = new Set(fixtures.flatMap((fx) => fx.pm?.pm_types || []));
+    return PM_TYPE_ORDER.filter((type) => present.has(type));
+  }, [fixtures]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, stateFilter, lineFilter, sortKey, sortDir, pageSize]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleFixtures.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pageFixtures = visibleFixtures.slice(pageStart, pageStart + pageSize);
+
+  const handleSort = (column) => {
+    if (column === sortKey) {
+      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(column);
+      setSortDir("asc");
+    }
+  };
+
+  const openFixture = (fx, pmType) => {
+    const target = allMode
+      ? fx
+      : { fixture_id: fx.fixture_id, project_name: project, test_area: testArea };
+    navigate(fixtureDetailUrl(target, pmType ? { tab: pmType } : {}));
+  };
+
+  const filtersActive = Boolean(search.trim()) || lineFilter !== "all" || stateFilter !== "all";
+  const clearFilters = () => {
+    setSearch("");
+    setLineFilter("all");
+    setStateFilter("all");
+  };
+
+  if (!project && !allMode) return null;
 
   const handleBack = () => {
-    if (testArea) {
+    if (allMode) {
+      navigate("/dashboard/maintenance");
+    } else if (testArea) {
       navigate(`/dashboard/maintenance/test-area?project=${encodeURIComponent(project)}`);
     } else {
       navigate("/dashboard/maintenance");
@@ -187,97 +244,167 @@ export default function MaintenanceWorkPage() {
     return <PageLoadingState title="Maintenance" onBack={handleBack} message="Loading fixtures..." />;
   }
 
-  const locationLabel = testArea ? `${project} • ${testArea}` : project;
+  const locationLabel = allMode
+    ? "All projects · PM fixtures"
+    : testArea
+      ? `${project} • ${testArea}`
+      : project;
   const hasPM = (summary?.pm_applicable || 0) > 0;
+  const activeCount = activePMCount(summary);
+  const upToDatePct = activeCount
+    ? Math.round((((summary.ok || 0) + (summary.due_soon || 0)) / activeCount) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">
       <PageHeaderWithBack title="Maintenance" onBack={handleBack} />
 
-      <div className="max-w-6xl mx-auto px-2 pb-8 space-y-4">
-        <div className="text-center">
-          <p className="font-semibold text-gray-700 dark:text-gray-300 text-lg">{locationLabel}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {fixtures.length} fixture{fixtures.length === 1 ? "" : "s"} for this location
-          </p>
+      <div className="max-w-7xl mx-auto px-2 pb-8 space-y-4">
+        <div className="flex flex-col gap-3 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{locationLabel}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {fixtures.length} fixture{fixtures.length === 1 ? "" : "s"}
+              {allMode ? " with a PM checklist (FBT & ICT)" : " for this location"}
+              {pmTypeColumns.length > 0 && ` · ${pmTypeColumns.map((t) => PM_TYPE_LABELS[t]).join(" & ")}`}
+            </p>
+          </div>
+          {hasPM && (
+            <div className="w-full sm:w-64">
+              <div className="flex items-baseline justify-between text-sm">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">PM up to date</span>
+                <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{upToDatePct}%</span>
+              </div>
+              <div className="mt-1 flex h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                {PM_STATES.map((state) =>
+                  summary[state] ? (
+                    <span
+                      key={state}
+                      className={PM_STATE_META[state].dot}
+                      style={{ width: `${(summary[state] / summary.pm_applicable) * 100}%` }}
+                      title={`${PM_STATE_META[state].label}: ${summary[state]}`}
+                    />
+                  ) : null
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {hasPM && (
-          <div className="flex flex-wrap justify-center gap-2">
-            <button
-              type="button"
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <StatTile
+              label="All"
+              value={fixtures.length}
+              active={stateFilter === "all"}
               onClick={() => setStateFilter("all")}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                stateFilter === "all"
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
-              }`}
-            >
-              All · {fixtures.length}
-            </button>
+            />
             {PM_STATES.map((state) => (
-              <button
-                type="button"
+              <StatTile
                 key={state}
-                onClick={() => setStateFilter(state)}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                  stateFilter === state
-                    ? "ring-2 ring-blue-500 " + PM_STATE_META[state].tile
-                    : PM_STATE_META[state].tile + " opacity-80 hover:opacity-100"
-                }`}
-              >
-                {PM_STATE_META[state].label} · {summary[state]}
-              </button>
+                label={PM_STATE_META[state].label}
+                value={summary[state] || 0}
+                total={summary.pm_applicable}
+                meta={PM_STATE_META[state]}
+                active={stateFilter === state}
+                onClick={() => setStateFilter(stateFilter === state ? "all" : state)}
+              />
             ))}
           </div>
         )}
 
         {fixtures.length > 0 && (
-          <div className="flex flex-col gap-2 sm:flex-row max-w-3xl mx-auto">
-            <input
-              type="text"
-              placeholder="Search by name, asset, serial, line, or manufacturer…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 p-2.5 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-lg shadow-sm text-sm"
-            />
-            {lines.length > 0 && (
-              <select
-                value={lineFilter}
-                onChange={(e) => setLineFilter(e.target.value)}
-                className="p-2.5 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-lg shadow-sm text-sm"
-              >
-                <option value="all">All lines</option>
-                {lines.map((line) => (
-                  <option key={line} value={line}>
-                    {line}
-                  </option>
-                ))}
-                <option value="none">Line not set</option>
-              </select>
-            )}
-            {hasPM && (
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="p-2.5 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-lg shadow-sm text-sm"
-              >
-                <option value="urgency">Sort: Most urgent first</option>
-                <option value="name">Sort: Name A–Z</option>
-              </select>
-            )}
-            {isAdmin && !bulkEditing && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSavedMessage("");
-                  setBulkEditing(true);
-                }}
-                className="shrink-0 rounded-lg border-2 border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-300 dark:hover:bg-gray-700"
-              >
-                Edit line / manufacturer
-              </button>
-            )}
+          <div className="sticky top-0 z-10 rounded-xl border bg-white/95 p-3 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-800/95">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div className="relative flex-1">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+                  <SearchIcon />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search fixture, asset, serial, line, or manufacturer…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-9 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="Clear search"
+                    className="absolute inset-y-0 right-2 flex items-center px-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {lines.length > 0 && (
+                  <select
+                    value={lineFilter}
+                    onChange={(e) => setLineFilter(e.target.value)}
+                    aria-label="Filter by production line"
+                    className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                  >
+                    <option value="all">All lines</option>
+                    {lines.map((line) => (
+                      <option key={line} value={line}>
+                        {line}
+                      </option>
+                    ))}
+                    <option value="none">Line not set</option>
+                  </select>
+                )}
+                <select
+                  value={sortKey}
+                  onChange={(e) => {
+                    setSortKey(e.target.value);
+                    setSortDir("asc");
+                  }}
+                  aria-label="Sort fixtures"
+                  className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      Sort: {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {isAdmin && !bulkEditing && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSavedMessage("");
+                      setBulkEditing(true);
+                    }}
+                    className="rounded-lg border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-300 dark:hover:bg-gray-700"
+                  >
+                    Edit line / manufacturer
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <span>
+                {visibleFixtures.length === fixtures.length
+                  ? `${fixtures.length} fixtures`
+                  : `${visibleFixtures.length} of ${fixtures.length} fixtures match`}
+                {stateFilter !== "all" && ` · ${PM_STATE_META[stateFilter]?.label || stateFilter}`}
+                {lineFilter !== "all" && ` · ${lineFilter === "none" ? "Line not set" : lineFilter}`}
+              </span>
+              <span className="flex items-center gap-3">
+                {filtersActive && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="font-semibold text-blue-700 hover:underline dark:text-blue-300"
+                  >
+                    Clear filters
+                  </button>
+                )}
+                <span className="hidden sm:inline">Tip: click a PM status to open that checklist</span>
+              </span>
+            </div>
           </div>
         )}
 
@@ -304,25 +431,70 @@ export default function MaintenanceWorkPage() {
                 ? `There are no fixtures registered for ${locationLabel}.`
                 : "Try a different search term or status filter."}
             </p>
+            {fixtures.length > 0 && filtersActive && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {visibleFixtures.map((fx) => (
-              <FixtureCard
-                key={fx.fixture_id}
-                fixture={fx}
-                onOpen={() =>
-                  navigate(
-                    fixtureDetailUrl({
-                      fixture_id: fx.fixture_id,
-                      project_name: project,
-                      test_area: testArea,
-                    })
-                  )
-                }
-              />
-            ))}
-          </div>
+          <>
+            <FixturePMTable
+              fixtures={pageFixtures}
+              pmTypes={pmTypeColumns}
+              showLocation={allMode}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+              onOpen={openFixture}
+            />
+
+            <div className="flex flex-col items-center justify-between gap-2 text-sm text-gray-600 dark:text-gray-300 sm:flex-row">
+              <span>
+                Showing <b>{pageStart + 1}</b>–<b>{Math.min(pageStart + pageSize, visibleFixtures.length)}</b> of{" "}
+                <b>{visibleFixtures.length}</b>
+              </span>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1 text-xs">
+                  Rows
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className="rounded border border-gray-300 bg-white px-1.5 py-1 text-xs dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  >
+                    {PAGE_SIZES.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700"
+                >
+                  ‹ Prev
+                </button>
+                <span className="text-xs">
+                  Page {currentPage} of {pageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage(currentPage + 1)}
+                  disabled={currentPage >= pageCount}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700"
+                >
+                  Next ›
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -5,6 +5,7 @@ import API from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useIsInsideLayout } from "../contexts/LayoutContext";
 import { useNotifications } from "../contexts/NotificationContext";
+import PMReminderChip from "./maintenance/PMReminderChip";
 
 export default function Header({ showMMIS = true, brandLogo = false }) {
   const [userName, setUserName] = useState("");
@@ -126,6 +127,7 @@ export default function Header({ showMMIS = true, brandLogo = false }) {
         <div className="flex-1" />
       )}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <PMReminderChip />
         {/* Transfer notifications — left of theme toggle */}
         <div className="relative" ref={notificationRef}>
           <button
