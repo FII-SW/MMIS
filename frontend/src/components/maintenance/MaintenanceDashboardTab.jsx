@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../../api";
-import { getProjects } from "../../utils/projects";
-import { projectRequiresTestArea } from "../../utils/inventoryRules";
 import ComplianceTrendChart from "./ComplianceTrendChart";
 import DashboardFilters from "./DashboardFilters";
 import PMActivityChart from "./PMActivityChart";
 import PMStatusBadge from "./PMStatusBadge";
 import { formatRange, fromLocalInput, presetRange, rangeToParams, toLocalInput } from "./dateRanges";
 import { formatDateTime } from "./formatDate";
-import { fixtureDetailUrl } from "./links";
+import { MAINTENANCE_PROJECTS_URL, fixtureDetailUrl, fixtureListUrl } from "./links";
 import { PM_STATE_META, activePMCount, describeDue } from "./pmStatus";
 import { PM_TYPE_LABELS, pmTypeLabel } from "./pmTypes";
 import useStickyState from "./useStickyState";
@@ -194,21 +192,7 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
   const selectedTypeMissing =
     stored.pmType !== "all" && data?.options?.pm_types?.some((t) => t.value === stored.pmType && !t.configured);
 
-  const openLocation = (loc) => {
-    const next = new URLSearchParams();
-    if (loc.project_name) next.set("project", loc.project_name);
-    if (loc.test_area) next.set("test_area", loc.test_area);
-    navigate(`/dashboard/maintenance/work?${next.toString()}`);
-  };
-
-  const openProject = (project) => {
-    const encoded = encodeURIComponent(project);
-    navigate(
-      projectRequiresTestArea(project)
-        ? `/dashboard/maintenance/test-area?project=${encoded}`
-        : `/dashboard/maintenance/work?project=${encoded}`
-    );
-  };
+  const openLocation = (loc) => navigate(fixtureListUrl(loc.project_name, loc.test_area));
 
   return (
     <div className="space-y-5">
@@ -345,9 +329,9 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
             />
             <KpiTile
               icon="👷"
-              label="Technicians"
+              label="Users completed PM"
               value={activity?.technicians}
-              sublabel={activity?.top_technicians?.[0] ? `Top: ${activity.top_technicians[0].name}` : null}
+              sublabel={activity?.top_technicians?.[0] ? `Top user: ${activity.top_technicians[0].name}` : null}
               className="border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
             />
           </div>
@@ -507,7 +491,7 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
               )}
             </Panel>
 
-            <Panel title="Top technicians" subtitle={rangeLabel}>
+            <Panel title="Top users · PMs completed" subtitle={rangeLabel}>
               {!activity ? (
                 <EmptyNote>Loading…</EmptyNote>
               ) : activity.top_technicians.length === 0 ? (
@@ -563,7 +547,8 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
                           />
                         </span>
                         <span className="block truncate text-[11px] text-gray-500 dark:text-gray-400">
-                          {pmTypeLabel(record.pm_type)} · {record.performed_by || "Unknown"} · {formatDateTime(record.performed_at)}
+                          {pmTypeLabel(record.pm_type)} · Completed by {record.performed_by || "Unknown"} ·{" "}
+                          {formatDateTime(record.performed_at)}
                         </span>
                       </button>
                     </li>
@@ -574,38 +559,19 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
           </div>
         </div>
 
-        <ProjectLinks onOpen={openProject} />
-      </div>
-    </div>
-  );
-}
-
-function ProjectLinks({ onOpen }) {
-  const [projects, setProjects] = useState(getProjects());
-  useEffect(() => {
-    const update = () => setProjects(getProjects());
-    window.addEventListener("projectsUpdated", update);
-    window.addEventListener("storage", update);
-    return () => {
-      window.removeEventListener("projectsUpdated", update);
-      window.removeEventListener("storage", update);
-    };
-  }, []);
-  if (!projects.length) return null;
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <p className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-100">Browse fixtures by project</p>
-      <div className="flex flex-wrap gap-2">
-        {projects.map((project) => (
+        <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20 sm:flex-row sm:items-center">
+          <div>
+            <p className="font-semibold text-blue-900 dark:text-blue-100">Ready to do a PM?</p>
+            <p className="text-sm text-blue-800 dark:text-blue-300">Pick the project, test area and fixture step by step.</p>
+          </div>
           <button
-            key={project}
             type="button"
-            onClick={() => onOpen(project)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:border-blue-400 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-700"
+            onClick={() => navigate(MAINTENANCE_PROJECTS_URL)}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
           >
-            {project}
+            Record PM →
           </button>
-        ))}
+        </div>
       </div>
     </div>
   );

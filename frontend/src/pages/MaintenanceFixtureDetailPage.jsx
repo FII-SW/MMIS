@@ -13,6 +13,7 @@ import { describeDue } from "../components/maintenance/pmStatus";
 import PMStatusBadge from "../components/maintenance/PMStatusBadge";
 import PMPauseControl from "../components/maintenance/PMPauseControl";
 import PMIssuesList from "../components/maintenance/PMIssuesList";
+import { MAINTENANCE_PROJECTS_URL, fixtureListUrl } from "../components/maintenance/links";
 import { isAdminUser } from "../utils/auth";
 import { useNotifications } from "../contexts/NotificationContext";
 
@@ -123,11 +124,7 @@ export default function MaintenanceFixtureDetailPage() {
   }, [fixture_id, loadHistory]);
 
   const handleBack = () => {
-    const query = new URLSearchParams();
-    if (project) query.set("project", project);
-    if (testArea) query.set("test_area", testArea);
-    const qs = query.toString();
-    navigate(`/dashboard/maintenance/work${qs ? `?${qs}` : ""}`);
+    navigate(project ? fixtureListUrl(project, testArea) : MAINTENANCE_PROJECTS_URL);
   };
 
   const handleRequestPart = () => {
@@ -172,6 +169,18 @@ export default function MaintenanceFixtureDetailPage() {
   return (
     <div className="min-h-screen bg-transparent transition-colors">
       <PageHeaderWithBack title="Maintenance" onBack={handleBack} />
+
+      <p className="mb-5 px-4 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
+        Project: <span className="text-blue-600 dark:text-blue-400">{fixture.project_name || project}</span>
+        {(fixture.test_area || testArea) && (
+          <>
+            {" "}
+            — Test Area: <span className="text-blue-600 dark:text-blue-400">{fixture.test_area || testArea}</span>
+          </>
+        )}
+        {" "}
+        — Fixture: <span className="text-blue-600 dark:text-blue-400">{fixture.fixture_name}</span>
+      </p>
 
       <div className="mx-auto max-w-5xl space-y-4 px-2 pb-8">
         <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">

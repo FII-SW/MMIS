@@ -1,5 +1,5 @@
 // src/App.jsx
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RequestPage from "./pages/RequestPage";
@@ -29,6 +29,7 @@ import ChangePasswordPage from "./pages/ChangePasswordPage";
 import ProfilePage from "./pages/ProfilePage";
 import TransferItemPage from "./pages/TransferItemPage";
 import MaintenancePage from "./pages/MaintenancePage";
+import MaintenanceProjectsPage from "./pages/MaintenanceProjectsPage";
 import MaintenanceTestAreaPage from "./pages/MaintenanceTestAreaPage";
 import MaintenanceWorkPage from "./pages/MaintenanceWorkPage";
 import MaintenanceFixtureDetailPage from "./pages/MaintenanceFixtureDetailPage";
@@ -63,7 +64,9 @@ export default function App() {
         <Route path="/dashboard/reports/spending" element={withLayout(["admin", "user"], <SpendingReportPage />)} />
         <Route path="/dashboard/activity" element={withLayout(["admin", "user"], <ActivityPage />)} />
         <Route path="/dashboard/documents" element={withLayout(["admin", "user"], <DocumentsPage />)} />
-        <Route path="/dashboard/maintenance" element={withLayout(["admin", "user"], <MaintenancePage />)} />
+        <Route path="/dashboard/maintenance" element={withLayout(["admin", "user"], <MaintenanceProjectsPage />)} />
+        <Route path="/dashboard/maintenance/dashboard" element={withLayout(["admin", "user"], <MaintenancePage />)} />
+        <Route path="/dashboard/maintenance/projects" element={<Navigate to="/dashboard/maintenance" replace />} />
         <Route path="/dashboard/maintenance/test-area" element={withLayout(["admin", "user"], <MaintenanceTestAreaPage />)} />
         <Route path="/dashboard/maintenance/work" element={withLayout(["admin", "user"], <MaintenanceWorkPage />)} />
         <Route path="/dashboard/maintenance/fixture/:fixture_id" element={withLayout(["admin", "user"], <MaintenanceFixtureDetailPage />)} />

@@ -7,7 +7,12 @@ import BulkDescriptorEditor from "../components/maintenance/BulkDescriptorEditor
 import FixturePMTable from "../components/maintenance/FixturePMTable";
 import useStickyState from "../components/maintenance/useStickyState";
 import { isAdminUser } from "../utils/auth";
-import { fixtureDetailUrl } from "../components/maintenance/links";
+import {
+  MAINTENANCE_DASHBOARD_URL,
+  MAINTENANCE_PROJECTS_URL,
+  fixtureDetailUrl,
+  testAreaUrl,
+} from "../components/maintenance/links";
 import {
   PM_STATES,
   PM_STATE_META,
@@ -56,23 +61,19 @@ const SORT_OPTIONS = [
   { value: "manufacturer", label: "Manufacturer" },
 ];
 
-function StatTile({ label, value, total, active, onClick, meta }) {
-  const pct = total ? Math.round((value / total) * 100) : 0;
+function StatusPill({ label, value, active, onClick, meta }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`relative flex flex-col items-start rounded-xl border p-3 text-left shadow-sm transition-all ${
+      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold shadow-sm transition-all ${
         meta ? meta.tile : "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200"
-      } ${active ? "ring-2 ring-blue-600 ring-offset-2 dark:ring-offset-gray-900 shadow-md" : "hover:shadow-md"}`}
+      } ${active ? "ring-2 ring-blue-600 ring-offset-1 dark:ring-offset-gray-900" : "hover:shadow-md"}`}
     >
-      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
-        {meta && <span className={`h-2 w-2 rounded-full ${meta.dot}`} />}
-        {label}
-      </span>
-      <span className="mt-1 text-2xl font-bold leading-none">{value}</span>
-      <span className="mt-1 text-[11px] opacity-75">{meta ? `${pct}% of fixtures` : "Show all fixtures"}</span>
+      {meta && <span className={`h-2 w-2 rounded-full ${meta.dot}`} />}
+      {label}
+      <span className="rounded-full bg-white/70 px-1.5 text-xs dark:bg-black/20">{value}</span>
     </button>
   );
 }
@@ -130,7 +131,7 @@ export default function MaintenanceWorkPage() {
 
   useEffect(() => {
     if (!project && !allMode) {
-      navigate("/dashboard/maintenance", { replace: true });
+      navigate(MAINTENANCE_PROJECTS_URL, { replace: true });
       return;
     }
 
@@ -182,7 +183,6 @@ export default function MaintenanceWorkPage() {
         fx.production_line,
         fx.project_name,
         fx.test_area,
-        String(fx.fixture_id),
       ].some((value) => (value || "").toLowerCase().includes(q));
     });
     const compare = COMPARATORS[sortKey] || urgencyCompare;
@@ -232,11 +232,11 @@ export default function MaintenanceWorkPage() {
 
   const handleBack = () => {
     if (allMode) {
-      navigate("/dashboard/maintenance");
+      navigate(MAINTENANCE_DASHBOARD_URL);
     } else if (testArea) {
-      navigate(`/dashboard/maintenance/test-area?project=${encodeURIComponent(project)}`);
+      navigate(testAreaUrl(project));
     } else {
-      navigate("/dashboard/maintenance");
+      navigate(MAINTENANCE_PROJECTS_URL);
     }
   };
 
@@ -259,52 +259,37 @@ export default function MaintenanceWorkPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <PageHeaderWithBack title="Maintenance" onBack={handleBack} />
 
-      <div className="max-w-7xl mx-auto px-2 pb-8 space-y-4">
-        <div className="flex flex-col gap-3 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{locationLabel}</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {fixtures.length} fixture{fixtures.length === 1 ? "" : "s"}
-              {allMode ? " with a PM checklist (FBT & ICT)" : " for this location"}
-              {pmTypeColumns.length > 0 && ` · ${pmTypeColumns.map((t) => PM_TYPE_LABELS[t]).join(" & ")}`}
-            </p>
-          </div>
-          {hasPM && (
-            <div className="w-full sm:w-64">
-              <div className="flex items-baseline justify-between text-sm">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">PM up to date</span>
-                <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{upToDatePct}%</span>
-              </div>
-              <div className="mt-1 flex h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                {PM_STATES.map((state) =>
-                  summary[state] ? (
-                    <span
-                      key={state}
-                      className={PM_STATE_META[state].dot}
-                      style={{ width: `${(summary[state] / summary.pm_applicable) * 100}%` }}
-                      title={`${PM_STATE_META[state].label}: ${summary[state]}`}
-                    />
-                  ) : null
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+      <p className="mb-2 px-4 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
+        {allMode ? (
+          "All projects · PM fixtures"
+        ) : (
+          <>
+            Project: <span className="text-blue-600 dark:text-blue-400">{project}</span>
+            {testArea && (
+              <>
+                {" "}
+                — Test Area: <span className="text-blue-600 dark:text-blue-400">{testArea}</span>
+              </>
+            )}
+          </>
+        )}
+      </p>
+      <p className="mb-1 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">Select Fixture</p>
+      <p className="mb-5 text-center text-sm text-gray-500 dark:text-gray-400">
+        {fixtures.length} fixture{fixtures.length === 1 ? "" : "s"}
+        {pmTypeColumns.length > 0 && ` · ${pmTypeColumns.map((t) => PM_TYPE_LABELS[t]).join(" & ")}`}
+        {hasPM && ` · ${upToDatePct}% PM up to date`}
+      </p>
 
+      <div className="max-w-7xl mx-auto px-2 pb-8 space-y-4">
         {hasPM && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <StatTile
-              label="All"
-              value={fixtures.length}
-              active={stateFilter === "all"}
-              onClick={() => setStateFilter("all")}
-            />
-            {PM_STATES.map((state) => (
-              <StatTile
+          <div className="flex flex-wrap justify-center gap-2">
+            <StatusPill label="All" value={fixtures.length} active={stateFilter === "all"} onClick={() => setStateFilter("all")} />
+            {PM_STATES.filter((state) => summary[state] > 0).map((state) => (
+              <StatusPill
                 key={state}
                 label={PM_STATE_META[state].label}
-                value={summary[state] || 0}
-                total={summary.pm_applicable}
+                value={summary[state]}
                 meta={PM_STATE_META[state]}
                 active={stateFilter === state}
                 onClick={() => setStateFilter(stateFilter === state ? "all" : state)}

@@ -62,7 +62,7 @@ export default function MaintenancePage() {
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">
-      <PageHeaderWithBack title="Maintenance" onBack={() => navigate("/dashboard")} />
+      <PageHeaderWithBack title="PM Dashboard" onBack={() => navigate("/dashboard")} />
 
       <div className="mx-auto max-w-7xl space-y-4 px-2 pb-8">
         <PMReminderBanner reminders={reminders} onView={openTodo} />

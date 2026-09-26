@@ -3,7 +3,7 @@ import API from "../../api";
 
 const DEFAULT_POLL_MS = 10 * 60 * 1000;
 
-export const PM_TODO_URL = "/dashboard/maintenance?tab=todo";
+export const PM_TODO_URL = "/dashboard/maintenance/dashboard?tab=todo";
 
 export function describeReminderTypes(byPmType, state) {
   return Object.values(byPmType || {})

@@ -109,7 +109,6 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
       <div>
         <p className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-100">Asset Descriptors</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Fixture ID" value={fixture.fixture_id} />
           <Field label="Fixture Name" value={fixture.fixture_name} />
           <Field label="Project Name" value={fixture.project_name} />
           <Field label="Test Area" value={fixture.test_area} />

@@ -127,10 +127,7 @@ export default function FixturePMTable({
                     )}
                   </td>
                   <td className="px-3 py-2.5 align-top">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">{fx.fixture_name}</span>
-                      <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500">#{fx.fixture_id}</span>
-                    </div>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{fx.fixture_name}</span>
                     {showLocation && (
                       <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
                         {fx.project_name} · {fx.test_area}

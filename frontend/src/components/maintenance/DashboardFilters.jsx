@@ -56,7 +56,7 @@ export default function DashboardFilters({ options, filters, range, onChange, on
               type="text"
               value={filters.search}
               onChange={(e) => onChange({ search: e.target.value })}
-              placeholder="Fixture, asset tag, serial, line, manufacturer, or technician…"
+              placeholder="Fixture, asset tag, serial, line, manufacturer, or user…"
               className={`${FIELD} pl-9 pr-8`}
             />
             {filters.search && (
