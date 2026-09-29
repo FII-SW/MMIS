@@ -6,6 +6,7 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import { getProjects } from "../utils/projects";
+import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 export default function RestockEditItemPage() {
   const { item_id } = useParams();
@@ -395,14 +396,11 @@ export default function RestockEditItemPage() {
                         className="w-full p-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded transition-colors"
                       >
                         <option value="">Select Test Area</option>
-                        <option value="ICT_Mobo">ICT_Mobo</option>
-                        <option value="BSI_Mobo">BSI_Mobo</option>
-                        <option value="FBT_Mobo">FBT_Mobo</option>
-                        <option value="ICT_Agora">ICT_Agora</option>
-                        <option value="FBT_Agora">FBT_Agora</option>
-                        <option value="TOOLS">TOOLS</option>
-                        <option value="ORT">ORT</option>
-                        <option value="L10_Racks">L10_Racks</option>
+                        {DEFAULT_TEST_AREAS.map((area) => (
+                          <option key={area} value={area}>
+                            {area}
+                          </option>
+                        ))}
                       </select>
                     ) : (
                       <input

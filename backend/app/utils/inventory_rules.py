@@ -28,6 +28,7 @@ DEFAULT_TEST_AREAS = (
     "TOOLS",
     "ORT",
     "L10_Racks",
+    "Golden_Board",
 )
 
 

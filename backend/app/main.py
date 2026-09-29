@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 from .database import Base, engine
-from .routes import employees, inventory, transactions, reports, alerts, activity, fixtures, documents, maintenance, pm_workflow, pm_dashboard
+from .routes import employees, inventory, transactions, reports, alerts, activity, fixtures, documents, maintenance, pm_workflow, pm_dashboard, pm_report
 from . import auth
 from .utils.scheduler import start_scheduler, stop_scheduler
 import os
@@ -187,6 +187,7 @@ app.include_router(documents.router)
 app.include_router(maintenance.router)
 app.include_router(pm_workflow.router)
 app.include_router(pm_dashboard.router)
+app.include_router(pm_report.router)
 
 @app.get("/")
 def root():

@@ -6,6 +6,7 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import ProjectSelector from "../components/ProjectSelector";
 import SearchableSelect from "../components/SearchableSelect";
 import { getProjects } from "../utils/projects";
+import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 export default function LowStockReportPage() {
   const ROWS_PER_PAGE = 20;
@@ -55,9 +56,7 @@ export default function LowStockReportPage() {
     };
   }, []);
 
-  const testAreas = [
-    "ICT_Mobo", "BSI_Mobo", "FBT_Mobo", "ICT_Agora", "FBT_Agora", "TOOLS", "ORT", "L10_Racks"
-  ];
+  const testAreas = DEFAULT_TEST_AREAS;
 
   // Load low stock items
   useEffect(() => {

@@ -4,11 +4,14 @@ import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import PasswordVisibilityButton from "../components/PasswordVisibilityButton";
 
 export default function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [visible, setVisible] = useState({ current: false, next: false, confirm: false });
+  const toggleVisible = (field) => setVisible((prev) => ({ ...prev, [field]: !prev[field] }));
   const [employeeId, setEmployeeId] = useState(null);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -110,18 +113,20 @@ export default function ChangePasswordPage() {
                   </svg>
                 </div>
                 <input
-                  type="password"
+                  type={visible.current ? "text" : "password"}
+                  autoComplete="current-password"
                   value={currentPassword}
                   onChange={(e) => {
                     setCurrentPassword(e.target.value);
                     setErrors({ ...errors, currentPassword: "" });
                   }}
-                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                  className={`w-full pl-10 pr-11 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                     errors.currentPassword ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Enter your current password"
                   required
                 />
+                <PasswordVisibilityButton visible={visible.current} onToggle={() => toggleVisible("current")} />
               </div>
               {errors.currentPassword && (
                 <p className="text-red-500 text-sm mt-1">{errors.currentPassword}</p>
@@ -140,7 +145,8 @@ export default function ChangePasswordPage() {
                   </svg>
                 </div>
                 <input
-                  type="password"
+                  type={visible.next ? "text" : "password"}
+                  autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => {
                     const newValue = e.target.value;
@@ -153,12 +159,13 @@ export default function ChangePasswordPage() {
                       setErrors((prev) => ({ ...prev, confirmPassword: "" }));
                     }
                   }}
-                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                  className={`w-full pl-10 pr-11 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                     errors.newPassword ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Enter your new password"
                   required
                 />
+                <PasswordVisibilityButton visible={visible.next} onToggle={() => toggleVisible("next")} />
               </div>
               {errors.newPassword && (
                 <p className="text-red-500 text-sm mt-1">{errors.newPassword}</p>
@@ -178,7 +185,8 @@ export default function ChangePasswordPage() {
                   </svg>
                 </div>
                 <input
-                  type="password"
+                  type={visible.confirm ? "text" : "password"}
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => {
                     const confirmValue = e.target.value;
@@ -196,12 +204,13 @@ export default function ChangePasswordPage() {
                       setErrors({ ...errors, confirmPassword: "Passwords do not match" });
                     }
                   }}
-                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                  className={`w-full pl-10 pr-11 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                     errors.confirmPassword ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Confirm your new password"
                   required
                 />
+                <PasswordVisibilityButton visible={visible.confirm} onToggle={() => toggleVisible("confirm")} />
               </div>
               {errors.confirmPassword && (
                 <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>

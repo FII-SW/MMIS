@@ -41,6 +41,14 @@ export default function ReportsPage() {
           >
             <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">Spending Report</span>
           </button>
+
+          <button
+            onClick={() => navigate("/dashboard/reports/preventive-maintenance")}
+            className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-blue-500 dark:hover:border-blue-600 transition shadow-md md:col-span-2"
+          >
+            <span className="block text-lg font-semibold text-gray-800 dark:text-gray-200">Preventive Maintenance Report</span>
+            <span className="mt-1 block text-sm text-gray-500 dark:text-gray-400">PMs passed, failed and overdue by day, week or month</span>
+          </button>
         </div>
       </div>
     </div>

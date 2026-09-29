@@ -4,6 +4,7 @@ import API from "../api";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { useNotifications } from "../contexts/NotificationContext";
+import { usesProjectFixtures } from "../utils/testAreas";
 
 export default function ItemRequestPage() {
   const { item_id } = useParams();
@@ -75,6 +76,7 @@ export default function ItemRequestPage() {
   // Projects that don't require fixtures
   const skipFixtureProjects = ["Hi-Lo", "Flying Probe", "Development"];
   const requiresFixture = project && !skipFixtureProjects.includes(project);
+  const projectWideFixtures = usesProjectFixtures(test_area);
 
   // Load fixtures — Only for projects that require fixtures
   useEffect(() => {
@@ -82,10 +84,11 @@ export default function ItemRequestPage() {
       setFixtures([]);
       return;
     }
-    API.get(`/fixtures/filter?project=${project || ""}&test_area=${test_area || ""}`)
+    const fixtureArea = projectWideFixtures ? "" : test_area || "";
+    API.get("/fixtures/filter", { params: { project: project || "", test_area: fixtureArea } })
       .then((res) => setFixtures(res.data))
       .catch((err) => console.error("Error loading fixtures:", err));
-  }, [project, test_area, requiresFixture]);
+  }, [project, test_area, requiresFixture, projectWideFixtures]);
 
   const maintenanceFixtureUrl = (fixtureId) => {
     const query = new URLSearchParams();
@@ -158,9 +161,19 @@ export default function ItemRequestPage() {
   };
 
   // Filter fixtures based on search
-  const filteredFixtures = fixtures.filter((fx) =>
-    fx.fixture_name.toLowerCase().includes(fixtureSearch.toLowerCase())
-  );
+  const fixtureQuery = fixtureSearch.toLowerCase();
+  const filteredFixtures = fixtures
+    .filter(
+      (fx) =>
+        fx.fixture_name.toLowerCase().includes(fixtureQuery) ||
+        (projectWideFixtures && (fx.test_area || "").toLowerCase().includes(fixtureQuery))
+    )
+    .sort((a, b) =>
+      projectWideFixtures
+        ? (a.test_area || "").localeCompare(b.test_area || "") ||
+          a.fixture_name.localeCompare(b.fixture_name, undefined, { numeric: true })
+        : 0
+    );
 
   // Get selected fixture name
   const selectedFixtureName = fixtures.find(fx => String(fx.fixture_id) === String(fixture))?.fixture_name || "";
@@ -330,7 +343,11 @@ export default function ItemRequestPage() {
                 <input
                   type="text"
                   className="w-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white p-3 rounded-lg text-base transition-all pr-10 hover:border-blue-300"
-                  placeholder="Search & select fixture..."
+                  placeholder={
+                    projectWideFixtures
+                      ? `Search & select any ${project} fixture (name or test area)...`
+                      : "Search & select fixture..."
+                  }
                   value={showFixtureDropdown ? fixtureSearch : selectedFixtureName || fixtureSearch}
                   onChange={(e) => {
                     setFixtureSearch(e.target.value);
@@ -360,7 +377,16 @@ export default function ItemRequestPage() {
                           setShowFixtureDropdown(false);
                         }}
                       >
-                        {fx.fixture_name}
+                        {projectWideFixtures ? (
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="truncate">{fx.fixture_name}</span>
+                            <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                              {fx.test_area || "—"}
+                            </span>
+                          </span>
+                        ) : (
+                          fx.fixture_name
+                        )}
                       </div>
                     ))
                   ) : (

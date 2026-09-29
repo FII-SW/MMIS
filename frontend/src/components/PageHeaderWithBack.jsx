@@ -4,8 +4,8 @@
  */
 export default function PageHeaderWithBack({ title, onBack }) {
   return (
-    <div className="relative mb-6 w-full overflow-visible bg-blue-600 shadow-md transition-colors dark:bg-blue-800 md:mb-8">
-      <div className="relative flex min-h-[52px] items-center justify-center overflow-visible px-2 py-3 sm:px-4">
+    <div className="relative mb-4 w-full overflow-visible bg-blue-600 shadow-md transition-colors dark:bg-blue-800 2xl:mb-8 short:mb-3">
+      <div className="relative flex min-h-[48px] items-center justify-center overflow-visible px-2 py-2.5 sm:px-4 2xl:min-h-[52px] 2xl:py-3">
         <button
           type="button"
           onClick={onBack}
@@ -17,7 +17,7 @@ export default function PageHeaderWithBack({ title, onBack }) {
           </svg>
           Back
         </button>
-        <h1 className="w-full px-16 text-center text-xl font-bold leading-tight text-white sm:px-20 sm:text-2xl md:px-24 md:text-3xl">
+        <h1 className="w-full px-16 text-center text-xl font-bold leading-tight text-white sm:px-20 sm:text-2xl md:px-24 2xl:text-3xl">
           {title}
         </h1>
       </div>

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { getProjects } from "../utils/projects";
+import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 export default function ActivityPage() {
   const TRANSACTIONS_PER_PAGE = 20;
@@ -44,17 +45,7 @@ export default function ActivityPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Predefined test areas
-  const testAreas = [
-    "ICT_Mobo",
-    "BSI_Mobo",
-    "FBT_Mobo",
-    "ICT_Agora",
-    "FBT_Agora",
-    "TOOLS",
-    "ORT",
-    "L10_Racks"
-  ];
+  const testAreas = DEFAULT_TEST_AREAS;
 
   // Get unique projects from history and merge with custom projects from localStorage
   const uniqueProjectsFromData = [...new Set(history.map(h => h.project_name).filter(Boolean))];

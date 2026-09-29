@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import SearchableSelect from "../components/SearchableSelect";
 import { getProjects } from "../utils/projects";
+import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 export default function SpendingReportPage() {
   const ROWS_PER_PAGE = 20;
@@ -41,16 +42,7 @@ export default function SpendingReportPage() {
     };
   }, []);
 
-  const testAreas = [
-    "ICT_Mobo",
-    "BSI_Mobo",
-    "FBT_Mobo",
-    "ICT_Agora",
-    "FBT_Agora",
-    "TOOLS",
-    "ORT",
-    "L10_Racks",
-  ];
+  const testAreas = DEFAULT_TEST_AREAS;
 
   // Load inventory data (used for both inventory view and to get unit prices for transactions)
   // Note: Inventory doesn't support date filtering, so we load all and filter client-side if needed

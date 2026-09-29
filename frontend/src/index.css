@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========== Laptop screens ==========
+   A 14" laptop at 125–150% Windows scaling is ~1280–1536 CSS px wide and ~650–750px tall.
+   Tailwind sizes are in rem, so a 15px root scales every page down ~6% there. */
+@media (min-width: 1024px) and (max-width: 1536px), (min-width: 1024px) and (max-height: 820px) {
+  html {
+    font-size: 15px;
+  }
+}
+
 /* ========== Global App Background ========== */
 .app-bg {
   background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 30%, #eef1f8 60%, #e8ecf4 100%);
@@ -47,6 +56,11 @@
   background-size: 28px 28px;
   pointer-events: none;
   z-index: 0;
+}
+
+/* Password fields use our own show/hide button; hide Edge's built-in one so there aren't two. */
+input::-ms-reveal {
+  display: none;
 }
 
 /* ========== Global Input Default + Focus Styles ========== */

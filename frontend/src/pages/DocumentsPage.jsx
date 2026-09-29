@@ -5,17 +5,9 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import API from "../api";
 import { getProjects } from "../utils/projects";
 import { getTokenSession } from "../utils/auth";
+import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
-const TEST_AREAS = [
-  "ICT_Mobo",
-  "BSI_Mobo",
-  "FBT_Mobo",
-  "ICT_Agora",
-  "FBT_Agora",
-  "TOOLS",
-  "ORT",
-  "L10_Racks",
-];
+const TEST_AREAS = DEFAULT_TEST_AREAS;
 
 const DOC_TYPES = [
   { value: "all", label: "All Types" },

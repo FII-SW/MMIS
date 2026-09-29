@@ -76,15 +76,15 @@ export default function Layout({ children }) {
     <LayoutProvider value={true}>
       <div className="flex h-screen bg-transparent transition-colors">
       {!hideSidebar && (
-        <aside className="w-64 shrink-0 bg-white dark:bg-gray-800 shadow-md p-6 space-y-4 transition-colors">
+        <aside className="w-56 shrink-0 overflow-y-auto bg-white p-4 shadow-md transition-colors dark:bg-gray-800 2xl:w-64 2xl:p-6 short:py-3">
           <Link
             to="/dashboard"
-            className="block text-2xl font-bold text-blue-600 dark:text-blue-400 mb-6 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            className="mb-4 block text-2xl font-bold text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 2xl:mb-6 short:mb-3"
           >
             MMIS
           </Link>
 
-          <nav className="space-y-2">
+          <nav className="space-y-1 2xl:space-y-2 short:space-y-0.5">
             {navItems.map((item) => {
               if (item.children) {
                 const childActive = item.children.map(isChildActive);
@@ -99,7 +99,7 @@ export default function Layout({ children }) {
                           : "text-gray-700 hover:bg-blue-50 hover:text-blue-600 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-blue-400"
                       }`}
                     >
-                      <Link to={item.path} className="flex-1 px-4 py-3">
+                      <Link to={item.path} className="flex-1 px-4 py-2.5 2xl:py-3 short:py-2">
                         {item.label}
                       </Link>
                       <button
@@ -126,7 +126,7 @@ export default function Layout({ children }) {
                           <Link
                             key={child.label}
                             to={child.path}
-                            className={`block rounded-lg px-3 py-2 text-sm transition-all duration-200 ${
+                            className={`block rounded-lg px-3 py-2 text-sm transition-all duration-200 short:py-1.5 ${
                               childActive[index]
                                 ? "bg-blue-600 font-semibold text-white shadow-md dark:bg-blue-700"
                                 : "text-gray-700 hover:bg-blue-50 hover:text-blue-600 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-blue-400"
@@ -145,7 +145,7 @@ export default function Layout({ children }) {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`block px-4 py-3 rounded-lg transition-all duration-200 ${
+                  className={`block rounded-lg px-4 py-2.5 transition-all duration-200 2xl:py-3 short:py-2 ${
                     active
                       ? "bg-blue-600 dark:bg-blue-700 text-white font-semibold shadow-md"
                       : "text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400"

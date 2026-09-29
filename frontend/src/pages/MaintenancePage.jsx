@@ -18,15 +18,19 @@ function TabButton({ active, onClick, children, badge, badgeTone = "bg-red-600 t
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`relative -mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+      className={`inline-flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
         active
-          ? "border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300"
-          : "border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+          ? "bg-blue-600 text-white shadow-md dark:bg-blue-700"
+          : "text-gray-700 hover:bg-blue-50 hover:text-blue-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-blue-300"
       }`}
     >
       {children}
       {badge > 0 && (
-        <span className={`min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-[11px] font-bold leading-none ${badgeTone}`}>
+        <span
+          className={`min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-[11px] font-bold leading-none ${badgeTone} ${
+            active ? "ring-2 ring-white/80" : ""
+          }`}
+        >
           {badge > 999 ? "999+" : badge}
         </span>
       )}
@@ -67,7 +71,10 @@ export default function MaintenancePage() {
       <div className="mx-auto max-w-7xl space-y-4 px-2 pb-8">
         <PMReminderBanner reminders={reminders} onView={openTodo} />
 
-        <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-gray-200 dark:border-gray-700">
+        <div
+          role="tablist"
+          className="flex gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+        >
           <TabButton active={tab === "dashboard"} onClick={() => openTab("dashboard")}>
             📊 Dashboard
           </TabButton>

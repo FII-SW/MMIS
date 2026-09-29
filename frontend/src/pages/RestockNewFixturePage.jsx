@@ -8,6 +8,7 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
 import FixtureDescriptorFields from "../components/FixtureDescriptorFields";
+import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 export default function RestockNewFixturePage() {
   const navigate = useNavigate();
@@ -37,16 +38,7 @@ export default function RestockNewFixturePage() {
     "Humu Beach",
   ];
 
-  const testAreas = [
-    "ICT_Mobo",
-    "BSI_Mobo",
-    "FBT_Mobo",
-    "ICT_Agora",
-    "FBT_Agora",
-    "TOOLS",
-    "ORT",
-    "L10_Racks",
-  ];
+  const testAreas = DEFAULT_TEST_AREAS;
 
   const [formData, setFormData] = useState({
     fixture_name: "",

@@ -25,6 +25,7 @@ import CurrentInventoryReportPage from "./pages/CurrentInventoryReportPage";
 import LowStockReportPage from "./pages/LowStockReportPage";
 import CustomizedReportPage from "./pages/CustomizedReportPage";
 import SpendingReportPage from "./pages/SpendingReportPage";
+import PMReportPage from "./pages/PMReportPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import ProfilePage from "./pages/ProfilePage";
 import TransferItemPage from "./pages/TransferItemPage";
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/dashboard/transfer" element={withLayout(["admin"], <TransferItemPage />)} />
         <Route path="/dashboard/reports/customized" element={withLayout(["admin", "user"], <CustomizedReportPage />)} />
         <Route path="/dashboard/reports/spending" element={withLayout(["admin", "user"], <SpendingReportPage />)} />
+        <Route path="/dashboard/reports/preventive-maintenance" element={withLayout(["admin", "user"], <PMReportPage />)} />
         <Route path="/dashboard/activity" element={withLayout(["admin", "user"], <ActivityPage />)} />
         <Route path="/dashboard/documents" element={withLayout(["admin", "user"], <DocumentsPage />)} />
         <Route path="/dashboard/maintenance" element={withLayout(["admin", "user"], <MaintenanceProjectsPage />)} />

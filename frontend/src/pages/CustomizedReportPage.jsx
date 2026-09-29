@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import SearchableSelect from "../components/SearchableSelect";
 import { getProjects } from "../utils/projects";
+import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 export default function CustomizedReportPage() {
   const ROWS_PER_PAGE = 20;
@@ -22,16 +23,7 @@ export default function CustomizedReportPage() {
   const [endDate, setEndDate] = useState("");
 
   // Options
-  const testAreas = [
-    "ICT_Mobo",
-    "BSI_Mobo",
-    "FBT_Mobo",
-    "ICT_Agora",
-    "FBT_Agora",
-    "TOOLS",
-    "ORT",
-    "L10_Racks",
-  ];
+  const testAreas = DEFAULT_TEST_AREAS;
 
   const [projects, setProjects] = useState(getProjects());
 

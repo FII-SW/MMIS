@@ -56,6 +56,12 @@ function csvCell(value) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+/** Saves a UTF-8 CSV (with BOM so Excel keeps special characters); `name` gets a date stamp. */
+export function downloadCsv(name, header, rows) {
+  const csv = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+  saveBlob(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }), `${safeName(name)}_${localDateStamp()}.csv`);
+}
+
 export function exportPMHistoryCsv(records, fixture, fileLabel) {
   const header = [
     "PM ID",
@@ -87,7 +93,5 @@ export function exportPMHistoryCsv(records, fixture, fileLabel) {
     (record.parts || []).map((part) => `${part.quantity} x ${part.item_name}`).join("; "),
     record.voided ? `Yes: ${record.void_reason || ""}` : "",
   ]);
-  const csv = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
-  const name = safeName(fileLabel || fixture?.fixture_name || "fixture");
-  saveBlob(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }), `PM_History_${name}_${localDateStamp()}.csv`);
+  downloadCsv(`PM_History_${safeName(fileLabel || fixture?.fixture_name || "fixture")}`, header, rows);
 }

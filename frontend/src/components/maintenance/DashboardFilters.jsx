@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { DEFAULT_TEST_AREAS } from "../../utils/testAreas";
-import { DATE_PRESETS, formatRange, presetRange, toLocalInput } from "./dateRanges";
+import { formatRange } from "./dateRanges";
 import { PM_TYPE_LABELS } from "./pmTypes";
 
 const FIELD =
@@ -35,15 +35,6 @@ export default function DashboardFilters({ options, filters, range, onChange, on
   const pmTypes = options?.pm_types || Object.entries(PM_TYPE_LABELS).map(([value, label]) => ({ value, label, configured: true }));
   const hasFilters =
     filters.project || filters.testArea || filters.pmType !== "all" || filters.search || filters.preset !== "7d";
-
-  const pickPreset = (id) => {
-    if (id === "custom") {
-      onChange({ preset: "custom", from: toLocalInput(range.from), to: toLocalInput(range.to) });
-      return;
-    }
-    const next = presetRange(id);
-    onChange({ preset: id, from: toLocalInput(next.from), to: toLocalInput(next.to) });
-  };
 
   return (
     <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -118,52 +109,33 @@ export default function DashboardFilters({ options, filters, range, onChange, on
         </div>
       </div>
 
-      <div>
-        <Label>PM type</Label>
-        <div className="flex flex-wrap gap-2">
-          {[{ value: "all", label: "All PMs", configured: true }, ...pmTypes].map((type) => {
-            const active = filters.pmType === type.value;
-            return (
-              <button
-                key={type.value}
-                type="button"
-                onClick={() => onChange({ pmType: type.value })}
-                title={type.configured ? undefined : "No checklist is set up for this PM type yet"}
-                className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
-                  active
-                    ? "border-blue-600 bg-blue-600 text-white shadow"
-                    : "border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-700"
-                } ${type.configured ? "" : "border-dashed"}`}
-              >
-                {type.label.replace(/ PM$/, "")}
-                {!type.configured && <span className="ml-1 text-[10px] font-normal opacity-75">(not set up)</span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-        <div className="lg:col-span-7">
-          <Label>Date range</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {DATE_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => pickPreset(preset.id)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                  filters.preset === preset.id
-                    ? "bg-indigo-600 text-white shadow"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                }`}
-              >
-                {preset.label}
-              </button>
-            ))}
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+        <div>
+          <Label>PM type</Label>
+          <div className="flex flex-wrap gap-2">
+            {[{ value: "all", label: "All PMs", configured: true }, ...pmTypes].map((type) => {
+              const active = filters.pmType === type.value;
+              return (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => onChange({ pmType: type.value })}
+                  title={type.configured ? undefined : "No checklist is set up for this PM type yet"}
+                  className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
+                    active
+                      ? "border-blue-600 bg-blue-600 text-white shadow"
+                      : "border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-700"
+                  } ${type.configured ? "" : "border-dashed"}`}
+                >
+                  {type.label.replace(/ PM$/, "")}
+                  {!type.configured && <span className="ml-1 text-[10px] font-normal opacity-75">(not set up)</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
-        <div className="lg:col-span-5">
+
+        <div className="w-full sm:w-auto">
           <Label>From → To (date &amp; time)</Label>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
@@ -172,7 +144,7 @@ export default function DashboardFilters({ options, filters, range, onChange, on
               max={filters.to || undefined}
               onChange={(e) => onChange({ preset: "custom", from: e.target.value })}
               aria-label="From date and time"
-              className={FIELD}
+              className={`${FIELD} sm:w-52`}
             />
             <span className="hidden text-gray-400 sm:inline">→</span>
             <input
@@ -181,7 +153,7 @@ export default function DashboardFilters({ options, filters, range, onChange, on
               min={filters.from || undefined}
               onChange={(e) => onChange({ preset: "custom", to: e.target.value })}
               aria-label="To date and time"
-              className={FIELD}
+              className={`${FIELD} sm:w-52`}
             />
           </div>
         </div>

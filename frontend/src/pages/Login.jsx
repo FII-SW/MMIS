@@ -3,10 +3,13 @@
 import { useState } from "react";
 import API from "../api";
 import { useNavigate } from "react-router-dom";
+import PasswordVisibilityButton from "../components/PasswordVisibilityButton";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -101,18 +104,34 @@ export default function Login() {
                 </svg>
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
-                className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                autoComplete="current-password"
+                className="w-full pl-10 pr-11 py-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setError("");
                 }}
+                onKeyUp={(e) => setCapsLock(e.getModifierState?.("CapsLock") ?? false)}
+                onBlur={() => setCapsLock(false)}
                 required
                 disabled={loading}
               />
+              <PasswordVisibilityButton
+                visible={showPassword}
+                onToggle={() => setShowPassword((value) => !value)}
+                disabled={loading}
+              />
             </div>
+            {capsLock && (
+              <p className="mt-2 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                Caps Lock is on
+              </p>
+            )}
           </div>
 
           {/* Error Message */}

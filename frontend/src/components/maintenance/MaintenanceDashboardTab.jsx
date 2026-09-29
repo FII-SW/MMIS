@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../../api";
-import ComplianceTrendChart from "./ComplianceTrendChart";
 import DashboardFilters from "./DashboardFilters";
 import PMActivityChart from "./PMActivityChart";
 import PMStatusBadge from "./PMStatusBadge";
@@ -13,7 +12,7 @@ import { PM_TYPE_LABELS, pmTypeLabel } from "./pmTypes";
 import useStickyState from "./useStickyState";
 
 const DEFAULT_FILTERS = { project: "", testArea: "", pmType: "all", preset: "7d", from: "", to: "" };
-const BAR_ORDER = ["ok", "due_soon", "overdue", "never", "paused"];
+const BAR_ORDER = ["ok", "due_soon", "overdue", "never"];
 const EMPTY_TOTALS = { overdue: 0, due_soon: 0, never: 0, ok: 0, paused: 0, fixtures: 0 };
 
 function upToDatePct(counts) {
@@ -22,7 +21,7 @@ function upToDatePct(counts) {
 }
 
 function StatusBar({ counts, className = "h-1.5" }) {
-  const total = counts?.fixtures || 0;
+  const total = counts ? BAR_ORDER.reduce((sum, state) => sum + (counts[state] || 0), 0) : 0;
   return (
     <div className={`flex w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700 ${className}`}>
       {total > 0 &&
@@ -221,7 +220,7 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
         {/* ---------- current status ---------- */}
         <section className="space-y-2">
           <SectionTitle title="Current PM status" hint="As of right now. The date range does not change these numbers." />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <KpiTile
               icon="✅"
               label="Up to date"
@@ -253,21 +252,6 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
               className={PM_STATE_META.never.tile}
               onClick={data ? () => onOpenTodo("never") : undefined}
             />
-            <KpiTile
-              icon="⏸"
-              label="Paused"
-              value={data ? totals.paused : null}
-              sublabel="Out of service"
-              className={PM_STATE_META.paused.tile}
-            />
-            <KpiTile
-              icon="⚠"
-              label="Open issues"
-              value={data ? data.open_issues : null}
-              sublabel="Failed tasks not fixed"
-              className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300"
-              onClick={data ? () => onOpenTab("issues") : undefined}
-            />
           </div>
           {totals.fixtures > 0 && (
             <div className="space-y-1">
@@ -290,7 +274,7 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
         {/* ---------- activity in range ---------- */}
         <section className="space-y-2">
           <SectionTitle title="PM activity" hint={rangeLabel} />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             <KpiTile
               icon="🛠"
               label="PMs completed"
@@ -321,13 +305,6 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
               className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300"
             />
             <KpiTile
-              icon="📦"
-              label="Parts from stock"
-              value={activity?.parts_used}
-              sublabel="Units used during PMs"
-              className="border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-300"
-            />
-            <KpiTile
               icon="👷"
               label="Users completed PM"
               value={activity?.technicians}
@@ -355,9 +332,6 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
                 <EmptyNote>Loading…</EmptyNote>
               )}
             </Panel>
-
-            <ComplianceTrendChart project={stored.project} testArea={stored.testArea} pmType={stored.pmType} />
-
             <Panel title="By project & test area" subtitle="Click a row to open its fixtures">
               {!status ? (
                 <EmptyNote>Loading…</EmptyNote>
@@ -375,7 +349,6 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
                         <th className="px-3 py-2 text-right text-red-600 dark:text-red-400">Overdue</th>
                         <th className="px-3 py-2 text-right text-yellow-700 dark:text-yellow-400">Due soon</th>
                         <th className="hidden px-3 py-2 text-right sm:table-cell">Never</th>
-                        <th className="hidden px-3 py-2 text-right sm:table-cell">Paused</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -415,7 +388,6 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
                               {loc.due_soon}
                             </td>
                             <td className="hidden px-3 py-2 text-right text-gray-500 dark:text-gray-400 sm:table-cell">{loc.never}</td>
-                            <td className="hidden px-3 py-2 text-right text-gray-500 dark:text-gray-400 sm:table-cell">{loc.paused}</td>
                           </tr>
                         );
                       })}

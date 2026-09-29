@@ -50,6 +50,15 @@ export const WORKFLOW_CARDS = [
     articleId: "return-flow",
   },
   {
+    id: "maintenance",
+    title: "Maintenance (PM)",
+    icon: "🛠️",
+    description: "Record fixture PMs, handle failed tasks, and check what is due.",
+    color: "teal",
+    roles: ["admin", "user"],
+    articleId: "maintenance-hub",
+  },
+  {
     id: "restock",
     title: "Restock Inventory",
     icon: "📦",
@@ -79,7 +88,7 @@ export const HELP_ARTICLES = [
     summary: "Overview of the Material Management Inventory System.",
     steps: [
       "Sign in with your employee username and password.",
-      "Use the left sidebar for Request, Return, Reports, Alerts, Documents, and more.",
+      "Use the left sidebar for Request, Return, Reports, Alerts, Documents, Maintenance, and more.",
       "Use the blue Back button at the top-left to go to the previous step.",
       "Admins also see Restock and Transfer in the sidebar.",
     ],
@@ -121,6 +130,7 @@ export const HELP_ARTICLES = [
         steps: [
           "Search by item name, part number, or description.",
           "Click the item to open details.",
+          "Select the fixture the item is for. TOOLS and Golden_Board items list every fixture of the project (the tag shows its test area).",
           "Enter quantity and submit the request.",
           "Your checkout appears under Return when you need to bring items back.",
         ],
@@ -164,6 +174,151 @@ export const HELP_ARTICLES = [
     ],
     keywords: ["return", "bring back", "checkout", "active", "transaction"],
     routes: ["/dashboard/return"],
+  },
+  {
+    id: "maintenance-hub",
+    title: "How to use Maintenance (PM)",
+    icon: "🛠️",
+    category: "Maintenance",
+    summary: "Record preventive maintenance (PM) on fixtures. Pick what you need to do.",
+    branches: [
+      {
+        id: "pm-record",
+        label: "Record a PM (most common)",
+        description: "Project → test area → fixture → fill the checklist → submit.",
+        steps: [
+          "Click Maintenance in the left sidebar (or Record PM under it).",
+          "Select Project Name, for example Bondi Beach.",
+          "Select Test Area, for example FBT_Mobo. Projects without test areas skip this step.",
+          "Select Fixture: the list shows the most urgent first. Search by fixture name, asset tag, serial, line, or manufacturer, or tap a status button (Overdue, Due soon…) to filter.",
+          "Click Open on the fixture (or click its Weekly / Biweekly / Monthly status to go straight to that checklist).",
+          "Click Record Weekly PM (or the PM type you are doing).",
+          "Mark every task Passed, Failed, or N/A. Use Mark all passed when everything is OK, then change any that failed.",
+          "If a task failed, write what you found or fixed in Notes (required).",
+          "Add spare parts if you used any (see “Use spare parts during a PM”).",
+          "Click the green Submit Weekly PM button. The fixture status turns green (Up to date) and the PM appears under PM History.",
+          "Tip: your progress is saved while you work. If you leave the page, it is restored next time.",
+        ],
+        links: [{ label: "Record PM", path: "/dashboard/maintenance" }],
+      },
+      {
+        id: "pm-due",
+        label: "Find which PMs are due",
+        description: "See overdue and due-soon PMs for all fixtures.",
+        steps: [
+          "The red “PM overdue” button at the top of every page shows how many PMs are late. Click it to see them.",
+          "Or open Maintenance → PM Dashboard → To do tab.",
+          "Filter by project, PM type, or search. Switch between List and Calendar view.",
+          "Click a row to open that fixture’s checklist and record the PM.",
+          "In Record PM, the project and test area cards also show counts like “3 overdue · 2 due soon”.",
+        ],
+        links: [
+          { label: "Open To do list", path: "/dashboard/maintenance/dashboard?tab=todo" },
+          { label: "Record PM", path: "/dashboard/maintenance" },
+        ],
+      },
+      {
+        id: "pm-failed",
+        label: "A task failed / mark an issue fixed",
+        description: "Failed tasks create open issues until they are repaired.",
+        steps: [
+          "When you submit a PM with a Failed task, MMIS opens an issue for that task automatically.",
+          "Open issues show in orange on the fixture page and in PM Dashboard → Issues tab.",
+          "After the repair, click Mark fixed on the issue and write what was done (e.g. Replaced SATA interposer).",
+          "An issue also closes by itself when that task passes in a later PM.",
+          "Need a part for the repair? Click Request spare part on the fixture page.",
+        ],
+        links: [{ label: "Open Issues", path: "/dashboard/maintenance/dashboard?tab=issues" }],
+      },
+      {
+        id: "pm-parts",
+        label: "Use spare parts during a PM",
+        description: "Take parts from MMIS stock while recording the PM.",
+        steps: [
+          "In the PM checklist, scroll to 📦 Parts taken from stock.",
+          "Search the item name or part number (items from this project and test area are listed).",
+          "Add it and set the quantity used. Repeat for more parts.",
+          "When you submit, the quantity is taken out of inventory and linked to this PM and fixture.",
+          "Parts that are not in MMIS inventory: type them in the Parts replaced box instead.",
+          "Or use Request spare part on the fixture page to request an item separately.",
+        ],
+        links: [{ label: "Record PM", path: "/dashboard/maintenance" }],
+      },
+      {
+        id: "pm-mistake",
+        label: "Fix a PM recorded by mistake",
+        description: "Edit notes, void, or delete a PM record.",
+        steps: [
+          "Open the fixture → PM History tab → click the record.",
+          "Edit notes: fix notes or parts text. Allowed for the person who recorded it, and admins.",
+          "Void (admin): enter a reason, e.g. “Recorded on the wrong fixture”. The record stays visible but no longer counts toward PM status.",
+          "Delete (admin): removes the record permanently. Use Void if you want to keep a trace.",
+          "Change log shows every edit and who made it. Print gives a paper copy of the PM.",
+        ],
+      },
+      {
+        id: "pm-pause",
+        label: "Fixture out of service (pause PM)",
+        description: "Stop PM reminders while a fixture is broken or away (admin).",
+        steps: [
+          "Admins: open the fixture page and click ⏸ Pause PM (fixture out of service).",
+          "Enter a reason (required), e.g. Sent for repair, then click Pause PM.",
+          "Paused fixtures show grey “PM paused” and are not counted as overdue.",
+          "When the fixture is back, click ▶ Resume PM. The next PM is due one full interval after the resume date.",
+          "Not an admin? Ask your MMIS admin to pause or resume the fixture.",
+        ],
+      },
+      {
+        id: "pm-dashboard",
+        label: "See the PM Dashboard",
+        description: "Overview for leads: status, activity, and top users.",
+        steps: [
+          "Open Maintenance → PM Dashboard in the sidebar.",
+          "Filter by search, project, test area, PM type, and From → To date & time.",
+          "Current PM status shows today’s numbers (up to date, overdue, due soon, never done, paused, open issues).",
+          "PM activity shows what happened in the selected dates: PMs completed, passed, failed tasks, parts used, and users who completed PMs.",
+          "Click a row in “By project & test area” or “Up next” to jump to those fixtures.",
+          "Use the Completed tab to list past PMs, or turn on “Only PMs I did” to see your own.",
+        ],
+        links: [{ label: "Open PM Dashboard", path: "/dashboard/maintenance/dashboard" }],
+      },
+    ],
+    keywords: [
+      "maintenance", "pm", "preventive", "fixture", "checklist", "weekly", "biweekly", "monthly", "quarterly",
+      "record", "overdue", "due", "failed", "issue", "pause", "void", "delete", "dashboard", "to do", "spare",
+    ],
+    routes: ["/dashboard/maintenance"],
+  },
+  {
+    id: "maintenance-status",
+    title: "PM status colours & schedule",
+    icon: "🚦",
+    category: "Maintenance",
+    summary: "What Overdue, Due soon, Never done, Up to date, and Paused mean, and how often each PM is due.",
+    sections: [
+      {
+        heading: "Status colours",
+        steps: [
+          "🔴 Overdue: the PM is past its due date. Do it first.",
+          "🟡 Due soon: due within the next few days (Weekly 2, Biweekly 3, Monthly 5 days).",
+          "⚪ Never done: no PM recorded yet for this fixture. The first one is due one interval after tracking started.",
+          "🟢 Up to date: done within its interval.",
+          "⚫ PM paused: fixture is out of service; not counted as overdue.",
+        ],
+      },
+      {
+        heading: "Which PMs apply",
+        steps: [
+          "FBT test areas (FBT_Mobo, FBT_Agora): Weekly PM every 7 days and Biweekly PM every 14 days.",
+          "A Biweekly PM also counts as that week’s Weekly PM — no need to do both on the same day.",
+          "ICT test areas (ICT_Mobo, ICT_Agora): Monthly PM every 30 days.",
+          "Other test areas have no PM checklist yet. Quarterly PM will appear once its checklist is set up.",
+        ],
+      },
+    ],
+    links: [{ label: "Record PM", path: "/dashboard/maintenance" }],
+    keywords: ["status", "colour", "color", "overdue", "due soon", "never done", "paused", "interval", "schedule", "how often"],
+    routes: ["/dashboard/maintenance"],
   },
   {
     id: "restock-hub",
@@ -299,7 +454,7 @@ export const HELP_ARTICLES = [
     summary: "Export and review inventory, spending, and custom data.",
     steps: [
       "Open Reports from the sidebar.",
-      "Choose Current Inventory, Low Stock, Customized, or Spending report.",
+      "Choose Current Inventory, Low Stock, Customized, Spending, or Preventive Maintenance report.",
       "Apply filters (project, test area, date range where available).",
       "Download or review the data on screen.",
     ],
@@ -418,6 +573,32 @@ export const HELP_ARTICLES = [
     ],
     keywords: ["custom", "report", "export", "csv", "filter"],
     routes: ["/dashboard/reports/customized"],
+  },
+  {
+    id: "pm-report",
+    title: "Preventive Maintenance Report",
+    icon: "🛠️",
+    category: "Reports & Alerts",
+    summary: "PMs passed, failed and overdue for any date range, by day, week or month.",
+    steps: [
+      "Open Reports → Preventive Maintenance Report.",
+      "To see one week, pick it in Week (e.g. WW39 · Sep 21 – Sep 27) or step with ◀ ▶. The week is shown day by day.",
+      "Or pick a Quick range (This week, Last week, Last 4 weeks, This month…) or type your own From → To date & time.",
+      "Choose Group by: Daily, Weekly or Monthly. Weeks run Monday to Sunday (ISO work weeks).",
+      "In the Weekly summary, click a week to open it day by day; in Monthly, click a month to open it week by week.",
+      "Narrow it down with Project, Test area, PM type, Result (passed / failed) or Search (fixture, line, user).",
+      "Top tiles: PMs completed, Passed (with pass rate), Failed, Overdue and PMs tracked. Click a tile to jump to its list.",
+      "The summary table shows each day / week / month. 'Overdue at end' = PMs past their due date at the end of that period.",
+      "Below it, switch between All PMs, Failed (with the failed tasks) and Overdue (due date, days overdue, last done). Click a fixture to open it.",
+      "Click Download CSV on the summary or on the list to export it to Excel.",
+      "Note: paused fixtures are never counted as overdue, and a biweekly PM also counts for the weekly PM on FBT fixtures.",
+    ],
+    links: [
+      { label: "Open Reports", path: "/dashboard/reports" },
+      { label: "PM Report", path: "/dashboard/reports/preventive-maintenance" },
+    ],
+    keywords: ["pm", "preventive", "preventative", "maintenance", "report", "passed", "failed", "overdue", "weekly", "monthly", "csv"],
+    routes: ["/dashboard/reports/preventive-maintenance"],
   },
   {
     id: "profile-settings",
@@ -582,10 +763,16 @@ export function getPageContextLabel(pathname) {
   if (pathname.startsWith("/dashboard/restock")) return "Restock";
   if (pathname.startsWith("/dashboard/alerts")) return "Low Stock Alerts";
   if (pathname.startsWith("/dashboard/reports/customized")) return "Reports — Customized";
+  if (pathname.startsWith("/dashboard/reports/preventive-maintenance")) return "Reports — Preventive Maintenance";
   if (pathname.startsWith("/dashboard/reports")) return "Reports";
   if (pathname.startsWith("/dashboard/activity")) return "Activity History";
   if (pathname.startsWith("/dashboard/documents")) return "Project Documents";
   if (pathname.startsWith("/dashboard/transfer")) return "Transfer";
+  if (pathname.startsWith("/dashboard/maintenance/dashboard")) return "Maintenance — PM Dashboard";
+  if (pathname.startsWith("/dashboard/maintenance/test-area")) return "Maintenance — Test Area";
+  if (pathname.startsWith("/dashboard/maintenance/work")) return "Maintenance — Select Fixture";
+  if (pathname.startsWith("/dashboard/maintenance/fixture")) return "Maintenance — Fixture PM";
+  if (pathname.startsWith("/dashboard/maintenance")) return "Maintenance — Project";
   if (pathname.startsWith("/dashboard/profile")) return "Profile";
   if (pathname.startsWith("/dashboard/change-password")) return "Change Password";
   return "MMIS";

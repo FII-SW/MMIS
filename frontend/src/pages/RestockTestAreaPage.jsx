@@ -4,6 +4,7 @@ import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
+import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 export default function RestockTestAreaPage() {
   const navigate = useNavigate();
@@ -38,17 +39,7 @@ export default function RestockTestAreaPage() {
     return <AccessDenied feature="the Restock feature" backTo="/dashboard" />;
   }
 
-  // Test areas
-  const testAreas = [
-    "ICT_Mobo",
-    "BSI_Mobo",
-    "FBT_Mobo",
-    "ICT_Agora",
-    "FBT_Agora",
-    "TOOLS",
-    "ORT",
-    "L10_Racks",
-  ];
+  const testAreas = DEFAULT_TEST_AREAS;
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">
