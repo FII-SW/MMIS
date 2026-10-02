@@ -94,6 +94,7 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Item name is required")
 
     data.pop("confirm_merge", None)
+    user_remarks = str(data.pop("remarks", None) or "").strip()[:500]
 
     if data.get("item_current_quantity") is None:
         raise HTTPException(status_code=400, detail="Current quantity is required")
@@ -128,7 +129,7 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
             fixture_id=default_fixture.fixture_id,
             quantity_used=item.item_current_quantity,
             transaction_type="restock",
-            remarks="New item added",
+            remarks=f"New item added · {user_remarks}" if user_remarks else "New item added",
             test_area=item.test_area,
             project_name=item.project_name,
         )
@@ -185,6 +186,7 @@ def request_item(data: schemas.RequestCreate, request: Request, db: Session = De
 
     item_id = data.item_id
     qty = data.quantity
+    user_remarks = (data.remarks or "").strip() or None
 
     if qty <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
@@ -213,6 +215,7 @@ def request_item(data: schemas.RequestCreate, request: Request, db: Session = De
             test_area=item.test_area,
             project_name=item.project_name,
             transaction_type="request",
+            remarks=user_remarks,
         )
         
         db.add(transaction)
@@ -317,6 +320,10 @@ def request_item(data: schemas.RequestCreate, request: Request, db: Session = De
     item.item_current_quantity -= qty
     
     # Create final request transaction for the full quantity
+    transfer_note = (
+        f"Fulfilled via cross-project transfer. Used {used_from_current} from current project, "
+        f"{total_transferred} transferred from other projects."
+    )
     final_request_tx = models.Transaction(
         item_id=item_id,
         employee_id=employee_id,
@@ -325,7 +332,7 @@ def request_item(data: schemas.RequestCreate, request: Request, db: Session = De
         test_area=item.test_area,
         project_name=item.project_name,
         transaction_type="request",
-        remarks=f"Fulfilled via cross-project transfer. Used {used_from_current} from current project, {total_transferred} transferred from other projects."
+        remarks=f"{user_remarks} | {transfer_note}" if user_remarks else transfer_note,
     )
     db.add(final_request_tx)
     

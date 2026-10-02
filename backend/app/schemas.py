@@ -61,6 +61,7 @@ class RequestCreate(BaseModel):
     employee_id: int
     fixture_id: Optional[int] = None
     quantity: int = Field(gt=0)
+    remarks: Optional[str] = Field(default=None, max_length=500)
 
 # Schema for returning full inventory details to the client
 class InventoryOut(InventoryBase):

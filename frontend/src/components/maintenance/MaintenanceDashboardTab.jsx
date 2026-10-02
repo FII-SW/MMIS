@@ -13,8 +13,6 @@ import useStickyState from "./useStickyState";
 
 const DEFAULT_FILTERS = { project: "", testArea: "", pmType: "all", preset: "7d", from: "", to: "" };
 const BAR_ORDER = ["ok", "due_soon", "overdue", "never"];
-const EMPTY_TOTALS = { overdue: 0, due_soon: 0, never: 0, ok: 0, paused: 0, fixtures: 0 };
-
 function upToDatePct(counts) {
   const active = activePMCount(counts);
   return active ? Math.round(((counts.ok + counts.due_soon) / active) * 100) : null;
@@ -180,9 +178,7 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
   }, [stored.project, stored.testArea, stored.pmType, debouncedSearch, fromKey, toKey, customInvalid]);
 
   const status = data?.status;
-  const totals = status?.totals || EMPTY_TOTALS;
   const activity = data?.activity;
-  const pct = upToDatePct(totals);
   const passRate = activity?.completed ? Math.round((activity.passed / activity.completed) * 100) : null;
   const rangeLabel = formatRange(range.from, range.to);
   const pmTypeEntries = Object.entries(status?.by_pm_type || {}).sort(
@@ -217,60 +213,6 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <div className={`space-y-5 transition-opacity ${loading && data ? "opacity-60" : ""}`}>
-        {/* ---------- current status ---------- */}
-        <section className="space-y-2">
-          <SectionTitle title="Current PM status" hint="As of right now. The date range does not change these numbers." />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <KpiTile
-              icon="✅"
-              label="Up to date"
-              value={pct == null ? (data ? "—" : null) : `${pct}%`}
-              sublabel={data ? `${totals.ok + totals.due_soon} of ${activePMCount(totals)} fixtures` : null}
-              className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300"
-            />
-            <KpiTile
-              icon="⛔"
-              label="Overdue"
-              value={data ? totals.overdue : null}
-              sublabel="Past due date"
-              className={PM_STATE_META.overdue.tile}
-              onClick={data ? () => onOpenTodo("overdue") : undefined}
-            />
-            <KpiTile
-              icon="⏰"
-              label="Due soon"
-              value={data ? totals.due_soon : null}
-              sublabel="Plan these next"
-              className={PM_STATE_META.due_soon.tile}
-              onClick={data ? () => onOpenTodo("due_soon") : undefined}
-            />
-            <KpiTile
-              icon="🆕"
-              label="Never done"
-              value={data ? totals.never : null}
-              sublabel="First PM not due yet"
-              className={PM_STATE_META.never.tile}
-              onClick={data ? () => onOpenTodo("never") : undefined}
-            />
-          </div>
-          {totals.fixtures > 0 && (
-            <div className="space-y-1">
-              <StatusBar counts={totals} className="h-2.5" />
-              <div className="flex flex-wrap gap-3 text-[11px] text-gray-500 dark:text-gray-400">
-                {BAR_ORDER.map((state) => (
-                  <span key={state} className="flex items-center gap-1">
-                    <span className={`h-2 w-2 rounded-full ${PM_STATE_META[state].dot}`} />
-                    {PM_STATE_META[state].label} {totals[state]}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          {data && totals.fixtures === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">No PM fixtures match these filters.</p>
-          )}
-        </section>
-
         {/* ---------- activity in range ---------- */}
         <section className="space-y-2">
           <SectionTitle title="PM activity" hint={rangeLabel} />

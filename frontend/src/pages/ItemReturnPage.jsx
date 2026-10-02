@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import { apiErrorMessage } from "../utils/apiError";
 import { decodeToken } from "../utils/auth";
 import { useNotifications } from "../contexts/NotificationContext";
 
@@ -118,7 +119,7 @@ export default function ReturnItemPage() {
       navigate("/dashboard/return/");
     } catch (err) {
       console.error(err);
-      alert("Return failed");
+      alert(apiErrorMessage(err, "Return failed"));
     }
   };
 

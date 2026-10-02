@@ -2,8 +2,9 @@
 
 PM_TYPES = ("weekly", "biweekly", "monthly", "quarterly")
 PM_INTERVAL_DAYS = {"weekly": 7, "biweekly": 14, "monthly": 30, "quarterly": 90}
-# A PM counts as "due soon" once it is within this many days of its due date.
-PM_DUE_SOON_DAYS = {"weekly": 2, "biweekly": 3, "monthly": 5, "quarterly": 10}
+# A PM counts as "due soon" once it is within this many days of its due date (see pm_schedule:
+# due dates fall on the last day of a work week / month / quarter, so 7 = "due this week").
+PM_DUE_SOON_DAYS = {"weekly": 7, "biweekly": 7, "monthly": 7, "quarterly": 14}
 # A second record of the same PM type inside this window needs explicit confirmation.
 PM_DUPLICATE_WINDOW_HOURS = 12
 PM_TYPE_LABELS = {

@@ -10,8 +10,16 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..database import get_db
-from ..utils.pm_checklists import PM_COVERS, PM_INTERVAL_DAYS, PM_TYPE_LABELS, get_pm_types
-from .maintenance import _active_records, _as_utc, _pm_test_area_filter, _pm_tracking_start
+from ..utils.pm_checklists import PM_COVERS, PM_TYPE_LABELS, get_pm_types
+from ..utils.pm_schedule import pm_due_at
+from .maintenance import (
+    _active_records,
+    _as_utc,
+    _parts_by_pm,
+    _pm_test_area_filter,
+    _pm_tracking_start,
+    pm_baseline,
+)
 from .pm_dashboard import _filter_options, _search_filter
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance report"])
@@ -96,11 +104,8 @@ def overdue_at(pairs: list[tuple], record_times: dict, at: datetime) -> list[tup
     for fixture, pm_type, baseline in pairs:
         if baseline is None or baseline > at:
             continue
-        interval = timedelta(days=PM_INTERVAL_DAYS[pm_type])
         last = last_covering(record_times, fixture.fixture_id, pm_type, at)
-        due = baseline + interval
-        if last is not None:
-            due = max(due, last + interval)
+        due = pm_due_at(pm_type, last, baseline)
         if due < at:
             overdue.append((fixture, pm_type, due, last))
     return overdue
@@ -161,32 +166,37 @@ def get_pm_report(
 
     # ----- PMs completed in range -----
     record_model = models.FixturePMRecord
-    query = (
-        db.query(
-            record_model,
-            models.Employee.employee_name,
-            models.Fixture.fixture_name,
-            models.Fixture.production_line,
-        )
-        .outerjoin(models.Fixture, record_model.fixture_id == models.Fixture.fixture_id)
-        .outerjoin(models.Employee, record_model.performed_by_employee_id == models.Employee.employee_id)
-        .filter(
-            _active_records(),
-            record_model.performed_at >= range_start,
-            record_model.performed_at < range_end,
-        )
-    )
-    if project:
-        query = query.filter(record_model.project_name == project)
-    if test_area:
-        query = query.filter(record_model.test_area == test_area)
-    if pm_type:
-        query = query.filter(record_model.pm_type == pm_type)
-    if result != "all":
-        query = query.filter(record_model.overall_result == result)
     record_search = _search_filter(q, models.Employee.employee_name)
-    if record_search is not None:
-        query = query.filter(record_search)
+
+    def records_between(start: datetime, end: datetime):
+        query = (
+            db.query(
+                record_model,
+                models.Employee.employee_name,
+                models.Fixture.fixture_name,
+                models.Fixture.production_line,
+            )
+            .outerjoin(models.Fixture, record_model.fixture_id == models.Fixture.fixture_id)
+            .outerjoin(models.Employee, record_model.performed_by_employee_id == models.Employee.employee_id)
+            .filter(
+                _active_records(),
+                record_model.performed_at >= start,
+                record_model.performed_at < end,
+            )
+        )
+        if project:
+            query = query.filter(record_model.project_name == project)
+        if test_area:
+            query = query.filter(record_model.test_area == test_area)
+        if pm_type:
+            query = query.filter(record_model.pm_type == pm_type)
+        if result != "all":
+            query = query.filter(record_model.overall_result == result)
+        if record_search is not None:
+            query = query.filter(record_search)
+        return query
+
+    query = records_between(range_start, range_end)
 
     stats = [
         {
@@ -214,11 +224,15 @@ def get_pm_report(
             "performed_by": employee_name,
             "failed_tasks": _failed_tasks(record),
             "notes": record.notes,
+            "parts_replaced": record.parts_replaced,
         }
         for record, employee_name, fixture_name, line in query.order_by(record_model.performed_at.desc())
         .limit(RECORD_LIMIT)
         .all()
     ]
+    parts = _parts_by_pm(db, [r["pm_id"] for r in records])
+    for r in records:
+        r["parts"] = parts.get(r["pm_id"], [])
 
     # ----- PM pairs that can be overdue -----
     fixture_query = db.query(models.Fixture).filter(_pm_test_area_filter(), models.Fixture.pm_paused.is_(False))
@@ -234,10 +248,7 @@ def get_pm_report(
 
     pairs = []
     for fixture in fixtures:
-        baseline = None
-        if tracking_start is not None:
-            starts = [tracking_start, _as_utc(fixture.created_at), _as_utc(fixture.pm_resumed_at)]
-            baseline = max(s for s in starts if s is not None)
+        baseline = pm_baseline(fixture, tracking_start)
         for kind in get_pm_types(fixture.test_area):
             if not pm_type or kind == pm_type:
                 pairs.append((fixture, kind, baseline))
@@ -291,6 +302,21 @@ def get_pm_report(
         key=lambda row: row["due_at"],
     )
 
+    # ----- same-length period just before, for "vs previous" comparisons -----
+    previous_start = range_start - (range_end - range_start)
+    previous_results = [
+        {"overall_result": overall_result}
+        for (overall_result,) in records_between(previous_start, range_start)
+        .with_entities(record_model.overall_result)
+        .all()
+    ]
+    previous = {
+        "date_from": previous_start,
+        "date_to": range_start,
+        **_counts(previous_results),
+        "overdue": len(overdue_at(pairs, record_times, min(range_start, now))),
+    }
+
     by_pm_type = []
     for kind in sorted({r["pm_type"] for r in stats} | {row["pm_type"] for row in overdue_rows}):
         by_pm_type.append(
@@ -313,6 +339,7 @@ def get_pm_report(
             "tracked_pms": len(pairs),
         },
         "overdue_checked_at": overdue_checked_at,
+        "previous": previous,
         "periods": period_rows,
         "by_pm_type": by_pm_type,
         "records": records,

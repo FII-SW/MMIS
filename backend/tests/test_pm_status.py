@@ -10,6 +10,7 @@ from app.routes.maintenance import _fixture_pm, _pm_entry
 from app.routes.pm_dashboard import summarize_status
 from app.routes.pm_workflow import compute_weekly_compliance
 
+# Thursday of WW39 (Mon Sep 21 - Sun Sep 27). Noon UTC keeps every date the same in plant time.
 NOW = datetime(2026, 9, 24, 12, 0, tzinfo=timezone.utc)
 
 
@@ -27,32 +28,37 @@ class TestPMEntry(unittest.TestCase):
         self.assertIsNone(entry["days_until_due"])
 
     def test_weekly_states(self):
+        # done this week -> ok until the end of next week
         self.assertEqual(_pm_entry("weekly", _latest(1), NOW)["state"], "ok")
-        self.assertEqual(_pm_entry("weekly", _latest(5.5), NOW)["state"], "due_soon")
-        overdue = _pm_entry("weekly", _latest(9), NOW)
+        # done last week (WW38) -> due this week
+        due_soon = _pm_entry("weekly", _latest(10), NOW)
+        self.assertEqual(due_soon["state"], "due_soon")
+        self.assertEqual(due_soon["days_until_due"], 3)
+        # last done in WW37 -> WW38 was missed
+        overdue = _pm_entry("weekly", _latest(11), NOW)
         self.assertEqual(overdue["state"], "overdue")
-        self.assertEqual(overdue["days_until_due"], -2)
+        self.assertEqual(overdue["days_until_due"], -4)
 
     def test_monthly_states(self):
         self.assertEqual(_pm_entry("monthly", _latest(10), NOW)["state"], "ok")
-        self.assertEqual(_pm_entry("monthly", _latest(27), NOW)["state"], "due_soon")
-        self.assertEqual(_pm_entry("monthly", _latest(31), NOW)["state"], "overdue")
+        self.assertEqual(_pm_entry("monthly", _latest(27), NOW)["state"], "due_soon")  # August -> due Sep 30
+        self.assertEqual(_pm_entry("monthly", _latest(60), NOW)["state"], "overdue")  # July -> August missed
 
     def test_naive_datetime_treated_as_utc(self):
         record = SimpleNamespace(performed_at=(NOW - timedelta(days=1)).replace(tzinfo=None), overall_result="passed")
         self.assertEqual(_pm_entry("weekly", (record, None), NOW)["state"], "ok")
 
     def test_never_done_uses_baseline(self):
-        not_due = _pm_entry("biweekly", None, NOW, baseline=NOW - timedelta(days=5))
+        not_due = _pm_entry("biweekly", None, NOW, baseline=NOW)
         self.assertEqual(not_due["state"], "never")
-        self.assertEqual(not_due["days_until_due"], 9)
+        self.assertEqual(not_due["days_until_due"], 10)
 
-        due_soon = _pm_entry("biweekly", None, NOW, baseline=NOW - timedelta(days=12))
+        due_soon = _pm_entry("biweekly", None, NOW, baseline=NOW - timedelta(days=5))
         self.assertEqual(due_soon["state"], "due_soon")
 
         overdue = _pm_entry("monthly", None, NOW, baseline=NOW - timedelta(days=33))
         self.assertEqual(overdue["state"], "overdue")
-        self.assertEqual(overdue["days_until_due"], -3)
+        self.assertEqual(overdue["days_until_due"], -24)
         self.assertIsNone(overdue["last_performed_at"])
 
 
@@ -63,7 +69,7 @@ class TestFixturePM(unittest.TestCase):
         pm = _fixture_pm(fixture, latest_map, NOW)
         self.assertEqual(pm["pm_types"], ["weekly", "biweekly"])
         self.assertEqual(pm["state"], "overdue")
-        self.assertEqual(pm["days_until_due"], -6)
+        self.assertEqual(pm["days_until_due"], -4)
 
     def test_due_soon_outranks_not_yet_due(self):
         fixture = SimpleNamespace(fixture_id=2, test_area="FBT_Agora")
@@ -85,11 +91,17 @@ class TestFixturePM(unittest.TestCase):
         pm = _fixture_pm(fixture, {}, NOW, tracking_start=NOW - timedelta(days=31))
         self.assertEqual(pm["state"], "overdue")
 
-    def test_new_fixture_gets_its_own_grace_period(self):
-        fixture = SimpleNamespace(fixture_id=6, test_area="ICT_Mobo", created_at=NOW - timedelta(days=3))
-        pm = _fixture_pm(fixture, {}, NOW, tracking_start=NOW - timedelta(days=90))
-        self.assertEqual(pm["state"], "never")
-        self.assertEqual(pm["days_until_due"], 27)
+    def test_date_added_to_mmis_is_ignored(self):
+        fixture = SimpleNamespace(fixture_id=6, test_area="FBT_Mobo", created_at=NOW - timedelta(days=3))
+        pm = _fixture_pm(fixture, {}, NOW, tracking_start=NOW - timedelta(days=30))
+        self.assertEqual(pm["status"]["weekly"]["state"], "overdue")
+        self.assertEqual(pm["state"], "overdue")
+
+    def test_tracking_start_this_week_is_due_this_week(self):
+        fixture = SimpleNamespace(fixture_id=9, test_area="FBT_Mobo")
+        pm = _fixture_pm(fixture, {}, NOW, tracking_start=NOW - timedelta(days=2))
+        self.assertEqual(pm["status"]["weekly"]["state"], "due_soon")
+        self.assertEqual(pm["status"]["weekly"]["days_until_due"], 3)
 
     def test_non_pm_area(self):
         fixture = SimpleNamespace(fixture_id=3, test_area="BSI_Mobo")
@@ -104,7 +116,7 @@ class TestFixturePM(unittest.TestCase):
         self.assertEqual({e["state"] for e in pm["status"].values()}, {"paused"})
         self.assertIsNone(pm["days_until_due"])
 
-    def test_resume_restarts_grace_period(self):
+    def test_resume_is_due_by_end_of_resume_month(self):
         fixture = SimpleNamespace(
             fixture_id=8,
             test_area="ICT_Mobo",
@@ -113,8 +125,8 @@ class TestFixturePM(unittest.TestCase):
             pm_resumed_at=NOW - timedelta(days=2),
         )
         pm = _fixture_pm(fixture, {}, NOW, tracking_start=NOW - timedelta(days=90))
-        self.assertEqual(pm["state"], "never")
-        self.assertEqual(pm["days_until_due"], 28)
+        self.assertEqual(pm["state"], "due_soon")
+        self.assertEqual(pm["days_until_due"], 6)
 
 
 def _dashboard_fixture(fixture_id, test_area, project="P1"):

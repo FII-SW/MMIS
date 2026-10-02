@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session, aliased
 from .. import models
 from ..database import get_db
 from ..utils.auth_deps import employee_id_from_token, get_current_user, require_admin
-from ..utils.pm_checklists import PM_COVERS, PM_INTERVAL_DAYS, get_pm_types
+from ..utils.pm_checklists import PM_COVERS, get_pm_types
+from ..utils.pm_schedule import pm_due_at
 from .maintenance import (
     _active_records,
     _as_utc,
@@ -19,7 +20,11 @@ from .maintenance import (
     _pm_test_area_filter,
     _pm_tracking_start,
     _serialize_fixture,
+    pm_baseline,
 )
+
+# A quarterly PM done at the start of a quarter is still valid until the end of the next one.
+TREND_HISTORY_DAYS = 200
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance workflow"])
 
@@ -303,7 +308,8 @@ def compute_weekly_compliance(
     """
     pairs: (fixture_id, pm_type, baseline) for every PM that applies.
     record_times: (fixture_id, pm_type) -> sorted performed_at of active records.
-    A PM is up to date at time d when its last (covering) record is less than one interval old.
+    A PM is up to date at time d when it has a (covering) record and its calendar due date
+    (see pm_schedule) has not passed yet.
     """
     weeks = []
     for end in week_ends:
@@ -312,7 +318,6 @@ def compute_weekly_compliance(
             if baseline is None or baseline > end:
                 continue
             tracked += 1
-            interval = timedelta(days=PM_INTERVAL_DAYS[pm_type])
             covering = [pm_type] + [other for other, covered in PM_COVERS.items() if pm_type in covered]
             last = None
             for kind in covering:
@@ -320,7 +325,7 @@ def compute_weekly_compliance(
                 index = bisect.bisect_right(times, end)
                 if index:
                     last = max(last, times[index - 1]) if last else times[index - 1]
-            if last is not None and end - last < interval:
+            if last is not None and pm_due_at(pm_type, last, baseline) >= end:
                 up_to_date += 1
         start = end - timedelta(days=7)
         week_records = [failed for at, failed in completed if start < at <= end]
@@ -361,15 +366,12 @@ def get_compliance_trend(
 
     pairs = []
     for fixture in fixtures:
-        baseline = None
-        if tracking_start is not None:
-            starts = [tracking_start, _as_utc(fixture.created_at), _as_utc(fixture.pm_resumed_at)]
-            baseline = max(s for s in starts if s is not None)
+        baseline = pm_baseline(fixture, tracking_start)
         for kind in get_pm_types(fixture.test_area):
             if not pm_type or kind == pm_type:
                 pairs.append((fixture.fixture_id, kind, baseline))
 
-    history_start = week_ends[0] - timedelta(days=max(PM_INTERVAL_DAYS.values()) + 1)
+    history_start = week_ends[0] - timedelta(days=TREND_HISTORY_DAYS)
     fixture_ids = [f.fixture_id for f in fixtures]
     record_times: dict[tuple, list[datetime]] = {}
     completed: list[tuple[datetime, bool]] = []

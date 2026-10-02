@@ -4,6 +4,7 @@ import API from "../api";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { useNotifications } from "../contexts/NotificationContext";
+import { apiErrorMessage } from "../utils/apiError";
 import { usesProjectFixtures } from "../utils/testAreas";
 
 export default function ItemRequestPage() {
@@ -23,6 +24,7 @@ export default function ItemRequestPage() {
   const [fixtures, setFixtures] = useState([]);
   const [fixture, setFixture] = useState(presetFixtureId);
   const [quantity, setQuantity] = useState("");
+  const [remarks, setRemarks] = useState("");
   const [alternativeItems, setAlternativeItems] = useState([]);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [loadingAlternatives, setLoadingAlternatives] = useState(false);
@@ -107,6 +109,11 @@ export default function ItemRequestPage() {
       alert("Enter quantity");
       return;
     }
+    const numQuantity = Number(quantity);
+    if (!Number.isInteger(numQuantity) || numQuantity < 1) {
+      alert("Quantity must be a whole number of at least 1. You can't request 0 items.");
+      return;
+    }
 
     try {
       const token = localStorage.getItem("token");
@@ -115,11 +122,12 @@ export default function ItemRequestPage() {
       const requestData = {
         employee_id: payload.employee_id,
         item_id,
-        quantity: Number(quantity),
+        quantity: numQuantity,
         test_area: test_area || null,
         project_name: project,
         transaction_type: "Request",
         fixture_id: (requiresFixture && fixture) ? Number(fixture) : null,
+        remarks: remarks.trim() || null,
       };
 
       const response = await API.post("/inventory/request", requestData);
@@ -138,8 +146,7 @@ export default function ItemRequestPage() {
       }
     } catch (err) {
       console.error(err);
-      const errorMessage = err.response?.data?.detail || "Failed to submit request";
-      alert(errorMessage);
+      alert(apiErrorMessage(err, "Failed to submit request"));
       
       // If request failed due to insufficient stock, show alternatives if not already shown
       if (err.response?.status === 400 && !showAlternatives) {
@@ -401,6 +408,7 @@ export default function ItemRequestPage() {
           <input
             type="number"
             min="1"
+            step="1"
             className="w-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white p-3 rounded-lg text-base transition-all hover:border-blue-300"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
@@ -411,6 +419,9 @@ export default function ItemRequestPage() {
           <input
             type="text"
             className="w-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white p-3 rounded-lg text-base transition-all hover:border-blue-300"
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            maxLength={500}
             placeholder="Remarks (Optional)"
           />
         </div>

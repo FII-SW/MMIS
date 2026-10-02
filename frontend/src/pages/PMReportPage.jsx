@@ -42,12 +42,27 @@ function weeksBack(now, weeks) {
   return addDays(startOfWeek(now), -7 * weeks);
 }
 
-/** ISO 8601 week number (weeks start Monday; week 1 contains the first Thursday of the year). */
-function isoWeek(date) {
+/** ISO 8601 week (weeks start Monday; week 1 contains the first Thursday of the year). */
+function isoWeekYear(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return { year: d.getUTCFullYear(), week: Math.ceil(((d - yearStart) / 86400000 + 1) / 7) };
+}
+
+const isoWeek = (date) => isoWeekYear(date).week;
+
+/** "WW39" for a date/ISO string (local time); "" when missing. */
+function workWeek(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : `WW${String(isoWeek(date)).padStart(2, "0")}`;
+}
+
+function workWeekYear(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : isoWeekYear(date).year;
 }
 
 const weekKey = (monday) => toLocalInput(monday).slice(0, 10);
@@ -160,7 +175,27 @@ const KPI_TONES = {
   gray: "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200",
 };
 
-function Kpi({ label, value, sub, tone = "gray", onClick }) {
+/** Difference between two numbers; `better` says which direction is an improvement. */
+function Change({ current, previous, better = "up", unit = "", suffix = "" }) {
+  if (current === null || current === undefined || previous === null || previous === undefined) return null;
+  const diff = current - previous;
+  if (diff === 0) {
+    return <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">= same{suffix}</span>;
+  }
+  const improved = better === "up" ? diff > 0 : diff < 0;
+  return (
+    <span
+      className={`text-xs font-semibold ${improved ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+      title={improved ? "Better" : "Worse"}
+    >
+      {diff > 0 ? "▲" : "▼"} {Math.abs(diff)}
+      {unit === " pts" && Math.abs(diff) === 1 ? " pt" : unit}
+      {suffix}
+    </span>
+  );
+}
+
+function Kpi({ label, value, sub, tone = "gray", onClick, change }) {
   const Tag = onClick ? "button" : "div";
   return (
     <Tag
@@ -171,6 +206,7 @@ function Kpi({ label, value, sub, tone = "gray", onClick }) {
       <div className="text-xs font-semibold uppercase tracking-wide opacity-80">{label}</div>
       <div className="mt-1 text-3xl font-bold">{value}</div>
       {sub && <div className="mt-1 text-xs opacity-80">{sub}</div>}
+      {change && <div className="mt-1.5 rounded bg-white/70 px-1.5 py-0.5 dark:bg-black/20">{change}</div>}
     </Tag>
   );
 }
@@ -218,6 +254,24 @@ function Pager({ page, total, onChange }) {
   );
 }
 
+const stockPartsText = (record) =>
+  (record.parts || [])
+    .map((part) => `${part.quantity} × ${part.item_name || "Item"}${part.item_part_number ? ` (${part.item_part_number})` : ""}`)
+    .join("; ");
+
+const hasNotesOrParts = (record) => Boolean(record.notes || record.parts_replaced || record.parts?.length);
+
+const isNumber = (value) => typeof value === "number";
+const difference = (current, previous) => (isNumber(current) && isNumber(previous) ? current - previous : "");
+
+/** Work week(s) a summary row covers: "WW39" for a day/week, "WW36–WW40" for a month. */
+function periodWorkWeek(period, groupId) {
+  const first = workWeek(period.start);
+  if (groupId !== "month") return first;
+  const last = workWeek(new Date(new Date(period.end).getTime() - 1));
+  return first === last ? first : `${first}–${last}`;
+}
+
 const TH = "p-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300";
 const TD = "p-3 text-sm text-gray-800 dark:text-gray-200";
 
@@ -229,6 +283,7 @@ export default function PMReportPage() {
   const [error, setError] = useState("");
   const [detailTab, setDetailTab] = useState("records");
   const [page, setPage] = useState(1);
+  const [notesOnly, setNotesOnly] = useState(false);
 
   const from = fromLocalInput(filters.from);
   const to = fromLocalInput(filters.to);
@@ -318,12 +373,14 @@ export default function PMReportPage() {
   const totals = report?.totals;
   const periods = report?.periods || [];
   const maxCompleted = Math.max(0, ...periods.map((p) => p.completed));
-  const records = report?.records || [];
+  const allRecords = report?.records || [];
+  const records = notesOnly ? allRecords.filter(hasNotesOrParts) : allRecords;
   const failedRecords = records.filter((r) => r.overall_result === "failed");
   const overdue = report?.overdue || [];
   const detailRows = detailTab === "overdue" ? overdue : detailTab === "failed" ? failedRecords : records;
   const pageRows = detailRows.slice((page - 1) * ROWS_PER_PAGE, page * ROWS_PER_PAGE);
   const rangeLabel = report ? formatRange(new Date(report.range.date_from), new Date(report.range.date_to)) : "";
+  const previous = report?.previous;
   const reportFrom = report ? new Date(report.range.date_from) : null;
   const reportWeek =
     reportFrom &&
@@ -331,6 +388,11 @@ export default function PMReportPage() {
     Math.abs(new Date(report.range.date_to).getTime() - addDays(reportFrom, 7).getTime()) < 60000
       ? reportFrom
       : null;
+  const previousLabel = !previous
+    ? ""
+    : reportWeek
+      ? workWeek(previous.date_from)
+      : `previous ${Math.round((new Date(previous.date_to) - new Date(previous.date_from)) / 86400000)} days`;
   const fileTag = report ? `${formatDate(report.range.date_from)}_to_${formatDate(report.range.date_to)}` : "";
 
   const openDetail = (tab) => {
@@ -352,18 +414,48 @@ export default function PMReportPage() {
   };
 
   const downloadSummary = () => {
-    const header = [group.unit, "From", "To", "PMs Completed", "Passed", "Failed", "Pass Rate %", "Overdue at End"];
-    const rows = periods.map((p) => [
+    const header = [
+      group.unit,
+      "Year",
+      "Work Week",
+      "From",
+      "To",
+      "PMs Completed",
+      "Passed",
+      "Failed",
+      "Pass Rate %",
+      "Pass Rate Change (pts)",
+      "Overdue at End",
+      "Overdue Change",
+    ];
+    const rows = periods.map((p, i) => [
       p.label,
+      workWeekYear(p.start),
+      periodWorkWeek(p, group.id),
       formatDateTime(p.start),
       formatDateTime(p.end),
       p.completed,
       p.passed,
       p.failed,
       p.pass_rate ?? "",
+      difference(p.pass_rate, periods[i - 1]?.pass_rate),
       p.overdue ?? "",
+      difference(p.overdue, periods[i - 1]?.overdue),
     ]);
-    rows.push(["Total", "", "", totals.completed, totals.passed, totals.failed, totals.pass_rate ?? "", totals.overdue]);
+    rows.push([
+      "Total",
+      "",
+      "",
+      "",
+      "",
+      totals.completed,
+      totals.passed,
+      totals.failed,
+      totals.pass_rate ?? "",
+      difference(totals.pass_rate, previous?.pass_rate),
+      totals.overdue,
+      difference(totals.overdue, previous?.overdue),
+    ]);
     downloadCsv(`PM_Report_${group.label}_${fileTag}`, header, rows);
   };
 
@@ -371,7 +463,7 @@ export default function PMReportPage() {
     if (detailTab === "overdue") {
       downloadCsv(
         `PM_Overdue_${fileTag}`,
-        ["Fixture", "Project", "Test Area", "Line", "PM Type", "Due", "Days Overdue", "Last Done"],
+        ["Fixture", "Project", "Test Area", "Line", "PM Type", "Due", "Due Year", "Due Work Week", "Days Overdue", "Last Done"],
         overdue.map((row) => [
           row.fixture_name,
           row.project_name,
@@ -379,6 +471,8 @@ export default function PMReportPage() {
           row.production_line || "",
           row.label,
           formatDateTime(row.due_at),
+          workWeekYear(row.due_at),
+          workWeek(row.due_at),
           row.days_overdue,
           row.last_performed_at ? formatDateTime(row.last_performed_at) : "Never",
         ])
@@ -387,10 +481,28 @@ export default function PMReportPage() {
     }
     downloadCsv(
       `PM_${detailTab === "failed" ? "Failed" : "Records"}_${fileTag}`,
-      ["PM ID", "Date", "Fixture", "Project", "Test Area", "Line", "PM Type", "Result", "Completed By", "Failed Tasks", "Notes"],
+      [
+        "PM ID",
+        "Date",
+        "Year",
+        "Work Week",
+        "Fixture",
+        "Project",
+        "Test Area",
+        "Line",
+        "PM Type",
+        "Result",
+        "Completed By",
+        "Failed Tasks",
+        "Notes",
+        "Parts Replaced",
+        "Parts From Stock",
+      ],
       detailRows.map((r) => [
         r.pm_id,
         formatDateTime(r.performed_at),
+        workWeekYear(r.performed_at),
+        workWeek(r.performed_at),
         r.fixture_name || r.fixture_id,
         r.project_name,
         r.test_area,
@@ -400,6 +512,8 @@ export default function PMReportPage() {
         r.performed_by || "Unknown",
         r.failed_tasks.join("; "),
         r.notes || "",
+        r.parts_replaced || "",
+        stockPartsText(r),
       ])
     );
   };
@@ -593,15 +707,41 @@ export default function PMReportPage() {
 
             {/* KPIs */}
             <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-              <Kpi label="PMs completed" value={totals.completed} sub={`${totals.fixtures_serviced} fixtures serviced`} tone="blue" onClick={() => openDetail("records")} />
-              <Kpi label="Passed" value={totals.passed} sub={`Pass rate ${pct(totals.pass_rate)}`} tone="green" onClick={() => openDetail("records")} />
-              <Kpi label="Failed" value={totals.failed} sub="Click to see failed tasks" tone="red" onClick={() => openDetail("failed")} />
+              <Kpi
+                label="PMs completed"
+                value={totals.completed}
+                sub={`${totals.fixtures_serviced} fixtures serviced`}
+                tone="blue"
+                onClick={() => openDetail("records")}
+                change={previous && <Change current={totals.completed} previous={previous.completed} suffix={` vs ${previousLabel}`} />}
+              />
+              <Kpi
+                label="Passed"
+                value={totals.passed}
+                sub={`Pass rate ${pct(totals.pass_rate)}`}
+                tone="green"
+                onClick={() => openDetail("records")}
+                change={
+                  previous && (
+                    <Change current={totals.pass_rate} previous={previous.pass_rate} unit=" pts" suffix={` pass rate vs ${previousLabel}`} />
+                  )
+                }
+              />
+              <Kpi
+                label="Failed"
+                value={totals.failed}
+                sub="Click to see failed tasks"
+                tone="red"
+                onClick={() => openDetail("failed")}
+                change={previous && <Change current={totals.failed} previous={previous.failed} better="down" suffix={` vs ${previousLabel}`} />}
+              />
               <Kpi
                 label="Overdue"
                 value={totals.overdue}
                 sub={`${totals.overdue_fixtures} fixtures · as of ${formatDate(report.overdue_checked_at)}`}
                 tone="orange"
                 onClick={() => openDetail("overdue")}
+                change={previous && <Change current={totals.overdue} previous={previous.overdue} better="down" suffix={` vs ${previousLabel}`} />}
               />
               <Kpi label="PMs tracked" value={totals.tracked_pms} sub="Fixture × PM type (not paused)" />
             </div>
@@ -639,20 +779,39 @@ export default function PMReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {periods.map((p) => (
+                    {periods.map((p, i) => (
                       <tr
                         key={p.start}
                         onClick={canDrillDown ? () => drillDown(p) : undefined}
                         title={canDrillDown ? `Open ${p.label}` : undefined}
                         className={`border-b hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/40 ${canDrillDown ? "cursor-pointer" : ""}`}
                       >
-                        <td className={`${TD} font-medium ${canDrillDown ? "text-blue-700 dark:text-blue-400" : ""}`}>{p.label}</td>
+                        <td className={`${TD} font-medium ${canDrillDown ? "text-blue-700 dark:text-blue-400" : ""}`}>
+                          {p.label}
+                          {group.id !== "week" && (
+                            <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                              {periodWorkWeek(p, group.id)}
+                            </span>
+                          )}
+                        </td>
                         <td className={`${TD} text-right`}>{p.completed}</td>
                         <td className={`${TD} text-right text-green-700 dark:text-green-400`}>{p.passed}</td>
                         <td className={`${TD} text-right ${p.failed ? "font-semibold text-red-600 dark:text-red-400" : ""}`}>{p.failed}</td>
-                        <td className={`${TD} text-right`}>{pct(p.pass_rate)}</td>
+                        <td className={`${TD} text-right`}>
+                          {pct(p.pass_rate)}
+                          {i > 0 && (
+                            <div>
+                              <Change current={p.pass_rate} previous={periods[i - 1].pass_rate} unit=" pts" />
+                            </div>
+                          )}
+                        </td>
                         <td className={`${TD} text-right ${p.overdue ? "font-semibold text-orange-600 dark:text-orange-400" : ""}`}>
                           {p.overdue ?? "—"}
+                          {i > 0 && (
+                            <div>
+                              <Change current={p.overdue} previous={periods[i - 1].overdue} better="down" />
+                            </div>
+                          )}
                         </td>
                         <td className={TD}>
                           <PeriodBar passed={p.passed} failed={p.failed} max={maxCompleted} />
@@ -716,14 +875,30 @@ export default function PMReportPage() {
                     </button>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={downloadDetails}
-                  disabled={!detailRows.length}
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-green-700 disabled:opacity-50"
-                >
-                  Download CSV
-                </button>
+                <div className="flex items-center gap-4">
+                  {detailTab !== "overdue" && (
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={notesOnly}
+                        onChange={(e) => {
+                          setNotesOnly(e.target.checked);
+                          setPage(1);
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                      />
+                      Only with notes or parts
+                    </label>
+                  )}
+                  <button
+                    type="button"
+                    onClick={downloadDetails}
+                    disabled={!detailRows.length}
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Download CSV
+                  </button>
+                </div>
               </div>
 
               {report.records_truncated && detailTab !== "overdue" && (
@@ -739,7 +914,11 @@ export default function PMReportPage() {
 
               {!detailRows.length ? (
                 <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                  {detailTab === "overdue" ? "Nothing overdue. 🎉" : "No PMs in this range."}
+                  {detailTab === "overdue"
+                    ? "Nothing overdue. 🎉"
+                    : notesOnly
+                      ? "No PMs with notes or parts in this range."
+                      : "No PMs in this range."}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -766,7 +945,10 @@ export default function PMReportPage() {
                               {row.project_name} · {row.test_area}
                             </td>
                             <td className={TD}>{row.label}</td>
-                            <td className={TD}>{formatDate(row.due_at)}</td>
+                            <td className={`${TD} whitespace-nowrap`}>
+                              {formatDate(row.due_at)}
+                              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400">{workWeek(row.due_at)}</div>
+                            </td>
                             <td className={`${TD} text-right font-semibold text-orange-600 dark:text-orange-400`}>{row.days_overdue}</td>
                             <td className={TD}>{row.last_performed_at ? formatDate(row.last_performed_at) : "Never"}</td>
                           </tr>
@@ -779,35 +961,54 @@ export default function PMReportPage() {
                         <tr className="border-b bg-gray-50 dark:border-gray-700 dark:bg-gray-700/50">
                           <th className={TH}>Date</th>
                           <th className={TH}>Fixture</th>
-                          <th className={TH}>Project / Test area</th>
                           <th className={TH}>PM type</th>
                           <th className={TH}>Result</th>
                           <th className={TH}>Completed by</th>
-                          <th className={TH}>Failed tasks / notes</th>
+                          <th className={TH}>Failed tasks</th>
+                          <th className={TH}>Notes</th>
+                          <th className={TH}>Parts</th>
                         </tr>
                       </thead>
                       <tbody>
                         {pageRows.map((r) => (
                           <tr key={r.pm_id} className="border-b align-top hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/40">
-                            <td className={`${TD} whitespace-nowrap`}>{formatDateTime(r.performed_at)}</td>
+                            <td className={`${TD} whitespace-nowrap`}>
+                              {formatDateTime(r.performed_at)}
+                              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400">{workWeek(r.performed_at)}</div>
+                            </td>
                             <td className={TD}>
                               {fixtureLink(r)}
-                              {r.production_line && <div className="text-xs text-gray-500">{r.production_line}</div>}
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {[r.project_name, r.test_area, r.production_line].filter(Boolean).join(" · ")}
+                              </div>
                             </td>
-                            <td className={TD}>
-                              {r.project_name} · {r.test_area}
-                            </td>
-                            <td className={TD}>{r.label}</td>
+                            <td className={`${TD} whitespace-nowrap`}>{r.label}</td>
                             <td className={TD}>
                               <ResultBadge result={r.overall_result} />
                             </td>
                             <td className={TD}>{r.performed_by || "Unknown"}</td>
-                            <td className={`${TD} max-w-xs`}>
-                              {r.failed_tasks.length > 0 && (
-                                <div className="text-red-600 dark:text-red-400">{r.failed_tasks.join("; ")}</div>
+                            <td className={`${TD} min-w-[8rem] max-w-[14rem]`}>
+                              {r.failed_tasks.length > 0 ? (
+                                <ul className="list-disc space-y-0.5 pl-4 text-red-600 dark:text-red-400">
+                                  {r.failed_tasks.map((task) => (
+                                    <li key={task}>{task}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-gray-400">—</span>
                               )}
-                              {r.notes && <div className="text-xs text-gray-500 dark:text-gray-400">{r.notes}</div>}
-                              {!r.failed_tasks.length && !r.notes && <span className="text-gray-400">—</span>}
+                            </td>
+                            <td className={`${TD} min-w-[10rem] max-w-xs whitespace-pre-wrap`}>
+                              {r.notes || <span className="text-gray-400">—</span>}
+                            </td>
+                            <td className={`${TD} min-w-[9rem] max-w-[16rem]`}>
+                              {r.parts_replaced && <div className="whitespace-pre-wrap">{r.parts_replaced}</div>}
+                              {r.parts.length > 0 && (
+                                <div className={`text-xs text-purple-700 dark:text-purple-300 ${r.parts_replaced ? "mt-1" : ""}`}>
+                                  📦 {stockPartsText(r)}
+                                </div>
+                              )}
+                              {!r.parts_replaced && !r.parts.length && <span className="text-gray-400">—</span>}
                             </td>
                           </tr>
                         ))}

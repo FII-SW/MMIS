@@ -201,6 +201,7 @@ export default function RestockNewStockPage() {
       item_life_cycle: parseInt(formData.item_life_cycle) || null,
       item_image_url: imageUrl || null,
       employee_id: employeeId,
+      remarks: formData.remarks.trim() || null,
     });
     return res;
   };

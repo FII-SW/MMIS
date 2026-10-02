@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from app.routes.pm_report import build_periods, last_covering, overdue_at
+from app.utils.pm_schedule import pm_due_at
 
 UTC = timezone.utc
 
@@ -45,13 +46,17 @@ class TestBuildPeriods(unittest.TestCase):
 
 
 class TestOverdueAt(unittest.TestCase):
+    # Monday of WW40, noon UTC (same date in plant time)
     NOW = datetime(2026, 9, 28, 12, tzinfo=UTC)
 
-    def test_overdue_when_last_record_older_than_interval(self):
+    def test_overdue_when_last_work_week_was_missed(self):
         baseline = self.NOW - timedelta(days=60)
-        record_times = {(1, "weekly"): [self.NOW - timedelta(days=9)]}
+        last = self.NOW - timedelta(days=9)  # Sat of WW38 -> due by end of WW39
+        record_times = {(1, "weekly"): [last]}
         (row,) = overdue_at([(_fixture(), "weekly", baseline)], record_times, self.NOW)
-        self.assertEqual(row[2], self.NOW - timedelta(days=2))
+        self.assertEqual(row[2], pm_due_at("weekly", last, baseline))
+        self.assertLess(row[2], self.NOW)
+        self.assertEqual(row[3], last)
 
     def test_not_overdue_inside_interval(self):
         record_times = {(1, "weekly"): [self.NOW - timedelta(days=3)]}
@@ -64,10 +69,10 @@ class TestOverdueAt(unittest.TestCase):
         self.assertEqual(overdue_at(pairs, record_times, self.NOW), [])
         self.assertEqual(len(overdue_at(pairs, record_times, self.NOW - timedelta(days=2))), 1)
 
-    def test_never_done_counts_from_baseline(self):
-        pairs = [(_fixture(), "weekly", self.NOW - timedelta(days=5))]
+    def test_never_done_is_due_by_end_of_first_work_week(self):
+        pairs = [(_fixture(), "weekly", self.NOW - timedelta(hours=2))]  # this week
         self.assertEqual(overdue_at(pairs, {}, self.NOW), [])
-        pairs = [(_fixture(), "weekly", self.NOW - timedelta(days=8))]
+        pairs = [(_fixture(), "weekly", self.NOW - timedelta(days=5))]  # last week, ended without a PM
         self.assertEqual(len(overdue_at(pairs, {}, self.NOW)), 1)
 
     def test_no_baseline_is_never_overdue(self):

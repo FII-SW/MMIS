@@ -474,6 +474,7 @@ export default function ActivityPage() {
                     <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Test Area</th>
                     <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Fixture</th>
                     <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
+                    <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Remarks</th>
                     <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Date</th>
                   </tr>
                 </thead>
@@ -516,6 +517,15 @@ export default function ActivityPage() {
                       </td>
                       <td className="p-4 whitespace-nowrap">
                         <div className="text-sm font-semibold">{formatQuantity(row.transaction_type, row.quantity_used)}</div>
+                      </td>
+                      <td className="p-4 min-w-[10rem] max-w-xs">
+                        {row.remarks ? (
+                          <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2" title={row.remarks}>
+                            {row.remarks}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="p-4 whitespace-nowrap">
                         <div className="text-sm text-gray-700 dark:text-gray-300">{formatDate(row.created_at)}</div>

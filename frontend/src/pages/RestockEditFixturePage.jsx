@@ -7,6 +7,7 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
 import FixtureDescriptorFields from "../components/FixtureDescriptorFields";
+import { apiErrorMessage } from "../utils/apiError";
 import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 export default function RestockEditFixturePage() {
@@ -201,7 +202,7 @@ export default function RestockEditFixturePage() {
       navigate("/dashboard/reports/current-inventory");
     } catch (err) {
       console.error(err);
-      alert("Failed to update fixture: " + (err.response?.data?.detail || err.message));
+      alert("Failed to update fixture: " + apiErrorMessage(err, err.message));
     }
   };
 

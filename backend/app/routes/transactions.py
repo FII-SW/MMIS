@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from .. import crud, schemas, models
 from ..database import get_db
 from ..utils.auth_deps import get_current_user, employee_id_from_token
+from ..utils.remarks import clean_remarks
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -45,6 +46,7 @@ def get_all(
             models.Employee.employee_name,
             models.Transaction.fixture_id,
             models.Transaction.item_id,
+            models.Transaction.remarks,
         )
         .outerjoin(models.Inventory, models.Transaction.item_id == models.Inventory.item_id)  # LEFT JOIN for inventory
         .outerjoin(models.Fixture, models.Transaction.fixture_id == models.Fixture.fixture_id)  # LEFT JOIN for fixture
@@ -100,6 +102,7 @@ def get_all(
             "project_name": row[10],
             "fixture_name": row[11],
             "employee_name": row[12],
+            "remarks": clean_remarks(row[15]),
         })
 
     return transactions

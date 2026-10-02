@@ -5,6 +5,7 @@ import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
+import { apiErrorMessage } from "../utils/apiError";
 import { getProjects } from "../utils/projects";
 import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
@@ -235,7 +236,7 @@ export default function RestockEditItemPage() {
       setItem(res.data);
     } catch (err) {
       console.error(err);
-      alert("Failed to update item: " + (err.response?.data?.detail || err.message));
+      alert("Failed to update item: " + apiErrorMessage(err, err.message));
     }
   };
 
@@ -270,7 +271,7 @@ export default function RestockEditItemPage() {
       navigate(backUrl);
     } catch (err) {
       console.error(err);
-      alert("Failed to restock item: " + (err.response?.data?.detail || err.message));
+      alert("Failed to restock item: " + apiErrorMessage(err, err.message));
     }
   };
 

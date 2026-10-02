@@ -24,6 +24,8 @@ from ..utils.pm_checklists import (
     get_checklist,
     get_pm_types,
 )
+from ..utils.pm_schedule import pm_due_at
+from ..utils.remarks import clean_remarks
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance"])
 
@@ -202,6 +204,16 @@ def _pm_tracking_start(db: Session) -> datetime | None:
     )
 
 
+def pm_baseline(fixture, tracking_start: datetime | None) -> datetime | None:
+    """When the PM clock starts for a fixture with no record: tracking start, or the resume date
+    after a pause. The date the fixture was added to MMIS is ignored on purpose: fixtures entered
+    late were already in service, so they follow the same work weeks as every other fixture."""
+    if tracking_start is None:
+        return None
+    resumed = _as_utc(getattr(fixture, "pm_resumed_at", None))
+    return max(tracking_start, resumed) if resumed else tracking_start
+
+
 def _due_state(pm_type: str, next_due: datetime, now: datetime) -> tuple[str, int]:
     seconds_left = (next_due - now).total_seconds()
     if seconds_left < 0:
@@ -231,14 +243,13 @@ def _pm_entry(
         "days_until_due": None,
         "state": "never",
     }
-    interval = timedelta(days=PM_INTERVAL_DAYS[pm_type])
     record, name = latest if latest else (None, None)
     last = _as_utc(record.performed_at) if record is not None else None
 
     if last is None:
         if baseline is None:
             return entry
-        next_due = baseline + interval
+        next_due = pm_due_at(pm_type, None, baseline)
         state, days = _due_state(pm_type, next_due, now)
         entry.update(
             {
@@ -249,10 +260,7 @@ def _pm_entry(
         )
         return entry
 
-    next_due = last + interval
-    if baseline is not None:
-        # e.g. fixture back in service after a pause: full interval from the resume date
-        next_due = max(next_due, baseline + interval)
+    next_due = pm_due_at(pm_type, last, baseline)
     state, days = _due_state(pm_type, next_due, now)
     record_type = getattr(record, "pm_type", pm_type)
     entry.update(
@@ -288,14 +296,7 @@ def _fixture_pm(
     tracking_start: datetime | None = None,
 ) -> dict:
     pm_types = get_pm_types(fixture.test_area)
-    baseline = None
-    if tracking_start is not None:
-        starts = [
-            tracking_start,
-            _as_utc(getattr(fixture, "created_at", None)),
-            _as_utc(getattr(fixture, "pm_resumed_at", None)),
-        ]
-        baseline = max(s for s in starts if s is not None)
+    baseline = pm_baseline(fixture, tracking_start)
     status = {
         pm_type: _pm_entry(
             pm_type,
@@ -885,15 +886,6 @@ def download_pm_record_pdf(
     )
 
 
-def _clean_remarks(remarks: str | None) -> str | None:
-    if not remarks:
-        return None
-    if remarks.startswith("REQUEST_TX_ID:"):
-        _, _, rest = remarks.partition("|")
-        return rest.strip() or None
-    return remarks
-
-
 @router.get("/fixtures/{fixture_id}/spare-parts")
 def get_spare_parts_history(fixture_id: int, db: Session = Depends(get_db)):
     """Items requested for (or returned from) this fixture."""
@@ -928,7 +920,7 @@ def get_spare_parts_history(fixture_id: int, db: Session = Depends(get_db)):
             "transaction_id": row.transaction_id,
             "transaction_type": (row.transaction_type or "").lower(),
             "quantity": row.quantity_used,
-            "remarks": _clean_remarks(row.remarks),
+            "remarks": clean_remarks(row.remarks),
             "created_at": row.created_at,
             "pm_id": row.pm_id,
             "item_id": row.item_id,

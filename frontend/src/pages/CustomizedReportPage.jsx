@@ -87,7 +87,8 @@ export default function CustomizedReportPage() {
       "Quantity",
       "Fixture",
       "Test Area",
-      "Project Name"
+      "Project Name",
+      "Remarks"
     ];
 
     // CSV Rows
@@ -102,7 +103,8 @@ export default function CustomizedReportPage() {
       tx.quantity_used || 0,
       tx.fixture_name || "",
       tx.test_area || "",
-      tx.project_name || ""
+      tx.project_name || "",
+      tx.remarks || ""
     ]);
 
     // Combine headers and rows
@@ -249,6 +251,7 @@ export default function CustomizedReportPage() {
                     <th className="p-3 text-left text-gray-700 dark:text-gray-300">Fixture</th>
                     <th className="p-3 text-left text-gray-700 dark:text-gray-300">Test Area</th>
                     <th className="p-3 text-left text-gray-700 dark:text-gray-300">Project</th>
+                    <th className="p-3 text-left text-gray-700 dark:text-gray-300">Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -271,6 +274,13 @@ export default function CustomizedReportPage() {
                       <td className="p-3 text-gray-800 dark:text-gray-200">{tx.fixture_name || "N/A"}</td>
                       <td className="p-3 text-gray-800 dark:text-gray-200">{tx.test_area || "N/A"}</td>
                       <td className="p-3 text-gray-800 dark:text-gray-200">{tx.project_name || "N/A"}</td>
+                      <td className="p-3 min-w-[10rem] max-w-xs text-gray-800 dark:text-gray-200">
+                        {tx.remarks ? (
+                          <span className="line-clamp-2" title={tx.remarks}>{tx.remarks}</span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
