@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..database import get_db
-from ..utils.auth_deps import employee_id_from_token, get_current_user
+from ..utils.auth_deps import employee_id_from_token, get_current_user, require_editor
 from ..utils.pm_checklists import (
     PM_COVERS,
     PM_DUE_SOON_DAYS,
@@ -24,6 +24,7 @@ from ..utils.pm_checklists import (
     get_checklist,
     get_pm_types,
 )
+from ..utils.app_settings import get_setting
 from ..utils.pm_schedule import pm_due_at
 from ..utils.remarks import clean_remarks
 
@@ -73,7 +74,29 @@ def _empty_counts() -> dict:
     return {state: 0 for state in STATE_RANK}
 
 
-def _serialize_fixture(fixture: models.Fixture) -> dict:
+def assignee_names(db: Session, fixtures) -> dict[int, str]:
+    """employee_id -> name for the assignees of these fixtures' PMs and the Super Admins who assigned them."""
+    ids = {
+        employee_id
+        for f in fixtures
+        for employee_id in (
+            getattr(f, "pm_assigned_employee_id", None),
+            getattr(f, "pm_assigned_by_employee_id", None),
+        )
+        if employee_id
+    }
+    if not ids:
+        return {}
+    return dict(
+        db.query(models.Employee.employee_id, models.Employee.employee_name)
+        .filter(models.Employee.employee_id.in_(ids))
+        .all()
+    )
+
+
+def _serialize_fixture(fixture: models.Fixture, assignees: dict[int, str] | None = None) -> dict:
+    assigned_id = getattr(fixture, "pm_assigned_employee_id", None)
+    assigned_by_id = getattr(fixture, "pm_assigned_by_employee_id", None) if assigned_id else None
     return {
         "fixture_id": fixture.fixture_id,
         "fixture_name": fixture.fixture_name,
@@ -86,6 +109,10 @@ def _serialize_fixture(fixture: models.Fixture) -> dict:
         "pm_paused": bool(getattr(fixture, "pm_paused", False)),
         "pm_pause_reason": getattr(fixture, "pm_pause_reason", None),
         "pm_paused_at": getattr(fixture, "pm_paused_at", None),
+        "pm_assigned_employee_id": assigned_id,
+        "pm_assigned_to": (assignees or {}).get(assigned_id) if assigned_id else None,
+        "pm_assigned_at": getattr(fixture, "pm_assigned_at", None) if assigned_id else None,
+        "pm_assigned_by": (assignees or {}).get(assigned_by_id) if assigned_by_id else None,
     }
 
 
@@ -188,12 +215,13 @@ def _latest_pm_records(db: Session, fixture_ids: list[int]) -> dict:
 
 
 def _pm_tracking_start(db: Session) -> datetime | None:
-    """When PM tracking went live: MMIS_PM_START_DATE (YYYY-MM-DD), else the first PM ever recorded.
+    """When PM tracking went live: the Super Admin setting, else MMIS_PM_START_DATE (YYYY-MM-DD),
+    else the first PM ever recorded.
 
     Fixtures with no PM yet get their first due date counted from this moment, so an
     unreported PM becomes overdue instead of staying "never done" forever.
     """
-    raw = os.getenv("MMIS_PM_START_DATE", "").strip()
+    raw = get_setting(db, "pm_start_date").strip() or os.getenv("MMIS_PM_START_DATE", "").strip()
     if raw:
         try:
             return _as_utc(datetime.fromisoformat(raw))
@@ -365,13 +393,14 @@ def get_pm_overview(
         db, [f.fixture_id for f in fixtures if get_pm_types(f.test_area)]
     )
 
+    assignees = assignee_names(db, fixtures)
     summary = _empty_counts()
     items = []
     for fixture in fixtures:
         pm = _fixture_pm(fixture, latest_map, now, tracking_start)
         if pm["state"]:
             summary[pm["state"]] += 1
-        items.append({**_serialize_fixture(fixture), "pm": pm})
+        items.append({**_serialize_fixture(fixture, assignees), "pm": pm})
 
     summary["total"] = len(fixtures)
     summary["pm_applicable"] = sum(1 for item in items if item["pm"]["state"])
@@ -380,6 +409,38 @@ def get_pm_overview(
         "fixtures": items,
         "tracking_start": tracking_start,
     }
+
+
+@router.get("/my-fixtures")
+def get_my_pm_fixtures(request: Request, db: Session = Depends(get_db)):
+    """Fixtures a Super Admin assigned to the signed-in employee, most urgent first."""
+    employee_id = employee_id_from_token(get_current_user(request))
+    fixtures = (
+        db.query(models.Fixture)
+        .filter(models.Fixture.pm_assigned_employee_id == employee_id)
+        .order_by(models.Fixture.project_name, models.Fixture.test_area, models.Fixture.fixture_name)
+        .all()
+    )
+    now = datetime.now(timezone.utc)
+    tracking_start = _pm_tracking_start(db)
+    latest_map = _latest_pm_records(db, [f.fixture_id for f in fixtures if get_pm_types(f.test_area)])
+    assignees = assignee_names(db, fixtures)
+
+    summary = _empty_counts()
+    items = []
+    for fixture in fixtures:
+        pm = _fixture_pm(fixture, latest_map, now, tracking_start)
+        if pm["state"]:
+            summary[pm["state"]] += 1
+        items.append({**_serialize_fixture(fixture, assignees), "pm": pm})
+
+    def urgency(item):
+        days = item["pm"]["days_until_due"]
+        return (STATE_RANK.get(item["pm"]["state"], 9), days if days is not None else math.inf)
+
+    items.sort(key=urgency)
+    summary["total"] = len(items)
+    return {"summary": summary, "fixtures": items, "tracking_start": tracking_start}
 
 
 def _all_pm_fixtures(db: Session, now: datetime) -> tuple[list[tuple], datetime | None]:
@@ -639,6 +700,7 @@ def get_pm_status(fixture_id: int, db: Session = Depends(get_db)):
             .filter(models.Employee.employee_id == fixture.pm_paused_by_employee_id)
             .scalar()
         )
+    assignment = _serialize_fixture(fixture, assignee_names(db, [fixture]))
     return {
         "fixture_id": fixture_id,
         "applicable": bool(pm["pm_types"]),
@@ -646,6 +708,10 @@ def get_pm_status(fixture_id: int, db: Session = Depends(get_db)):
         "pause_reason": fixture.pm_pause_reason,
         "paused_at": fixture.pm_paused_at,
         "paused_by": paused_by,
+        "assigned_employee_id": assignment["pm_assigned_employee_id"],
+        "assigned_to": assignment["pm_assigned_to"],
+        "assigned_at": assignment["pm_assigned_at"],
+        "assigned_by": assignment["pm_assigned_by"],
         **pm,
     }
 
@@ -657,7 +723,7 @@ def create_pm_record(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    user = get_current_user(request)
+    user = require_editor(request)
     employee_id = employee_id_from_token(user)
     fixture = _get_fixture_or_404(db, fixture_id)
 

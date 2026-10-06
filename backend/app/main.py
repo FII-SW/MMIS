@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 from .database import Base, engine
-from .routes import employees, inventory, transactions, reports, alerts, activity, fixtures, documents, maintenance, pm_workflow, pm_dashboard, pm_report
+from .routes import admin, notifications, employees, inventory, transactions, reports, alerts, activity, fixtures, documents, maintenance, pm_workflow, pm_dashboard, pm_report
 from . import auth
 from .utils.scheduler import start_scheduler, stop_scheduler
 import os
@@ -144,6 +144,35 @@ def ensure_pm_workflow_columns():
 
 ensure_pm_workflow_columns()
 
+
+def ensure_super_admin_columns():
+    """Backward-compatible migration for account deactivation and PM assignments."""
+    _add_missing_columns(
+        "employees",
+        {
+            "employee_active": "BOOLEAN NOT NULL DEFAULT TRUE",
+            "employee_must_change_password": "BOOLEAN NOT NULL DEFAULT FALSE",
+        },
+    )
+    _add_missing_columns(
+        "fixtures",
+        {
+            "pm_assigned_employee_id": "INTEGER REFERENCES employees(employee_id)",
+            "pm_assigned_at": "TIMESTAMP WITH TIME ZONE",
+            "pm_assigned_by_employee_id": "INTEGER REFERENCES employees(employee_id)",
+        },
+    )
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_fixtures_pm_assigned_employee_id "
+                "ON fixtures (pm_assigned_employee_id)"
+            )
+        )
+
+
+ensure_super_admin_columns()
+
 # Create uploads directory if it doesn't exist (relative to backend directory)
 # Get the backend directory (parent of app directory)
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -188,6 +217,8 @@ app.include_router(maintenance.router)
 app.include_router(pm_workflow.router)
 app.include_router(pm_dashboard.router)
 app.include_router(pm_report.router)
+app.include_router(admin.router)
+app.include_router(notifications.router)
 
 @app.get("/")
 def root():

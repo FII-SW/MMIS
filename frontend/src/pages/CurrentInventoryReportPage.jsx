@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { hasAdminAccess } from "../utils/auth";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
@@ -27,7 +28,7 @@ export default function CurrentInventoryReportPage() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setAccessLevel(payload.role);
+        setAccessLevel(hasAdminAccess(payload.role) ? "admin" : payload.role);
       } catch (err) {
         console.error("Error decoding token:", err);
       }

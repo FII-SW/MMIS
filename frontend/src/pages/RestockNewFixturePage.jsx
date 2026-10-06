@@ -1,5 +1,6 @@
 // src/pages/RestockNewFixturePage.jsx
 import { useEffect, useState, useRef } from "react";
+import { hasAdminAccess } from "../utils/auth";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import AccessDenied from "../components/AccessDenied";
@@ -67,7 +68,7 @@ export default function RestockNewFixturePage() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setAccessLevel(payload.role);
+        setAccessLevel(hasAdminAccess(payload.role) ? "admin" : payload.role);
         setEmployeeId(payload.employee_id);
       } catch (err) {
         console.error("Error decoding token:", err);

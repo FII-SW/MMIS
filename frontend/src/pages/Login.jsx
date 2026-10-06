@@ -4,6 +4,7 @@ import { useState } from "react";
 import API from "../api";
 import { useNavigate } from "react-router-dom";
 import PasswordVisibilityButton from "../components/PasswordVisibilityButton";
+import { CHANGE_PASSWORD_URL } from "../utils/auth";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -22,7 +23,7 @@ export default function Login() {
     try {
       const res = await API.post("/auth/login", { username, password });
       localStorage.setItem("token", res.data.access_token);
-      navigate("/dashboard");
+      navigate(res.data.must_change_password ? `${CHANGE_PASSWORD_URL}?required=1` : "/dashboard");
     } catch (err) {
       const status = err?.response?.status;
       if (status === 500) {

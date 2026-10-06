@@ -1,8 +1,9 @@
 // src/components/ProtectedRoute.jsx
-import { Navigate } from "react-router-dom";
-import { decodeToken, clearSession } from "../utils/auth";
+import { Navigate, useLocation } from "react-router-dom";
+import { CHANGE_PASSWORD_URL, decodeToken, clearSession, normalizeRole } from "../utils/auth";
 
 export default function ProtectedRoute({ children, allowedRoles }) {
+  const location = useLocation();
   const token = localStorage.getItem("token");
 
   if (!token) {
@@ -15,9 +16,17 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/" replace />;
   }
 
-  const role = payload.role;
+  if (payload.pwd_change && !location.pathname.startsWith(CHANGE_PASSWORD_URL)) {
+    return <Navigate to={`${CHANGE_PASSWORD_URL}?required=1`} replace />;
+  }
 
-  if (allowedRoles && !allowedRoles.includes(role)) {
+  const role = normalizeRole(payload.role);
+  const allowed =
+    !allowedRoles ||
+    allowedRoles.includes(role) ||
+    (role === "superadmin" && allowedRoles.includes("admin"));
+
+  if (!allowed) {
     return (
       <Navigate
         to="/dashboard"

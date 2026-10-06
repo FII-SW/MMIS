@@ -1,5 +1,6 @@
 // src/pages/RestockItemPage.jsx
 import { useEffect, useState, useMemo } from "react";
+import { hasAdminAccess } from "../utils/auth";
 import API from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AccessDenied from "../components/AccessDenied";
@@ -24,7 +25,7 @@ export default function RestockItemPage() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setAccessLevel(payload.role);
+        setAccessLevel(hasAdminAccess(payload.role) ? "admin" : payload.role);
       } catch (err) {
         console.error("Error decoding token:", err);
       }

@@ -7,6 +7,7 @@ import { downloadCsv } from "../components/maintenance/downloadPM";
 import { formatDate, formatDateTime } from "../components/maintenance/formatDate";
 import { formatRange, fromLocalInput, rangeToParams, toLocalInput } from "../components/maintenance/dateRanges";
 import { fixtureDetailUrl } from "../components/maintenance/links";
+import PMByPerson from "../components/maintenance/PMByPerson";
 import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 const FIELD =
@@ -463,12 +464,13 @@ export default function PMReportPage() {
     if (detailTab === "overdue") {
       downloadCsv(
         `PM_Overdue_${fileTag}`,
-        ["Fixture", "Project", "Test Area", "Line", "PM Type", "Due", "Due Year", "Due Work Week", "Days Overdue", "Last Done"],
+        ["Fixture", "Project", "Test Area", "Line", "Assigned To", "PM Type", "Due", "Due Year", "Due Work Week", "Days Overdue", "Last Done"],
         overdue.map((row) => [
           row.fixture_name,
           row.project_name,
           row.test_area,
           row.production_line || "",
+          row.assigned_to || "",
           row.label,
           formatDateTime(row.due_at),
           workWeekYear(row.due_at),
@@ -849,6 +851,8 @@ export default function PMReportPage() {
               )}
             </div>
 
+            <PMByPerson rows={report.by_person || []} fileTag={fileTag} />
+
             {/* DETAILS */}
             <div id="pm-report-details" className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -940,6 +944,9 @@ export default function PMReportPage() {
                             <td className={TD}>
                               {fixtureLink(row)}
                               {row.production_line && <div className="text-xs text-gray-500">{row.production_line}</div>}
+                              {row.assigned_to && (
+                                <div className="text-xs font-medium text-purple-700 dark:text-purple-300">👤 {row.assigned_to}</div>
+                              )}
                             </td>
                             <td className={TD}>
                               {row.project_name} · {row.test_area}

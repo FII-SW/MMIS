@@ -1,10 +1,12 @@
 # backend/app/routes/fixtures.py
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import crud, schemas
 from .. import models
-from ..utils.auth_deps import require_admin
+from ..utils.audit import changed_fields, log_action
+from ..utils.auth_deps import employee_id_from_token, require_admin, require_super_admin
 
 router = APIRouter(prefix="/fixtures", tags=["Fixtures"])
 
@@ -57,7 +59,7 @@ def bulk_update_fixture_descriptors(
     db: Session = Depends(get_db),
 ):
     """Admin: set manufacturer / production line for many fixtures, each with its own values."""
-    require_admin(request)
+    admin = require_admin(request)
     if not data.updates:
         return {"updated": 0}
     if len(data.updates) > 1000:
@@ -72,11 +74,25 @@ def bulk_update_fixture_descriptors(
     if missing:
         raise HTTPException(status_code=404, detail=f"Fixtures not found: {missing[:10]}")
 
+    changed = {}
     for item in data.updates:
         fixture = fixtures_by_id[item.fixture_id]
-        for key, value in item.dict(exclude_unset=True, exclude={"fixture_id"}).items():
-            setattr(fixture, key, (value or "").strip() or None)
+        values = {
+            key: (value or "").strip() or None
+            for key, value in item.dict(exclude_unset=True, exclude={"fixture_id"}).items()
+        }
+        changes = changed_fields(fixture, values)
+        if changes:
+            changed[fixture.fixture_name] = changes
+        for key, value in values.items():
+            setattr(fixture, key, value)
 
+    if changed:
+        log_action(
+            db, admin, "update", "fixture", None,
+            f"Bulk edited manufacturer / line on {len(changed)} fixture(s)",
+            {"fixtures": changed},
+        )
     db.commit()
     return {"updated": len(data.updates)}
 
@@ -89,13 +105,20 @@ def update_fixture_descriptors(
     db: Session = Depends(get_db),
 ):
     """Admin quick edit of manufacturer / production line."""
-    require_admin(request)
+    admin = require_admin(request)
     db_fixture = db.query(models.Fixture).filter(models.Fixture.fixture_id == fixture_id).first()
     if not db_fixture:
         raise HTTPException(status_code=404, detail="Fixture not found")
 
-    for key, value in data.dict(exclude_unset=True).items():
-        setattr(db_fixture, key, (value or "").strip() or None)
+    values = {key: (value or "").strip() or None for key, value in data.dict(exclude_unset=True).items()}
+    changes = changed_fields(db_fixture, values)
+    if changes:
+        log_action(
+            db, admin, "update", "fixture", fixture_id,
+            f"Edited fixture {db_fixture.fixture_name}: {', '.join(changes)}", {"changes": changes},
+        )
+    for key, value in values.items():
+        setattr(db_fixture, key, value)
 
     db.commit()
     db.refresh(db_fixture)
@@ -112,20 +135,29 @@ def get_single_fixture(fixture_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{fixture_id}", response_model=schemas.FixtureOut)
-def update_fixture(fixture_id: int, fixture: schemas.FixtureBase, db: Session = Depends(get_db)):
-    """Update an existing fixture by ID."""
+def update_fixture(fixture_id: int, fixture: schemas.FixtureBase, request: Request, db: Session = Depends(get_db)):
+    """Update an existing fixture by ID (admin only)."""
+    admin = require_admin(request)
     db_fixture = db.query(models.Fixture).filter(models.Fixture.fixture_id == fixture_id).first()
     if not db_fixture:
         raise HTTPException(status_code=404, detail="Fixture not found")
     
     # Only fields the client sent are updated, so older clients don't blank newer columns
     update_data = fixture.dict(exclude_unset=True)
+    values = {}
     for key, value in update_data.items():
         if key in ("manufacturer", "production_line"):
-            final_value = (value or "").strip() or None
+            values[key] = (value or "").strip() or None
         else:
-            final_value = value if value is not None else ""
-        setattr(db_fixture, key, final_value)
+            values[key] = value if value is not None else ""
+    changes = changed_fields(db_fixture, values)
+    if changes:
+        log_action(
+            db, admin, "update", "fixture", fixture_id,
+            f"Edited fixture {db_fixture.fixture_name}: {', '.join(changes)}", {"changes": changes},
+        )
+    for key, value in values.items():
+        setattr(db_fixture, key, value)
     
     db.commit()
     db.refresh(db_fixture)
@@ -133,10 +165,10 @@ def update_fixture(fixture_id: int, fixture: schemas.FixtureBase, db: Session = 
 
 
 @router.post("/", response_model=schemas.FixtureOut)
-def add_fixture(data: dict, db: Session = Depends(get_db)):
-    """Add a new fixture and create transaction record if employee_id provided."""
-    # Extract employee_id if provided
-    employee_id = data.get("employee_id")
+def add_fixture(data: dict, request: Request, db: Session = Depends(get_db)):
+    """Add a new fixture (admin only) and record it in Activity History."""
+    admin = require_admin(request)
+    employee_id = employee_id_from_token(admin)
     
     # Create FixtureBase from the data (excluding employee_id)
     # Convert None to empty string for optional fields
@@ -148,20 +180,60 @@ def add_fixture(data: dict, db: Session = Depends(get_db)):
     # Create the fixture
     db_fixture = crud.create_fixture(db, fx)
     
-    # Create transaction record if employee_id is provided (for activity history)
-    if employee_id:
-        transaction = models.Transaction(
-            item_id=None,  # Fixtures are not inventory items
-            employee_id=employee_id,
-            fixture_id=db_fixture.fixture_id,
-            quantity_used=1,  # Representing that one fixture was added
-            transaction_type="restock",  # Using "restock" for new fixtures added
-            remarks="New fixture added",
-            test_area=fx.test_area,
-            project_name=fx.project_name,
-        )
-        db.add(transaction)
-        db.commit()
-        db.refresh(db_fixture)
+    transaction = models.Transaction(
+        item_id=None,  # Fixtures are not inventory items
+        employee_id=employee_id,
+        fixture_id=db_fixture.fixture_id,
+        quantity_used=1,  # Representing that one fixture was added
+        transaction_type="restock",  # Using "restock" for new fixtures added
+        remarks="New fixture added",
+        test_area=fx.test_area,
+        project_name=fx.project_name,
+    )
+    db.add(transaction)
+    log_action(
+        db, admin, "create", "fixture", db_fixture.fixture_id,
+        f"Added fixture {db_fixture.fixture_name} to {db_fixture.project_name} · {db_fixture.test_area}",
+    )
+    db.commit()
+    db.refresh(db_fixture)
     
     return db_fixture
+
+
+@router.delete("/{fixture_id}")
+def delete_fixture(fixture_id: int, request: Request, db: Session = Depends(get_db)):
+    """Permanently delete a fixture (Super Admin). Only fixtures with no PM or stock history can be deleted;
+    pause PM for fixtures that are out of service instead."""
+    admin = require_super_admin(request)
+    fixture = db.query(models.Fixture).filter(models.Fixture.fixture_id == fixture_id).first()
+    if not fixture:
+        raise HTTPException(status_code=404, detail="Fixture not found")
+
+    pm_records = db.query(models.FixturePMRecord).filter(models.FixturePMRecord.fixture_id == fixture_id).count()
+    transactions = (
+        db.query(models.Transaction)
+        .filter(
+            models.Transaction.fixture_id == fixture_id,
+            or_(models.Transaction.remarks.is_(None), models.Transaction.remarks != "New fixture added"),
+        )
+        .count()
+    )
+    if pm_records or transactions:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{fixture.fixture_name} has {pm_records} PM record(s) and {transactions} stock transaction(s), "
+                "so it can't be deleted. Pause its PM instead if it is out of service."
+            ),
+        )
+
+    # Only the "New fixture added" activity row is left; it would point at nothing.
+    db.query(models.Transaction).filter(models.Transaction.fixture_id == fixture_id).delete(synchronize_session=False)
+    log_action(
+        db, admin, "delete", "fixture", fixture_id,
+        f"Deleted fixture {fixture.fixture_name} ({fixture.project_name} · {fixture.test_area})",
+    )
+    db.delete(fixture)
+    db.commit()
+    return {"message": "Fixture deleted", "fixture_id": fixture_id}

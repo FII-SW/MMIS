@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import API from "../api";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PMReminderBanner from "../components/maintenance/PMReminderBanner";
@@ -7,9 +7,12 @@ import MaintenanceDashboardTab from "../components/maintenance/MaintenanceDashbo
 import MaintenanceTodoTab from "../components/maintenance/MaintenanceTodoTab";
 import MaintenanceCompletedTab from "../components/maintenance/MaintenanceCompletedTab";
 import MaintenanceIssuesTab from "../components/maintenance/MaintenanceIssuesTab";
+import MyPMsTab from "../components/maintenance/MyPMsTab";
 import usePMReminders from "../components/maintenance/usePMReminders";
+import { isViewerUser } from "../utils/auth";
+import { useNotifications } from "../contexts/NotificationContext";
 
-const TABS = ["dashboard", "todo", "issues", "completed"];
+const TABS = ["dashboard", "mine", "todo", "issues", "completed"];
 
 function TabButton({ active, onClick, children, badge, badgeTone = "bg-red-600 text-white" }) {
   return (
@@ -41,16 +44,42 @@ function TabButton({ active, onClick, children, badge, badgeTone = "bg-red-600 t
 export default function MaintenancePage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const tab = TABS.includes(params.get("tab")) ? params.get("tab") : "dashboard";
+  // Viewers can't be assigned PMs, so they don't get the My PMs tab.
+  const [viewOnly] = useState(isViewerUser);
+  const tabs = viewOnly ? TABS.filter((t) => t !== "mine") : TABS;
+  const tab = tabs.includes(params.get("tab")) ? params.get("tab") : "dashboard";
   const todoStatus = params.get("status") || "all";
   const reminders = usePMReminders();
   const [summary, setSummary] = useState(null);
+  const [mine, setMine] = useState({ data: null, loading: !viewOnly, error: "" });
 
   useEffect(() => {
     API.get("/maintenance/summary")
       .then((res) => setSummary(res.data))
       .catch((err) => console.error("Error loading PM summary:", err));
   }, []);
+
+  const loadMine = useCallback(() => {
+    if (viewOnly) return;
+    setMine((prev) => ({ ...prev, loading: !prev.data, error: "" }));
+    API.get("/maintenance/my-fixtures")
+      .then((res) => setMine({ data: res.data, loading: false, error: "" }))
+      .catch((err) => {
+        console.error("Error loading my PM fixtures:", err);
+        setMine((prev) => ({ ...prev, loading: false, error: "Failed to load your PM fixtures." }));
+      });
+  }, [viewOnly]);
+
+  useEffect(() => {
+    if (tab === "mine" || !mine.data) loadMine();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, loadMine]);
+
+  // A new assignment notification means the list changed.
+  const { serverUnread } = useNotifications();
+  useEffect(() => {
+    if (serverUnread > 0) loadMine();
+  }, [serverUnread, loadMine]);
 
   const openTab = (nextTab, status) => {
     const next = new URLSearchParams();
@@ -61,6 +90,8 @@ export default function MaintenancePage() {
   const openTodo = (status) => openTab("todo", status);
   const todoCount = (reminders?.overdue || 0) + (reminders?.due_soon || 0);
   const openIssues = summary?.open_issues || 0;
+  const mySummary = mine.data?.summary;
+  const myCount = (mySummary?.overdue || 0) + (mySummary?.due_soon || 0);
   const adjustOpenIssues = (delta) =>
     setSummary((prev) => (prev ? { ...prev, open_issues: Math.max(0, (prev.open_issues || 0) + delta) } : prev));
 
@@ -78,6 +109,16 @@ export default function MaintenancePage() {
           <TabButton active={tab === "dashboard"} onClick={() => openTab("dashboard")}>
             📊 Dashboard
           </TabButton>
+          {!viewOnly && (
+            <TabButton
+              active={tab === "mine"}
+              onClick={() => openTab("mine")}
+              badge={myCount}
+              badgeTone={mySummary?.overdue ? "bg-red-600 text-white" : "bg-yellow-400 text-yellow-950"}
+            >
+              👤 My PMs
+            </TabButton>
+          )}
           <TabButton
             active={tab === "todo"}
             onClick={() => openTab("todo")}
@@ -105,6 +146,15 @@ export default function MaintenancePage() {
         </div>
 
         {tab === "dashboard" && <MaintenanceDashboardTab onOpenTodo={openTodo} onOpenTab={openTab} />}
+        {tab === "mine" && (
+          <MyPMsTab
+            data={mine.data}
+            loading={mine.loading}
+            error={mine.error}
+            onReload={loadMine}
+            onOpenTodo={openTodo}
+          />
+        )}
         {tab === "todo" && <MaintenanceTodoTab status={todoStatus} onStatusChange={(s) => openTab("todo", s)} />}
         {tab === "issues" && <MaintenanceIssuesTab onCountChange={adjustOpenIssues} />}
         {tab === "completed" && <MaintenanceCompletedTab />}

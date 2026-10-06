@@ -4,7 +4,7 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import API from "../api";
 import { getProjects } from "../utils/projects";
-import { getTokenSession } from "../utils/auth";
+import { getTokenSession, hasAdminAccess, isSuperAdminRole } from "../utils/auth";
 import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 const TEST_AREAS = DEFAULT_TEST_AREAS;
@@ -51,10 +51,11 @@ export default function DocumentsPage() {
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
 
   const [projects, setProjects] = useState(getProjects());
-  const [isAdmin, setIsAdmin] = useState(() => getTokenSession()?.role === "admin");
+  const [isAdmin, setIsAdmin] = useState(() => hasAdminAccess(getTokenSession()?.role));
+  const [isSuperAdmin, setIsSuperAdmin] = useState(() => isSuperAdminRole(getTokenSession()?.role));
   const [sessionValid, setSessionValid] = useState(() => !!getTokenSession());
 
-  const [showUploadPanel, setShowUploadPanel] = useState(() => getTokenSession()?.role === "admin");
+  const [showUploadPanel, setShowUploadPanel] = useState(() => hasAdminAccess(getTokenSession()?.role));
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -112,24 +113,26 @@ export default function DocumentsPage() {
     }
 
     setSessionValid(true);
-    const admin = session.role === "admin";
+    const admin = hasAdminAccess(session.role);
     setIsAdmin(admin);
+    setIsSuperAdmin(isSuperAdminRole(session.role));
     if (admin) setShowUploadPanel(true);
 
     API.get("/auth/me")
       .then((res) => {
         setSessionValid(true);
-        const serverAdmin = (res.data.role || "").toLowerCase() === "admin";
+        const serverAdmin = hasAdminAccess(res.data.role);
         setIsAdmin(serverAdmin);
+        setIsSuperAdmin(isSuperAdminRole(res.data.role));
         if (serverAdmin) setShowUploadPanel(true);
       })
       .catch((err) => {
         // Keep UI based on JWT when /auth/me unavailable or mismatched deploy
         setSessionValid(true);
-        setIsAdmin(session.role === "admin");
-        if (session.role === "admin") setShowUploadPanel(true);
+        setIsAdmin(admin);
+        if (admin) setShowUploadPanel(true);
         const status = err?.response?.status;
-        if (status === 401 && session.role === "admin") {
+        if (status === 401 && admin) {
           setError(
             "Server could not verify your session. Try logging out and back in, then upload again."
           );
@@ -469,7 +472,7 @@ export default function DocumentsPage() {
           </div>
           {canManage && (
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-3">
-              🛡️ Admin mode: Upload, pin, and delete actions are enabled. Drag and drop files in the upload area below.
+              🛡️ Admin mode: Upload and pin{isSuperAdmin ? ", and delete" : ""} actions are enabled. Drag and drop files in the upload area below.
             </p>
           )}
           {!sessionValid && (
@@ -679,7 +682,7 @@ export default function DocumentsPage() {
                           {canManage && (
                             <>
                               <button type="button" onClick={() => handleTogglePin(doc)} className="px-3 py-1 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">{doc.is_pinned ? "Unpin" : "Pin"}</button>
-                              <button type="button" onClick={() => handleDelete(doc)} className="px-3 py-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300">Delete</button>
+                              {isSuperAdmin && <button type="button" onClick={() => handleDelete(doc)} className="px-3 py-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300">Delete</button>}
                             </>
                           )}
                         </div>
@@ -717,7 +720,7 @@ export default function DocumentsPage() {
                           {canManage && (
                             <>
                               <button type="button" onClick={() => handleTogglePin(doc)} className="px-3 py-1 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">{doc.is_pinned ? "Unpin" : "Pin"}</button>
-                              <button type="button" onClick={() => handleDelete(doc)} className="px-3 py-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300">Delete</button>
+                              {isSuperAdmin && <button type="button" onClick={() => handleDelete(doc)} className="px-3 py-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300">Delete</button>}
                             </>
                           )}
                         </div>

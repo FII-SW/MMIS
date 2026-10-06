@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
-import { isAdminUser } from "../utils/auth";
+import { isAdminUser, isViewerUser } from "../utils/auth";
 
 const ACTIONS = [
   {
@@ -29,7 +29,7 @@ const ACTIONS = [
     path: "/dashboard/maintenance",
     icon: "🛠️",
     tone: "slate",
-    roles: ["admin", "user"],
+    roles: ["admin", "user", "viewer"],
     badgeKey: "overduePmCount",
   },
   {
@@ -39,7 +39,7 @@ const ACTIONS = [
     path: "/dashboard/alerts",
     icon: "⚠️",
     tone: "red",
-    roles: ["admin", "user"],
+    roles: ["admin", "user", "viewer"],
     badgeKey: "lowStockCount",
   },
   {
@@ -49,7 +49,7 @@ const ACTIONS = [
     path: "/dashboard/documents",
     icon: "📄",
     tone: "cyan",
-    roles: ["admin", "user"],
+    roles: ["admin", "user", "viewer"],
   },
   {
     id: "reports",
@@ -58,7 +58,7 @@ const ACTIONS = [
     path: "/dashboard/reports",
     icon: "📊",
     tone: "orange",
-    roles: ["admin", "user"],
+    roles: ["admin", "user", "viewer"],
   },
   {
     id: "activity",
@@ -67,7 +67,7 @@ const ACTIONS = [
     path: "/dashboard/activity",
     icon: "📋",
     tone: "indigo",
-    roles: ["admin", "user"],
+    roles: ["admin", "user", "viewer"],
   },
   {
     id: "restock",
@@ -104,7 +104,7 @@ const TONE = {
 export default function DashboardQuickActions({ lowStockCount = 0 }) {
   const navigate = useNavigate();
   const isAdmin = isAdminUser();
-  const role = isAdmin ? "admin" : "user";
+  const role = isAdmin ? "admin" : isViewerUser() ? "viewer" : "user";
 
   const [overduePmCount, setOverduePmCount] = useState(0);
 

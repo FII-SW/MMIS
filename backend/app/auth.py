@@ -7,6 +7,7 @@ from .database import get_db
 from .utils.jwt_handler import create_access_token
 from .utils.password_utils import verify_stored_password, normalize_password_for_storage, is_bcrypt_hash
 from .utils.auth_deps import get_current_user
+from .utils.roles import normalize_role
 
 logger = logging.getLogger(__name__)
 
@@ -37,19 +38,25 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
 
     if not password_ok:
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    if user.employee_active is False:
+        raise HTTPException(status_code=403, detail="This account is deactivated. Contact your Super Admin.")
 
     # Upgrade legacy plain-text passwords to bcrypt on successful login
     if not is_bcrypt_hash(user.employee_password):
         user.employee_password = normalize_password_for_storage(credentials.password)
         db.commit()
 
-    token = create_access_token({
+    must_change = bool(user.employee_must_change_password)
+    claims = {
         "sub": user.employee_username,
-        "role": user.employee_access_level,
+        "role": normalize_role(user.employee_access_level),
         "employee_id": user.employee_id,
-    })
+    }
+    if must_change:
+        claims["pwd_change"] = True
+    token = create_access_token(claims)
 
-    return {"access_token": token, "token_type": "bearer"}
+    return {"access_token": token, "token_type": "bearer", "must_change_password": must_change}
 
 
 @router.get("/me")
@@ -67,5 +74,6 @@ def get_current_session(request: Request, db: Session = Depends(get_db)):
     return {
         "employee_id": employee.employee_id,
         "employee_name": employee.employee_name,
-        "role": employee.employee_access_level,
+        "role": payload["role"],
+        "must_change_password": bool(employee.employee_must_change_password),
     }

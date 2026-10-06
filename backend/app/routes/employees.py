@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from ..database import get_db
 from .. import schemas, models
 from ..utils.password_utils import verify_stored_password, normalize_password_for_storage
-from ..utils.auth_deps import require_self_or_admin
+from ..utils.auth_deps import forget_account, require_self_or_admin
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 
@@ -39,9 +39,13 @@ def change_password(
 
     if not verify_stored_password(password_data.current_password, emp.employee_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if password_data.new_password == password_data.current_password:
+        raise HTTPException(status_code=400, detail="New password must be different from the current one")
 
     emp.employee_password = normalize_password_for_storage(password_data.new_password)
+    emp.employee_must_change_password = False
     db.commit()
+    forget_account(employee_id)
     db.refresh(emp)
 
     return {"message": "Password changed successfully"}

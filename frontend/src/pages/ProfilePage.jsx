@@ -5,6 +5,7 @@ import API from "../api";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
+import { hasAdminAccess, isSuperAdminRole, isViewerRole, roleLabel } from "../utils/auth";
 
 export default function ProfilePage() {
   const [employeeData, setEmployeeData] = useState(null);
@@ -120,11 +121,15 @@ export default function ProfilePage() {
                   <label className="text-sm font-medium text-gray-500">Access Level</label>
                   <p className="text-lg text-gray-800">
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                      employeeData.employee_access_level === "admin"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-green-100 text-green-700"
+                      isSuperAdminRole(employeeData.employee_access_level)
+                        ? "bg-purple-100 text-purple-700"
+                        : hasAdminAccess(employeeData.employee_access_level)
+                          ? "bg-blue-100 text-blue-700"
+                          : isViewerRole(employeeData.employee_access_level)
+                            ? "bg-gray-200 text-gray-700"
+                            : "bg-green-100 text-green-700"
                     }`}>
-                      {employeeData.employee_access_level?.toUpperCase() || "N/A"}
+                      {roleLabel(employeeData.employee_access_level).toUpperCase()}
                     </span>
                   </p>
                 </div>

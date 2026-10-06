@@ -1,6 +1,6 @@
 import { useState } from "react";
 import API from "../../api";
-import { getTokenSession } from "../../utils/auth";
+import { getTokenSession, hasAdminAccess, isSuperAdminRole } from "../../utils/auth";
 import { formatDateTime } from "./formatDate";
 import { pmTypeLabel } from "./pmTypes";
 import { printPMRecord } from "./printPMRecord";
@@ -38,7 +38,8 @@ function AuditLog({ entries }) {
 }
 
 function RecordDetails({ record, fixture, session, onChanged, onDownload, downloading }) {
-  const isAdmin = session?.role === "admin";
+  const isAdmin = hasAdminAccess(session?.role);
+  const isSuperAdmin = isSuperAdminRole(session?.role);
   const canEdit = !record.voided && (isAdmin || session?.employee_id === record.performed_by_employee_id);
   const [mode, setMode] = useState(null); // "edit" | "void" | null
   const [notes, setNotes] = useState(record.notes || "");
@@ -71,7 +72,7 @@ function RecordDetails({ record, fixture, session, onChanged, onDownload, downlo
   const handleDelete = () => {
     const confirmed = window.confirm(
       `Permanently delete this ${pmTypeLabel(record.pm_type)} from ${formatDateTime(record.performed_at)}?\n\n` +
-        "This cannot be undone and leaves no audit trail. Use Void instead if the record should stay visible for audits." +
+        "This cannot be undone. Only a line in the Super Admin audit log remains. Use Void instead if the record should stay visible for audits." +
         (record.parts?.length ? "\n\nParts taken from stock stay in the fixture's spare-parts history." : "")
     );
     if (!confirmed) return;
@@ -234,7 +235,7 @@ function RecordDetails({ record, fixture, session, onChanged, onDownload, downlo
             >
               {audit ? "Hide change log" : "Change log"}
             </button>
-            {isAdmin && (
+            {isSuperAdmin && (
               <button
                 type="button"
                 onClick={handleDelete}

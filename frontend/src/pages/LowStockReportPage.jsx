@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { hasAdminAccess } from "../utils/auth";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
@@ -30,7 +31,7 @@ export default function LowStockReportPage() {
       const token = localStorage.getItem("token");
       if (token) {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setIsAdmin(payload.role === "admin");
+        setIsAdmin(hasAdminAccess(payload.role));
       }
     } catch {
       setIsAdmin(false);

@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from .. import crud, schemas, models
 from ..database import get_db
-from ..utils.auth_deps import get_current_user, employee_id_from_token
+from ..utils.auth_deps import employee_id_from_token, require_editor
 from ..utils.remarks import clean_remarks
+from ..utils.roles import is_admin
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -203,7 +204,7 @@ def return_item(
     db: Session = Depends(get_db)
 ):
     """Employee returns an item (increase quantity)."""
-    user = get_current_user(request)
+    user = require_editor(request)
     employee_id = employee_id_from_token(user)
     role = str(user.get("role", "")).lower()
 
@@ -226,7 +227,7 @@ def return_item(
         if original_request.transaction_type != "request":
             raise HTTPException(status_code=400, detail="Linked transaction is not a request")
 
-        if role != "admin" and original_request.employee_id != employee_id:
+        if not is_admin(role) and original_request.employee_id != employee_id:
             raise HTTPException(
                 status_code=403,
                 detail="Not authorized to return items for this request",

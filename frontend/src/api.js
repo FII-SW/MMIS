@@ -1,5 +1,5 @@
 import axios from "axios";
-import { clearSession } from "./utils/auth";
+import { CHANGE_PASSWORD_URL, PASSWORD_CHANGE_REQUIRED, clearSession } from "./utils/auth";
 
 // Smart API URL detection - works in both local and production
 // Development: Uses VITE_API_URL from .env.development or defaults to localhost:8000
@@ -49,6 +49,13 @@ API.interceptors.response.use(
       if (window.location.pathname !== "/") {
         window.location.href = "/";
       }
+    }
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.detail === PASSWORD_CHANGE_REQUIRED &&
+      !window.location.pathname.startsWith(CHANGE_PASSWORD_URL)
+    ) {
+      window.location.href = `${CHANGE_PASSWORD_URL}?required=1`;
     }
     return Promise.reject(error);
   }

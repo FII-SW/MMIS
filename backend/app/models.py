@@ -18,6 +18,10 @@ class Employee(Base):
     employee_username = Column(String(50), unique=True, nullable=False)
     employee_password = Column(String(255), nullable=False)
     employee_email = Column(String(255), nullable=True)
+    # Deactivated accounts can't log in; their history stays.
+    employee_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    # Set when a Super Admin creates the account or resets the password; cleared when they change it.
+    employee_must_change_password = Column(Boolean, nullable=False, default=False, server_default="false")
 
      # Relationship: one employee → many transactions
     transactions = relationship("Transaction", back_populates="employee")
@@ -40,6 +44,10 @@ class Fixture(Base):
     pm_paused_at = Column(DateTime(timezone=True), nullable=True)
     pm_paused_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
     pm_resumed_at = Column(DateTime(timezone=True), nullable=True)
+    # Employee a Super Admin assigned to perform this fixture's PMs
+    pm_assigned_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True, index=True)
+    pm_assigned_at = Column(DateTime(timezone=True), nullable=True)
+    pm_assigned_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
 
     # Relationship: one fixture → many transactions
     transactions = relationship("Transaction", back_populates="fixture")
@@ -155,6 +163,71 @@ class PMIssue(Base):
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolved_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
     resolution_note = Column(Text, nullable=True)
+
+
+class AuditLog(Base):
+    """Who changed what: admin actions across inventory, fixtures, PM, documents, users and settings."""
+
+    __tablename__ = "audit_log"
+
+    audit_id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True, index=True)
+    action = Column(String(40), nullable=False, index=True)
+    entity_type = Column(String(30), nullable=False, index=True)
+    entity_id = Column(String(50), nullable=True)
+    summary = Column(Text, nullable=False)
+    # JSON with extra detail (changed fields, quantities, reasons)
+    details = Column(Text, nullable=True)
+
+
+class UserNotification(Base):
+    """In-app message for one employee (e.g. fixtures assigned to them for PM)."""
+
+    __tablename__ = "user_notifications"
+
+    notification_id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=False, index=True)
+    kind = Column(String(30), nullable=False)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    # Page to open from the notification, e.g. /dashboard/maintenance/dashboard?tab=mine
+    link = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class JobRun(Base):
+    """Last period a scheduled job ran, so it runs once even with several server workers."""
+
+    __tablename__ = "job_runs"
+
+    job_id = Column(String(50), primary_key=True)
+    period = Column(String(20), nullable=False)
+    ran_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PMOverdueAlert(Base):
+    """One row per (fixture, PM type, due date) already reported as overdue, so alerts aren't repeated daily."""
+
+    __tablename__ = "pm_overdue_alerts"
+
+    alert_id = Column(Integer, primary_key=True, index=True)
+    fixture_id = Column(Integer, ForeignKey("fixtures.fixture_id", ondelete="CASCADE"), nullable=False, index=True)
+    pm_type = Column(String(20), nullable=False)
+    due_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AppSetting(Base):
+    """System settings a Super Admin can change from the app."""
+
+    __tablename__ = "app_settings"
+
+    key = Column(String(50), primary_key=True)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
 
 
 class ProjectDocument(Base):

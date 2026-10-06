@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { hasAdminAccess } from "../utils/auth";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
@@ -39,7 +40,7 @@ export default function ItemRequestPage() {
       const token = localStorage.getItem("token");
       if (token) {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setIsAdmin(payload.role === "admin");
+        setIsAdmin(hasAdminAccess(payload.role));
       }
     } catch {
       setIsAdmin(false);

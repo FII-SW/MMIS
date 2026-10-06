@@ -7,6 +7,15 @@ import { useIsInsideLayout } from "../contexts/LayoutContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import PMReminderChip from "./maintenance/PMReminderChip";
 
+const NOTIFICATION_ICONS = {
+  pm_assignment: "📋",
+  pm_unassignment: "↩️",
+  pm_weekly: "🗓️",
+  pm_overdue: "⏰",
+  announcement: "📣",
+};
+const LINK_LABELS = { pm_assignment: "View my PMs →", pm_weekly: "View my PMs →", pm_overdue: "View overdue →" };
+
 export default function Header({ showMMIS = true, brandLogo = false }) {
   const [userName, setUserName] = useState("");
   const [employeeId, setEmployeeId] = useState(null);
@@ -19,7 +28,19 @@ export default function Header({ showMMIS = true, brandLogo = false }) {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const isInsideLayout = useIsInsideLayout();
-  const { notifications, unreadCount, markAllRead, clearAll } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    markAllRead,
+    clearTransfers,
+    clearAll,
+    serverItems,
+    serverUnread,
+    refreshServer,
+    markServerRead,
+    markAllServerRead,
+    clearReadServer,
+  } = useNotifications();
 
   const isDashboard =
     location.pathname === "/dashboard" || location.pathname === "/dashboard/";
@@ -135,7 +156,10 @@ export default function Header({ showMMIS = true, brandLogo = false }) {
             onClick={() => {
               setShowNotificationPanel((open) => {
                 const next = !open;
-                if (next) markAllRead();
+                if (next) {
+                  markAllRead();
+                  refreshServer();
+                }
                 return next;
               });
               setShowProfileMenu(false);
@@ -159,26 +183,106 @@ export default function Header({ showMMIS = true, brandLogo = false }) {
             )}
           </button>
           {showNotificationPanel && (
-            <div className="absolute right-0 mt-2 w-80 max-h-80 overflow-hidden flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-              <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Transfers</span>
-                {notifications.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearAll();
-                      setShowNotificationPanel(false);
-                    }}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Clear all
-                  </button>
+            <div className="absolute right-0 mt-2 w-[22rem] max-w-[calc(100vw-1.5rem)] max-h-[32rem] overflow-hidden flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+              <div className="overflow-y-auto">
+                <div className="sticky top-0 z-10 px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between gap-2">
+                  <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                    Notifications
+                    {serverUnread > 0 && (
+                      <span className="ml-1.5 rounded-full bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-300">
+                        {serverUnread} new
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex items-center gap-3">
+                    {serverUnread > 0 && (
+                      <button
+                        type="button"
+                        onClick={markAllServerRead}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                    {serverItems.some((n) => n.read) && (
+                      <button
+                        type="button"
+                        onClick={clearReadServer}
+                        className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
+                      >
+                        Clear read
+                      </button>
+                    )}
+                  </span>
+                </div>
+                <p className="px-3 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Assignments, reminders &amp; announcements
+                </p>
+                {serverItems.length === 0 ? (
+                  <p className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                    No notifications yet.
+                  </p>
+                ) : (
+                  serverItems.map((n) => (
+                    <button
+                      type="button"
+                      key={n.notification_id}
+                      onClick={() => {
+                        markServerRead(n);
+                        if (n.link) {
+                          setShowNotificationPanel(false);
+                          navigate(n.link);
+                        }
+                      }}
+                      className={`w-full text-left px-3 py-2.5 border-b border-gray-100 dark:border-gray-700 flex gap-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-colors ${
+                        !n.read ? "bg-blue-50/80 dark:bg-blue-900/20" : ""
+                      }`}
+                    >
+                      <span className="text-lg leading-none mt-0.5" aria-hidden>
+                        {NOTIFICATION_ICONS[n.kind] || "🔔"}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-start justify-between gap-2">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+                            {n.title}
+                          </span>
+                          {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-600" />}
+                        </span>
+                        <span className="block whitespace-pre-line text-xs text-gray-600 dark:text-gray-300 leading-snug mt-0.5">
+                          {n.message}
+                        </span>
+                        <span className="flex items-center justify-between mt-1">
+                          <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                            {formatTime(n.created_at)}
+                          </span>
+                          {n.link && (
+                            <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                              {LINK_LABELS[n.kind] || "Open →"}
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                    </button>
+                  ))
                 )}
-              </div>
-              <div className="overflow-y-auto max-h-64">
+
+                <div className="px-3 pt-3 pb-1 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Transfers
+                  </span>
+                  {notifications.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearTransfers}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
                 {notifications.length === 0 ? (
-                  <p className="px-3 py-6 text-sm text-gray-500 dark:text-gray-400 text-center">
-                    No transfer notifications yet.
+                  <p className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                    No transfers yet.
                   </p>
                 ) : (
                   notifications.map((n) => (

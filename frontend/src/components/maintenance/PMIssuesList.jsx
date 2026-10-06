@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../../api";
+import { isViewerUser } from "../../utils/auth";
 import { formatDate, formatDateTime } from "./formatDate";
 import { fixtureDetailUrl } from "./links";
 import { pmTypeLabel } from "./pmTypes";
@@ -67,7 +68,7 @@ function IssueRow({ issue, showFixture, onResolved }) {
             >
               Open {age === 0 ? "today" : `${age} day${age === 1 ? "" : "s"}`}
             </span>
-            {!resolving && (
+            {!resolving && !isViewerUser() && (
               <button
                 type="button"
                 onClick={() => setResolving(true)}

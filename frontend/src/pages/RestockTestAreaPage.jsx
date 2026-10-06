@@ -1,5 +1,6 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { hasAdminAccess } from "../utils/auth";
 import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
@@ -20,7 +21,7 @@ export default function RestockTestAreaPage() {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         // Token stores access level as "role" field
-        setAccessLevel(payload.role);
+        setAccessLevel(hasAdminAccess(payload.role) ? "admin" : payload.role);
       } catch (err) {
         console.error("Error decoding token:", err);
       }

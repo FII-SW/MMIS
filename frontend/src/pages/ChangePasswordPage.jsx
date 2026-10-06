@@ -1,12 +1,19 @@
 // src/pages/ChangePasswordPage.jsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import API from "../api";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PasswordVisibilityButton from "../components/PasswordVisibilityButton";
+import { clearSession, mustChangePassword } from "../utils/auth";
 
 export default function ChangePasswordPage() {
+  const [params] = useSearchParams();
+  const [required] = useState(() => mustChangePassword() || params.get("required") === "1");
+  const signOut = () => {
+    clearSession();
+    window.location.href = "/";
+  };
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -96,9 +103,21 @@ export default function ChangePasswordPage() {
     <div className="min-h-screen bg-transparent">
       <Header />
 
-      <PageHeaderWithBack title="Change Password" onBack={() => navigate("/dashboard")} />
+      <PageHeaderWithBack
+        title={required ? "Set your own password" : "Change Password"}
+        onBack={required ? signOut : () => navigate("/dashboard")}
+      />
 
       <div className="max-w-md mx-auto px-4">
+        {required && (
+          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+            <p className="font-semibold">🔒 Your password was set by a Super Admin</p>
+            <p className="mt-1">
+              Choose your own password to continue. Enter the temporary password you were given as the current
+              password. After saving, sign in again with your new password.
+            </p>
+          </div>
+        )}
         <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Current Password */}
@@ -123,7 +142,7 @@ export default function ChangePasswordPage() {
                   className={`w-full pl-10 pr-11 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                     errors.currentPassword ? "border-red-500" : "border-gray-300"
                   }`}
-                  placeholder="Enter your current password"
+                  placeholder={required ? "Temporary password from your Super Admin" : "Enter your current password"}
                   required
                 />
                 <PasswordVisibilityButton visible={visible.current} onToggle={() => toggleVisible("current")} />
@@ -221,10 +240,10 @@ export default function ChangePasswordPage() {
             <div className="flex gap-4 pt-4">
               <button
                 type="button"
-                onClick={() => navigate("/dashboard")}
+                onClick={required ? signOut : () => navigate("/dashboard")}
                 className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
               >
-                Cancel
+                {required ? "Sign out" : "Cancel"}
               </button>
               <button
                 type="submit"

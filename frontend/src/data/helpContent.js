@@ -55,7 +55,7 @@ export const WORKFLOW_CARDS = [
     icon: "🛠️",
     description: "Record fixture PMs, handle failed tasks, and check what is due.",
     color: "teal",
-    roles: ["admin", "user"],
+    roles: ["admin", "user", "viewer"],
     articleId: "maintenance-hub",
   },
   {
@@ -103,6 +103,7 @@ export const HELP_ARTICLES = [
     icon: "📤",
     category: "Workflows",
     summary: "Check out inventory for a project and test area.",
+    roles: ["admin", "user"],
     showProjects: true,
     showTestAreas: true,
     sections: [
@@ -149,6 +150,7 @@ export const HELP_ARTICLES = [
     icon: "📥",
     category: "Workflows",
     summary: "Return checked-out items to inventory.",
+    roles: ["admin", "user"],
     sections: [
       {
         heading: "When to return",
@@ -282,10 +284,26 @@ export const HELP_ARTICLES = [
         ],
         links: [{ label: "Open PM Dashboard", path: "/dashboard/maintenance/dashboard" }],
       },
+      {
+        id: "pm-mine",
+        label: "My PMs (fixtures assigned to me)",
+        description: "See the fixtures you are responsible for and start their PMs.",
+        steps: [
+          "When your Super Admin assigns fixtures to you, you get a 🔔 bell notification and a blue banner. You may also get an email.",
+          "Click View my PMs, or open Maintenance → My PMs in the sidebar.",
+          "The tiles at the top count your Overdue, Due soon, Never done, Up to date and Paused fixtures. Click one to show only those.",
+          "Fixtures are grouped by project and test area, most urgent first. New ones (last 7 days) have a New tag.",
+          "Click Start … PM → to open the fixture on the PM that is most urgent, or click a PM badge to open that PM type.",
+          "The red number on the My PMs tab is how many of your fixtures are overdue or due soon.",
+          "Every Monday morning you get a 🔔 reminder listing the fixtures that are overdue, due this week or never done. If a fixture stays overdue for a few days, admins are alerted as well.",
+        ],
+        links: [{ label: "Open My PMs", path: "/dashboard/maintenance/dashboard?tab=mine" }],
+      },
     ],
     keywords: [
       "maintenance", "pm", "preventive", "fixture", "checklist", "weekly", "biweekly", "monthly", "quarterly",
       "record", "overdue", "due", "failed", "issue", "pause", "void", "delete", "dashboard", "to do", "spare",
+      "my pms", "assigned", "assignment", "responsible", "notification",
     ],
     routes: ["/dashboard/maintenance"],
   },
@@ -594,13 +612,14 @@ export const HELP_ARTICLES = [
       "Every list shows the work week (WW) under the date, and every CSV has Year and Work Week columns so you can filter by week in Excel.",
       "Below it, switch between All PMs, Failed (with the failed tasks) and Overdue (due date, days overdue, last done). Click a fixture to open it.",
       "Click Download CSV on the summary or on the list to export it to Excel.",
+      "Admins also see “By person”: PMs each person did, their pass rate, how many fixtures are assigned to them, how many are overdue and their On track %. Sort it or download it as CSV. The Overdue list shows who each fixture is assigned to.",
       "Note: paused fixtures are never counted as overdue, and a biweekly PM also counts for the weekly PM on FBT fixtures.",
     ],
     links: [
       { label: "Open Reports", path: "/dashboard/reports" },
       { label: "PM Report", path: "/dashboard/reports/preventive-maintenance" },
     ],
-    keywords: ["pm", "preventive", "preventative", "maintenance", "report", "passed", "failed", "overdue", "weekly", "monthly", "csv", "work week", "ww", "improvement", "compare"],
+    keywords: ["pm", "preventive", "preventative", "maintenance", "report", "passed", "failed", "overdue", "weekly", "monthly", "csv", "work week", "ww", "improvement", "compare", "person", "assigned", "compliance"],
     routes: ["/dashboard/reports/preventive-maintenance"],
   },
   {
@@ -623,6 +642,7 @@ export const HELP_ARTICLES = [
           "From the profile menu, choose Change Password.",
           "Enter your current password and a new password.",
           "Save — you stay signed in after a successful change.",
+          "If your Super Admin gave you a temporary password, MMIS opens this page right after you sign in. Enter the temporary password as the current one, then choose your own. The new password must be different.",
         ],
       },
     ],
@@ -717,6 +737,87 @@ export const HELP_ARTICLES = [
     ],
     keywords: ["help", "support", "contact", "admin"],
   },
+  {
+    id: "super-admin",
+    title: "Super Admin tools",
+    icon: "🛡️",
+    category: "Workflows",
+    summary: "Manage users, assign PM fixtures, read the audit log and change system settings.",
+    roles: ["superadmin"],
+    sections: [
+      {
+        heading: "Users",
+        steps: [
+          "Open Super Admin from the sidebar, then the Users tab.",
+          "Add user: enter name, badge, username and access level. A temporary password is filled in for you (click Generate for another, Copy to copy it). Give it to the person.",
+          "With \"Ask them to choose their own password at next sign-in\" ticked (the default), they have to choose their own password before they can use MMIS. The list shows 🔒 Temp password until they do.",
+          "Edit changes name, email, designation, shift or access level (Viewer, User, Admin, Super Admin).",
+          "Viewer is view-only: they can open dashboards, reports, documents and fixture PM status, but can't request, return, record PMs or change anything. Their PM fixtures are unassigned.",
+          "Reset password works the same way: a temporary password is generated, and the person must change it the next time they sign in (untick the box to skip that).",
+          "Deactivate blocks login and unassigns their PM fixtures. History stays. Activate brings the account back.",
+          "Access changes apply within about 30 seconds, without the person logging out.",
+          "You can't remove your own Super Admin access, and MMIS always keeps at least one active Super Admin.",
+        ],
+      },
+      {
+        heading: "PM assignments",
+        steps: [
+          "Open the PM Assignments tab. Step 1: choose the project and test area.",
+          "Step 2: choose the From and To fixture, then click Select. Everything in between (in name order) is ticked. Use + Add to selection for a second range, or tick rows in the table (Shift+click ticks everything between two rows).",
+          "Step 3: choose the person. Their badge, designation, shift, email and current PM fixtures show from the database.",
+          "Click Assign. Fixtures already assigned to someone else move to the new person (the bar warns you first). Unassign clears it.",
+          "The person is notified right away: a 🔔 bell notification and a banner saying which fixtures are now theirs. If they have an email address in MMIS, they also get an email (turn this off in Settings).",
+          "They see the fixtures under Maintenance → My PMs. Anyone who lost fixtures to someone else, or had them unassigned, is notified too.",
+          "The assignee also shows on the PM To-do list (with an \"Assigned to me\" filter) and on the fixture page.",
+          "Anyone can still record the PM. Assigning only shows who is responsible.",
+        ],
+      },
+      {
+        heading: "Workload and moving fixtures",
+        steps: [
+          "The Workload tab shows each person's PM fixtures: how many are overdue, due soon and up to date, and their On track % (fixtures not overdue, paused ones left out).",
+          "People falling behind are listed first. The orange card lists PM fixtures nobody is responsible for. Click Assign them → to go to PM Assignments.",
+          "Move fixtures (on a person's row) moves ALL of their fixtures to someone else in one step, e.g. when they leave, go on leave or change shift. Or click Unassign all instead.",
+          "Both people are notified, and the move is written to the audit log.",
+        ],
+      },
+      {
+        heading: "Announcements",
+        steps: [
+          "The Announcements tab sends a message to everyone, or only to some access levels (e.g. Users and Admins).",
+          "It shows in their 🔔 bell and as a purple banner until they click Got it. Tick \"Also send by email\" to email it too.",
+          "Optionally pick a page for the Open button (e.g. My PMs or Documents).",
+          "Sent announcements are listed below the form, with who sent them and to how many people.",
+        ],
+      },
+      {
+        heading: "Audit log and deletes",
+        steps: [
+          "The Audit Log tab lists who changed what: restocks, item and fixture edits, transfers, document changes, PM void/edit/delete, pause/resume, user and setting changes.",
+          "Only Super Admins can permanently delete PM records, documents, items and fixtures.",
+          "Items and fixtures can only be deleted when they have no history. Otherwise leave them in place.",
+        ],
+      },
+      {
+        heading: "Settings",
+        steps: [
+          "PM tracking start date: work weeks before this date never count as overdue. Use it for a fresh start.",
+          "Daily low-stock email: turn the 11:59 PM email to admins on or off.",
+          "PM assignment email: turn off the email sent when fixtures are assigned (the in-app notification still goes out).",
+          "Monday PM reminder: every Monday at 7:00 AM, each person gets a list of their fixtures that are overdue, due this week or never done.",
+          "Overdue alerts to admins: every day at 7:30 AM, admins are told about assigned fixtures that have been overdue for at least the \"Days overdue before alerting admins\" setting. The assignee is told too. Each fixture is reported once per due date.",
+          "Also email reminders and overdue alerts: when off, the Monday reminder and overdue alerts only go to the 🔔 bell.",
+          "Use Send reminders now / Check for overdue PMs now to try them right away after saving.",
+        ],
+      },
+    ],
+    links: [{ label: "Open Super Admin", path: "/dashboard/super-admin" }],
+    keywords: [
+      "super admin", "superadmin", "user", "role", "access", "password", "temporary", "deactivate", "audit", "assign",
+      "settings", "delete", "workload", "move", "reassign", "announcement", "reminder", "overdue",
+    ],
+    routes: ["/dashboard/super-admin"],
+  },
 ];
 
 const DEFAULT_ROLES = ["admin", "user"];
@@ -776,6 +877,7 @@ export function getPageContextLabel(pathname) {
   if (pathname.startsWith("/dashboard/maintenance/work")) return "Maintenance — Select Fixture";
   if (pathname.startsWith("/dashboard/maintenance/fixture")) return "Maintenance — Fixture PM";
   if (pathname.startsWith("/dashboard/maintenance")) return "Maintenance — Project";
+  if (pathname.startsWith("/dashboard/super-admin")) return "Super Admin";
   if (pathname.startsWith("/dashboard/profile")) return "Profile";
   if (pathname.startsWith("/dashboard/change-password")) return "Change Password";
   return "MMIS";
@@ -784,7 +886,9 @@ export function getPageContextLabel(pathname) {
 function articleMatchesRole(article, role) {
   const allowed = article.roles || DEFAULT_ROLES;
   if (!role) return true;
-  return allowed.includes(role);
+  const normalized = String(role).toLowerCase().replace(/[\s_-]/g, "");
+  if (normalized === "viewer") return !article.roles || allowed.includes("viewer");
+  return allowed.includes(normalized) || (normalized === "superadmin" && allowed.includes("admin"));
 }
 
 function articleMatchesRoute(article, pathname) {

@@ -5,11 +5,13 @@ import json
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from .. import models
 from ..database import get_db
+from ..utils.auth_deps import get_current_user
+from ..utils.roles import is_admin
 from ..utils.pm_checklists import PM_COVERS, PM_TYPE_LABELS, get_pm_types
 from ..utils.pm_schedule import pm_due_at
 from .maintenance import (
@@ -130,8 +132,71 @@ def _counts(records: list[dict]) -> dict:
     }
 
 
+def _requester_is_admin(request: Request | None) -> bool:
+    """Per-person numbers are only shown to admins and Super Admins."""
+    if request is None:
+        return False
+    try:
+        return is_admin(get_current_user(request).get("role"))
+    except HTTPException:
+        return False
+
+
+def _by_person(db, stats: list[dict], fixtures, overdue_rows: list[dict]) -> list[dict]:
+    """PMs each person completed in the range, plus the fixtures assigned to them and how many are overdue."""
+    people: dict[int, dict] = {}
+
+    def person(employee_id: int) -> dict:
+        return people.setdefault(
+            employee_id,
+            {"employee_id": employee_id, "records": [], "assigned_fixtures": 0, "overdue": 0, "overdue_fixtures": set()},
+        )
+
+    for r in stats:
+        if r["employee_id"]:
+            person(r["employee_id"])["records"].append(r)
+    for fixture in fixtures:
+        if fixture.pm_assigned_employee_id:
+            person(fixture.pm_assigned_employee_id)["assigned_fixtures"] += 1
+    for row in overdue_rows:
+        if row["assigned_employee_id"]:
+            entry = person(row["assigned_employee_id"])
+            entry["overdue"] += 1
+            entry["overdue_fixtures"].add(row["fixture_id"])
+    if not people:
+        return []
+
+    employees = {
+        e.employee_id: e
+        for e in db.query(models.Employee).filter(models.Employee.employee_id.in_(list(people))).all()
+    }
+    rows = []
+    for employee_id, entry in people.items():
+        emp = employees.get(employee_id)
+        assigned = entry["assigned_fixtures"]
+        rows.append(
+            {
+                "employee_id": employee_id,
+                "employee_name": emp.employee_name if emp else "Unknown",
+                "employee_designation": emp.employee_designation if emp else None,
+                "active": bool(emp and emp.employee_active is not False),
+                **_counts(entry["records"]),
+                "fixtures_serviced": len({r["fixture_id"] for r in entry["records"]}),
+                "assigned_fixtures": assigned,
+                "overdue": entry["overdue"],
+                "overdue_fixtures": len(entry["overdue_fixtures"]),
+                "assigned_on_track": (
+                    round((assigned - len(entry["overdue_fixtures"])) * 100 / assigned) if assigned else None
+                ),
+            }
+        )
+    rows.sort(key=lambda r: (-r["completed"], -r["assigned_fixtures"], r["employee_name"].lower()))
+    return rows
+
+
 @router.get("/report")
 def get_pm_report(
+    request: Request,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     group_by: str = "week",
@@ -204,9 +269,14 @@ def get_pm_report(
             "overall_result": overall_result,
             "pm_type": kind,
             "fixture_id": fixture_id,
+            "employee_id": employee_id,
         }
-        for performed_at, overall_result, kind, fixture_id in query.with_entities(
-            record_model.performed_at, record_model.overall_result, record_model.pm_type, record_model.fixture_id
+        for performed_at, overall_result, kind, fixture_id, employee_id in query.with_entities(
+            record_model.performed_at,
+            record_model.overall_result,
+            record_model.pm_type,
+            record_model.fixture_id,
+            record_model.performed_by_employee_id,
         ).all()
     ]
     records = [
@@ -296,6 +366,7 @@ def get_pm_report(
                 "due_at": due,
                 "last_performed_at": last,
                 "days_overdue": (overdue_checked_at - due).days,
+                "assigned_employee_id": fixture.pm_assigned_employee_id,
             }
             for fixture, kind, due, last in overdue_at(pairs, record_times, overdue_checked_at)
         ),
@@ -328,9 +399,17 @@ def get_pm_report(
             }
         )
 
+    by_person = _by_person(db, stats, fixtures, overdue_rows)
+    names = {row["employee_id"]: row["employee_name"] for row in by_person}
+    for row in overdue_rows:
+        row["assigned_to"] = names.get(row["assigned_employee_id"])
+    if not _requester_is_admin(request):
+        by_person = []
+
     return {
         "range": {"date_from": range_start, "date_to": range_end},
         "group_by": group_by,
+        "by_person": by_person,
         "totals": {
             **_counts(stats),
             "fixtures_serviced": len({r["fixture_id"] for r in stats}),

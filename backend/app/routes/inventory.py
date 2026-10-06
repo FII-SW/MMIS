@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from .. import crud, schemas, models
 from ..database import get_db
-from ..utils.auth_deps import get_current_user, require_admin, employee_id_from_token
+from ..utils.audit import changed_fields, log_action
+from ..utils.auth_deps import get_current_user, require_admin, require_editor, require_super_admin, employee_id_from_token
 from ..utils.inventory_rules import project_requires_test_area
 import os
 import shutil
@@ -134,6 +135,12 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
             project_name=item.project_name,
         )
         db.add(transaction)
+        log_action(
+            db, admin, "create", "item", db_item.item_id,
+            f"Added new item {db_item.item_name} ({db_item.item_part_number}) to {db_item.project_name}"
+            + (f" · {db_item.test_area}" if db_item.test_area else "")
+            + f" with quantity {db_item.item_current_quantity}",
+        )
         db.commit()
         db.refresh(db_item)
 
@@ -161,7 +168,7 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
 @router.put("/{item_id}")
 def update_inventory(item_id: int, item: schemas.InventoryBase, request: Request, db: Session = Depends(get_db)):
     """Update an existing inventory item by ID (admin only)."""
-    require_admin(request)
+    admin = require_admin(request)
     db_item = db.query(models.Inventory).filter(models.Inventory.item_id == item_id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -169,6 +176,13 @@ def update_inventory(item_id: int, item: schemas.InventoryBase, request: Request
     # Update all fields except quantity (quantity is handled by restock endpoint)
     # item_image_url is only set via dedicated upload endpoints
     update_data = item.dict(exclude={"item_current_quantity", "item_image_url"})
+    changes = changed_fields(db_item, {k: v for k, v in update_data.items() if v is not None})
+    if changes:
+        log_action(
+            db, admin, "update", "item", item_id,
+            f"Edited item {db_item.item_name} ({db_item.project_name}): {', '.join(changes)}",
+            {"changes": changes},
+        )
     for key, value in update_data.items():
         if value is not None:
             setattr(db_item, key, value)
@@ -179,9 +193,46 @@ def update_inventory(item_id: int, item: schemas.InventoryBase, request: Request
 
 
 
+@router.delete("/{item_id}")
+def delete_inventory_item(item_id: int, request: Request, db: Session = Depends(get_db)):
+    """Permanently delete an item (Super Admin). Only items with no history can be deleted,
+    so reports and Activity History never lose their item."""
+    admin = require_super_admin(request)
+    item = db.query(models.Inventory).filter(models.Inventory.item_id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    history = (
+        db.query(models.Transaction).filter(models.Transaction.item_id == item_id).count()
+        + db.query(models.Report).filter(models.Report.item_id == item_id).count()
+    )
+    if history:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{item.item_name} has {history} history record(s) (requests, restocks, reports), so it can't be "
+                "deleted. Set its quantity and minimum count to 0 instead."
+            ),
+        )
+
+    image_path = _safe_path_under(_uploads_base_dir(), item.item_image_url) if item.item_image_url else None
+    log_action(
+        db, admin, "delete", "item", item_id,
+        f"Deleted item {item.item_name} ({item.item_part_number}) from {item.project_name}",
+    )
+    db.delete(item)
+    db.commit()
+    if image_path and image_path.exists() and image_path.is_file():
+        try:
+            image_path.unlink()
+        except OSError:
+            pass
+    return {"message": "Item deleted", "item_id": item_id}
+
+
 @router.post("/request")
 def request_item(data: schemas.RequestCreate, request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request)
+    user = require_editor(request)
     employee_id = employee_id_from_token(user)
 
     item_id = data.item_id
@@ -402,6 +453,11 @@ def restock_item(data: dict, request: Request, db: Session = Depends(get_db)):
     )
     
     db.add(transaction)
+    log_action(
+        db, admin, "restock", "item", item_id,
+        f"Restocked {quantity} × {item.item_name} ({item.project_name}); now {item.item_current_quantity}",
+        {"quantity": quantity, "new_quantity": item.item_current_quantity, "remarks": remarks or None},
+    )
     db.commit()
     db.refresh(item)
 
@@ -452,7 +508,7 @@ async def upload_and_update_item_image(
     db: Session = Depends(get_db),
 ):
     """Upload an image for a specific inventory item and update the database (admin only)."""
-    require_admin(request)
+    admin = require_admin(request)
     # Verify item exists
     item = db.query(models.Inventory).filter(models.Inventory.item_id == item_id).first()
     if not item:
@@ -494,6 +550,7 @@ async def upload_and_update_item_image(
     
     # Update item with image URL
     item.item_image_url = f"/uploads/item_images/{safe_filename}"
+    log_action(db, admin, "update", "item", item_id, f"Changed the photo of {item.item_name} ({item.project_name})")
     db.commit()
     db.refresh(item)
     
@@ -602,6 +659,11 @@ def transfer_item(data: dict, request: Request, db: Session = Depends(get_db)):
     
     db.add(transfer_out_tx)
     db.add(transfer_in_tx)
+    log_action(
+        db, admin, "transfer", "item", source_item_id,
+        f"Transferred {quantity} × {source_item.item_name} from {source_item.project_name} to {dest_item.project_name}",
+        {"quantity": quantity, "dest_item_id": dest_item_id, "remarks": remarks or None},
+    )
     db.commit()
     db.refresh(source_item)
     db.refresh(dest_item)

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { hasAdminAccess } from "../utils/auth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import API from "../api";
 import AccessDenied from "../components/AccessDenied";
@@ -67,7 +68,7 @@ export default function RestockNewStockPage() {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setEmployeeId(payload.employee_id);
         // Token stores access level as "role" field
-        setAccessLevel(payload.role);
+        setAccessLevel(hasAdminAccess(payload.role) ? "admin" : payload.role);
       } catch (err) {
         console.error("Error decoding token:", err);
       }

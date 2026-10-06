@@ -1,7 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import API from "../api";
+import { decodeToken } from "../utils/auth";
 
 const STORAGE_KEY = "mmis_transfer_notifications";
 const MAX_ITEMS = 30;
+const SERVER_POLL_MS = 60 * 1000;
 
 const NotificationContext = createContext(null);
 
@@ -18,6 +21,10 @@ function loadStored() {
 
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState(loadStored);
+  // Saved on the server for this account (e.g. "fixtures assigned to you for PM").
+  const [serverItems, setServerItems] = useState([]);
+  const [serverUnread, setServerUnread] = useState(0);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -26,6 +33,66 @@ export function NotificationProvider({ children }) {
       /* ignore quota */
     }
   }, [notifications]);
+
+  const refreshServer = useCallback(async () => {
+    if (!decodeToken(localStorage.getItem("token"))) {
+      setServerItems([]);
+      setServerUnread(0);
+      return;
+    }
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    try {
+      const res = await API.get("/notifications", { params: { limit: 30 } });
+      setServerItems(res.data?.items || []);
+      setServerUnread(res.data?.unread || 0);
+    } catch {
+      /* keep the last list; next poll retries */
+    } finally {
+      loadingRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshServer();
+    const id = setInterval(refreshServer, SERVER_POLL_MS);
+    window.addEventListener("focus", refreshServer);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", refreshServer);
+    };
+  }, [refreshServer]);
+
+  const markServerRead = useCallback(async (notification) => {
+    if (!notification || notification.read) return;
+    const id = notification.notification_id;
+    setServerItems((prev) => prev.map((n) => (n.notification_id === id ? { ...n, read: true } : n)));
+    setServerUnread((count) => Math.max(0, count - 1));
+    try {
+      await API.post(`/notifications/${id}/read`);
+    } catch {
+      /* re-synced on next poll */
+    }
+  }, []);
+
+  const markAllServerRead = useCallback(async () => {
+    setServerItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    setServerUnread(0);
+    try {
+      await API.post("/notifications/read-all");
+    } catch {
+      /* re-synced on next poll */
+    }
+  }, []);
+
+  const clearReadServer = useCallback(async () => {
+    setServerItems((prev) => prev.filter((n) => !n.read));
+    try {
+      await API.delete("/notifications");
+    } catch {
+      /* re-synced on next poll */
+    }
+  }, []);
 
   const addNotification = useCallback((message) => {
     const id =
@@ -41,7 +108,7 @@ export function NotificationProvider({ children }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }, []);
 
-  const clearAll = useCallback(() => {
+  const clearTransfers = useCallback(() => {
     setNotifications([]);
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -50,15 +117,45 @@ export function NotificationProvider({ children }) {
     }
   }, []);
 
+  /** On sign-out: forget everything shown for this account. */
+  const clearAll = useCallback(() => {
+    clearTransfers();
+    setServerItems([]);
+    setServerUnread(0);
+  }, [clearTransfers]);
+
+  const transferUnread = notifications.filter((n) => !n.read).length;
+
   const value = useMemo(
     () => ({
       notifications,
       addNotification,
       markAllRead,
+      clearTransfers,
       clearAll,
-      unreadCount: notifications.filter((n) => !n.read).length,
+      transferUnread,
+      serverItems,
+      serverUnread,
+      refreshServer,
+      markServerRead,
+      markAllServerRead,
+      clearReadServer,
+      unreadCount: transferUnread + serverUnread,
     }),
-    [notifications, addNotification, markAllRead, clearAll]
+    [
+      notifications,
+      addNotification,
+      markAllRead,
+      clearTransfers,
+      clearAll,
+      transferUnread,
+      serverItems,
+      serverUnread,
+      refreshServer,
+      markServerRead,
+      markAllServerRead,
+      clearReadServer,
+    ]
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
@@ -71,7 +168,15 @@ export function useNotifications() {
       notifications: [],
       addNotification: () => {},
       markAllRead: () => {},
+      clearTransfers: () => {},
       clearAll: () => {},
+      transferUnread: 0,
+      serverItems: [],
+      serverUnread: 0,
+      refreshServer: () => {},
+      markServerRead: () => {},
+      markAllServerRead: () => {},
+      clearReadServer: () => {},
       unreadCount: 0,
     };
   }

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { hasAdminAccess, isSuperAdminUser } from "../utils/auth";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../api";
 import AccessDenied from "../components/AccessDenied";
@@ -69,7 +70,7 @@ export default function RestockEditFixturePage() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setAccessLevel(payload.role);
+        setAccessLevel(hasAdminAccess(payload.role) ? "admin" : payload.role);
       } catch (err) {
         console.error("Error decoding token:", err);
       }
@@ -203,6 +204,21 @@ export default function RestockEditFixturePage() {
     } catch (err) {
       console.error(err);
       alert("Failed to update fixture: " + apiErrorMessage(err, err.message));
+    }
+  };
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      "Permanently delete this fixture?\n\n" +
+        "This only works if it has no PM records and no item requests or returns. It cannot be undone."
+    );
+    if (!confirmed) return;
+    try {
+      await API.delete(`/fixtures/${fixture_id}`);
+      alert("Fixture deleted.");
+      navigate("/dashboard/reports/current-inventory");
+    } catch (err) {
+      alert("Could not delete the fixture: " + apiErrorMessage(err, err.message));
     }
   };
 
@@ -365,6 +381,15 @@ export default function RestockEditFixturePage() {
           >
             Update Fixture
           </button>
+
+          {isSuperAdminUser() && (
+            <button
+              className="px-8 py-3 border border-red-300 text-red-700 dark:border-red-800 dark:text-red-300 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
+              onClick={handleDelete}
+            >
+              Delete Fixture
+            </button>
+          )}
         </div>
       </div>
     </div>

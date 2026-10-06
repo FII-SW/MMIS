@@ -11,7 +11,8 @@ from sqlalchemy import or_
 
 from .. import models, schemas
 from ..database import get_db
-from ..utils.jwt_handler import verify_access_token
+from ..utils.audit import changed_fields, log_action
+from ..utils.auth_deps import require_admin, require_super_admin
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -39,24 +40,13 @@ def _get_upload_directory() -> Path:
     return upload_dir
 
 
-def _get_auth_payload(request: Request):
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization token")
-
-    token = auth_header.split(" ", 1)[1].strip()
-    payload = verify_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    return payload
-
-
 def _require_admin(request: Request):
-    payload = _get_auth_payload(request)
-    role = str(payload.get("role", "")).lower()
-    if role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can modify documents")
-    return payload
+    try:
+        return require_admin(request)
+    except HTTPException as exc:
+        if exc.status_code == 403:
+            raise HTTPException(status_code=403, detail="Only admins can modify documents")
+        raise
 
 
 def _to_document_out(db: Session, document: models.ProjectDocument):
@@ -213,6 +203,16 @@ async def upload_document(
         uploaded_by_employee_id=payload.get("employee_id"),
     )
     db.add(document)
+    db.flush()
+    log_action(
+        db,
+        payload,
+        "upload",
+        "document",
+        document.document_id,
+        f"Uploaded document {document.original_filename}"
+        + (f" ({document.project_name})" if document.project_name else " (common)"),
+    )
     db.commit()
     db.refresh(document)
 
@@ -248,7 +248,7 @@ def update_document(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    _require_admin(request)
+    user = _require_admin(request)
     document = (
         db.query(models.ProjectDocument)
         .filter(models.ProjectDocument.document_id == document_id)
@@ -263,6 +263,12 @@ def update_document(
         if update_data["document_scope"] not in {"project", "common"}:
             raise HTTPException(status_code=400, detail="document_scope must be 'project' or 'common'")
 
+    changes = changed_fields(document, update_data)
+    if changes:
+        log_action(
+            db, user, "update", "document", document_id,
+            f"Edited document {document.original_filename}", {"changes": changes},
+        )
     for key, value in update_data.items():
         setattr(document, key, value)
 
@@ -284,7 +290,7 @@ def pin_document(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    _require_admin(request)
+    user = _require_admin(request)
     document = (
         db.query(models.ProjectDocument)
         .filter(models.ProjectDocument.document_id == document_id)
@@ -293,6 +299,11 @@ def pin_document(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    if bool(document.is_pinned) != bool(payload.is_pinned):
+        log_action(
+            db, user, "pin" if payload.is_pinned else "unpin", "document", document_id,
+            f"{'Pinned' if payload.is_pinned else 'Unpinned'} document {document.original_filename}",
+        )
     document.is_pinned = bool(payload.is_pinned)
     document.pinned_at = datetime.now(timezone.utc) if payload.is_pinned else None
     db.commit()
@@ -302,7 +313,8 @@ def pin_document(
 
 @router.delete("/{document_id}")
 def delete_document(document_id: int, request: Request, db: Session = Depends(get_db)):
-    _require_admin(request)
+    """Permanently delete a document (Super Admin)."""
+    user = require_super_admin(request)
     document = (
         db.query(models.ProjectDocument)
         .filter(models.ProjectDocument.document_id == document_id)
@@ -320,6 +332,11 @@ def delete_document(document_id: int, request: Request, db: Session = Depends(ge
             # Continue deleting the DB record even if file cleanup fails.
             pass
 
+    log_action(
+        db, user, "delete", "document", document_id,
+        f"Deleted document {document.original_filename}"
+        + (f" ({document.project_name})" if document.project_name else " (common)"),
+    )
     db.delete(document)
     db.commit()
     return {"message": "Document deleted successfully"}

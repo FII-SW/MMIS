@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sqlalchemy import func
 from . import models, schemas
+from .utils.roles import is_admin
 from datetime import date, timedelta
 
 # ---------------- Employee ----------------
@@ -41,11 +42,12 @@ def get_employee_by_username(db: Session, username: str):
     )
 
 def get_admin_users(db: Session):
-    """Get all admin users with email addresses."""
-    return db.query(models.Employee).filter(
-        models.Employee.employee_access_level == "admin",
-        models.Employee.employee_email.isnot(None)
+    """Get all active admins and super admins with email addresses."""
+    employees = db.query(models.Employee).filter(
+        models.Employee.employee_email.isnot(None),
+        models.Employee.employee_active.isnot(False),
     ).all()
+    return [emp for emp in employees if is_admin(emp.employee_access_level)]
 
 # ---------------- Inventory ----------------
 def get_all_inventory(db: Session):

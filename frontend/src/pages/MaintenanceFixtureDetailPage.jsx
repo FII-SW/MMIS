@@ -13,8 +13,9 @@ import { describeDue } from "../components/maintenance/pmStatus";
 import PMStatusBadge from "../components/maintenance/PMStatusBadge";
 import PMPauseControl from "../components/maintenance/PMPauseControl";
 import PMIssuesList from "../components/maintenance/PMIssuesList";
+import PMAssignmentCard from "../components/maintenance/PMAssignmentCard";
 import { MAINTENANCE_PROJECTS_URL, fixtureListUrl } from "../components/maintenance/links";
-import { isAdminUser } from "../utils/auth";
+import { isAdminUser, isViewerUser } from "../utils/auth";
 import { useNotifications } from "../contexts/NotificationContext";
 
 function PMStatusCard({ title, entry, onStart }) {
@@ -40,13 +41,15 @@ function PMStatusCard({ title, entry, onStart }) {
         <dt className="text-gray-500 dark:text-gray-400">Next due</dt>
         <dd className="text-gray-800 dark:text-gray-200">{formatDate(entry?.next_due_at)}</dd>
       </dl>
-      <button
-        type="button"
-        onClick={onStart}
-        className="mt-3 w-full rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
-      >
-        Record {title}
-      </button>
+      {onStart && (
+        <button
+          type="button"
+          onClick={onStart}
+          className="mt-3 w-full rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+        >
+          Record {title}
+        </button>
+      )}
     </div>
   );
 }
@@ -67,6 +70,7 @@ export default function MaintenanceFixtureDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const isAdmin = isAdminUser();
+  const viewOnly = isViewerUser();
 
   const pmTypes = pmStatus?.pm_types || [];
   const tabs = [
@@ -198,14 +202,18 @@ export default function MaintenanceFixtureDetailPage() {
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleRequestPart}
-            className="shrink-0 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-          >
-            Request spare part
-          </button>
+          {!viewOnly && (
+            <button
+              type="button"
+              onClick={handleRequestPart}
+              className="shrink-0 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+            >
+              Request spare part
+            </button>
+          )}
         </div>
+
+        <PMAssignmentCard status={pmStatus} />
 
         <PMPauseControl
           fixtureId={fixture.fixture_id}
@@ -241,7 +249,7 @@ export default function MaintenanceFixtureDetailPage() {
                 key={type}
                 title={pmTypeLabel(type)}
                 entry={pmStatus.status[type]}
-                onStart={() => setActiveTab(type)}
+                onStart={viewOnly ? null : () => setActiveTab(type)}
               />
             ))}
           </div>
@@ -279,7 +287,13 @@ export default function MaintenanceFixtureDetailPage() {
                 }}
               />
             )}
-            {pmTypes.includes(activeTab) && (
+            {pmTypes.includes(activeTab) && viewOnly && (
+              <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                👁 You have view-only access, so you can&apos;t record PMs. The status is shown above and past PMs are in
+                PM History.
+              </p>
+            )}
+            {pmTypes.includes(activeTab) && !viewOnly && (
               <PMChecklistForm
                 key={activeTab}
                 fixture={fixture}

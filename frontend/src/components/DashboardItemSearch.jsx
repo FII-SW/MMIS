@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isViewerUser } from "../utils/auth";
 import { projectRequiresTestArea } from "../utils/inventoryRules";
 
 const MIN_SEARCH_LENGTH = 2;
@@ -49,6 +50,7 @@ const TONE_CLASS = {
 
 export default function DashboardItemSearch({ inventory = [] }) {
   const navigate = useNavigate();
+  const viewOnly = isViewerUser();
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
@@ -142,7 +144,7 @@ export default function DashboardItemSearch({ inventory = [] }) {
   }, [projectFilter, testAreaFilter, testAreas]);
 
   const requestItem = (item) => {
-    if (!item) return;
+    if (!item || viewOnly) return;
     const project = item.project_name || "";
     const testArea = item.test_area || "";
     let url = `/dashboard/request/item/${item.item_id}?project=${encodeURIComponent(project)}`;
@@ -200,7 +202,7 @@ export default function DashboardItemSearch({ inventory = [] }) {
       <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Find item to request
+            {viewOnly ? "Find item" : "Find item to request"}
           </p>
           {hasActiveFilters && (
             <button
@@ -321,7 +323,9 @@ export default function DashboardItemSearch({ inventory = [] }) {
                   : `${filtered.length} match${filtered.length === 1 ? "" : "es"}`}
                 {filtered.length > MAX_RESULTS ? ` · showing ${MAX_RESULTS}` : ""}
               </span>
-              <span className="hidden sm:inline">↑↓ to move · Enter to request · Esc to close</span>
+              <span className="hidden sm:inline">
+                {viewOnly ? "Esc to close" : "↑↓ to move · Enter to request · Esc to close"}
+              </span>
             </div>
 
             {visibleResults.length === 0 ? (
@@ -384,15 +388,17 @@ export default function DashboardItemSearch({ inventory = [] }) {
                           </p>
                         </div>
 
-                        <span
-                          className={`mt-0.5 shrink-0 text-xs font-semibold ${
-                            canRequest
-                              ? "text-blue-600 dark:text-blue-400"
-                              : "text-gray-400 dark:text-gray-500"
-                          }`}
-                        >
-                          {canRequest ? "Request →" : "View →"}
-                        </span>
+                        {!viewOnly && (
+                          <span
+                            className={`mt-0.5 shrink-0 text-xs font-semibold ${
+                              canRequest
+                                ? "text-blue-600 dark:text-blue-400"
+                                : "text-gray-400 dark:text-gray-500"
+                            }`}
+                          >
+                            {canRequest ? "Request →" : "View →"}
+                          </span>
+                        )}
                       </button>
                     </li>
                   );

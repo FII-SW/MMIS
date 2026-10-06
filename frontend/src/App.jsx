@@ -35,7 +35,11 @@ import MaintenanceTestAreaPage from "./pages/MaintenanceTestAreaPage";
 import MaintenanceWorkPage from "./pages/MaintenanceWorkPage";
 import MaintenanceFixtureDetailPage from "./pages/MaintenanceFixtureDetailPage";
 import DocumentsPage from "./pages/DocumentsPage";
+import SuperAdminPage from "./pages/SuperAdminPage";
 import Layout from "./components/Layout";
+
+const EDITORS = ["admin", "user"];
+const EVERYONE = ["admin", "user", "viewer"];
 
 export default function App() {
   const withLayout = (allowedRoles, page) => (
@@ -48,32 +52,36 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-        {/* ADMIN + USER */}
-        <Route path="/dashboard/" element={withLayout(["admin", "user"], <Dashboard />)} />
-        <Route path="/dashboard/request" element={withLayout(["admin", "user"], <RequestProjectPage />)} />
-        <Route path="/dashboard/request/test-area" element={withLayout(["admin", "user"], <RequestTestAreaPage />)} />
-        <Route path="/dashboard/request/search" element={withLayout(["admin", "user"], <RequestPage />)} />
-        <Route path="/dashboard/request/item/:item_id" element={withLayout(["admin", "user"], <ItemRequestPage />)} />
-        <Route path="/dashboard/return/" element={withLayout(["admin", "user"], <ReturnPage />)} />
-        <Route path="/dashboard/return/item/:transaction_id" element={withLayout(["admin", "user"], <ItemReturnPage />)} />
-        <Route path="/dashboard/alerts" element={withLayout(["admin", "user"], <AlertsPage />)} />
-        <Route path="/dashboard/reports" element={withLayout(["admin", "user"], <ReportsPage />)} />
-        <Route path="/dashboard/reports/current-inventory" element={withLayout(["admin", "user"], <CurrentInventoryReportPage />)} />
-        <Route path="/dashboard/reports/low-stock" element={withLayout(["admin", "user"], <LowStockReportPage />)} />
-        <Route path="/dashboard/transfer" element={withLayout(["admin"], <TransferItemPage />)} />
-        <Route path="/dashboard/reports/customized" element={withLayout(["admin", "user"], <CustomizedReportPage />)} />
-        <Route path="/dashboard/reports/spending" element={withLayout(["admin", "user"], <SpendingReportPage />)} />
-        <Route path="/dashboard/reports/preventive-maintenance" element={withLayout(["admin", "user"], <PMReportPage />)} />
-        <Route path="/dashboard/activity" element={withLayout(["admin", "user"], <ActivityPage />)} />
-        <Route path="/dashboard/documents" element={withLayout(["admin", "user"], <DocumentsPage />)} />
-        <Route path="/dashboard/maintenance" element={withLayout(["admin", "user"], <MaintenanceProjectsPage />)} />
-        <Route path="/dashboard/maintenance/dashboard" element={withLayout(["admin", "user"], <MaintenancePage />)} />
+        {/* ADMIN + USER (not viewers: these pages change stock) */}
+        <Route path="/dashboard/request" element={withLayout(EDITORS, <RequestProjectPage />)} />
+        <Route path="/dashboard/request/test-area" element={withLayout(EDITORS, <RequestTestAreaPage />)} />
+        <Route path="/dashboard/request/search" element={withLayout(EDITORS, <RequestPage />)} />
+        <Route path="/dashboard/request/item/:item_id" element={withLayout(EDITORS, <ItemRequestPage />)} />
+        <Route path="/dashboard/return/" element={withLayout(EDITORS, <ReturnPage />)} />
+        <Route path="/dashboard/return/item/:transaction_id" element={withLayout(EDITORS, <ItemReturnPage />)} />
+
+        {/* EVERYONE, including view-only accounts */}
+        <Route path="/dashboard/" element={withLayout(EVERYONE, <Dashboard />)} />
+        <Route path="/dashboard/alerts" element={withLayout(EVERYONE, <AlertsPage />)} />
+        <Route path="/dashboard/reports" element={withLayout(EVERYONE, <ReportsPage />)} />
+        <Route path="/dashboard/reports/current-inventory" element={withLayout(EVERYONE, <CurrentInventoryReportPage />)} />
+        <Route path="/dashboard/reports/low-stock" element={withLayout(EVERYONE, <LowStockReportPage />)} />
+        <Route path="/dashboard/reports/customized" element={withLayout(EVERYONE, <CustomizedReportPage />)} />
+        <Route path="/dashboard/reports/spending" element={withLayout(EVERYONE, <SpendingReportPage />)} />
+        <Route path="/dashboard/reports/preventive-maintenance" element={withLayout(EVERYONE, <PMReportPage />)} />
+        <Route path="/dashboard/activity" element={withLayout(EVERYONE, <ActivityPage />)} />
+        <Route path="/dashboard/documents" element={withLayout(EVERYONE, <DocumentsPage />)} />
+        <Route path="/dashboard/maintenance" element={withLayout(EVERYONE, <MaintenanceProjectsPage />)} />
+        <Route path="/dashboard/maintenance/dashboard" element={withLayout(EVERYONE, <MaintenancePage />)} />
         <Route path="/dashboard/maintenance/projects" element={<Navigate to="/dashboard/maintenance" replace />} />
-        <Route path="/dashboard/maintenance/test-area" element={withLayout(["admin", "user"], <MaintenanceTestAreaPage />)} />
-        <Route path="/dashboard/maintenance/work" element={withLayout(["admin", "user"], <MaintenanceWorkPage />)} />
-        <Route path="/dashboard/maintenance/fixture/:fixture_id" element={withLayout(["admin", "user"], <MaintenanceFixtureDetailPage />)} />
-        <Route path="/dashboard/change-password" element={withLayout(["admin", "user"], <ChangePasswordPage />)} />
-        <Route path="/dashboard/profile" element={withLayout(["admin", "user"], <ProfilePage />)} />
+        <Route path="/dashboard/maintenance/test-area" element={withLayout(EVERYONE, <MaintenanceTestAreaPage />)} />
+        <Route path="/dashboard/maintenance/work" element={withLayout(EVERYONE, <MaintenanceWorkPage />)} />
+        <Route path="/dashboard/maintenance/fixture/:fixture_id" element={withLayout(EVERYONE, <MaintenanceFixtureDetailPage />)} />
+        <Route path="/dashboard/change-password" element={withLayout(EVERYONE, <ChangePasswordPage />)} />
+        <Route path="/dashboard/profile" element={withLayout(EVERYONE, <ProfilePage />)} />
+
+        <Route path="/dashboard/transfer" element={withLayout(["admin"], <TransferItemPage />)} />
+        <Route path="/dashboard/super-admin" element={withLayout(["superadmin"], <SuperAdminPage />)} />
 
         {/* ADMIN ONLY */}
         <Route path="/dashboard/restock" element={withLayout(["admin"], <RestockPage />)} />

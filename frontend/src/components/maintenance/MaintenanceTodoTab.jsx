@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../../api";
+import { getTokenSession, isViewerUser } from "../../utils/auth";
 import PMStatusBadge from "./PMStatusBadge";
 import { formatDate } from "./formatDate";
 import { fixtureDetailUrl } from "./links";
+import { assignedByText } from "./assignment";
 import { PM_STATE_META, PM_STATE_RANK, describeDue } from "./pmStatus";
 import { PM_TYPE_LABELS, pmTypeLabel } from "./pmTypes";
 import PMCalendar from "./PMCalendar";
@@ -31,13 +33,14 @@ function csvCell(value) {
 }
 
 function exportTodoCsv(tasks) {
-  const header = ["Status", "Fixture", "Project", "Test Area", "Line", "PM Type", "Due", "Next Due Date", "Last Done", "Last Done By"];
+  const header = ["Status", "Fixture", "Project", "Test Area", "Line", "Assigned To", "PM Type", "Due", "Next Due Date", "Last Done", "Last Done By"];
   const rows = tasks.map(({ fixture, pmType, entry }) => [
     PM_STATE_META[entry.state]?.label || entry.state,
     fixture.fixture_name,
     fixture.project_name,
     fixture.test_area,
     fixture.production_line || "",
+    fixture.pm_assigned_to || "",
     pmTypeLabel(pmType),
     describeDue(entry),
     entry.next_due_at ? formatDate(entry.next_due_at) : "",
@@ -93,6 +96,9 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useStickyState("mmis:pm-todo:type", "all");
   const [projectFilter, setProjectFilter] = useStickyState("mmis:pm-todo:project", "all");
+  const [assigneeFilter, setAssigneeFilter] = useStickyState("mmis:pm-todo:assignee", "all");
+  const myId = getTokenSession()?.employee_id;
+  const viewOnly = isViewerUser();
   const [view, setView] = useStickyState("mmis:pm-todo:view", "list");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useStickyState("mmis:pm-todo:page-size", PAGE_SIZES[0]);
@@ -133,12 +139,16 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
 
   const activeType = typeCounts.some(([type]) => type === typeFilter) ? typeFilter : "all";
   const activeProject = projects.includes(projectFilter) ? projectFilter : "all";
+  const anyAssigned = useMemo(() => tasks.some((t) => t.fixture.pm_assigned_employee_id), [tasks]);
+  const activeAssignee = anyAssigned ? assigneeFilter : "all";
 
   const scoped = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tasks.filter(({ fixture, pmType }) => {
       if (activeType !== "all" && pmType !== activeType) return false;
       if (activeProject !== "all" && fixture.project_name !== activeProject) return false;
+      if (activeAssignee === "me" && fixture.pm_assigned_employee_id !== myId) return false;
+      if (activeAssignee === "unassigned" && fixture.pm_assigned_employee_id) return false;
       if (!q) return true;
       return [
         fixture.fixture_name,
@@ -147,9 +157,10 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
         fixture.production_line,
         fixture.manufacturer,
         fixture.asset_tag,
+        fixture.pm_assigned_to,
       ].some((value) => (value || "").toLowerCase().includes(q));
     });
-  }, [tasks, search, activeType, activeProject]);
+  }, [tasks, search, activeType, activeProject, activeAssignee, myId]);
 
   const stateCounts = useMemo(() => {
     const counts = { overdue: 0, due_soon: 0, never: 0 };
@@ -166,7 +177,7 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
 
   useEffect(() => {
     setPage(1);
-  }, [search, activeType, activeProject, status, pageSize]);
+  }, [search, activeType, activeProject, activeAssignee, status, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -271,6 +282,18 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
                 </option>
               ))}
             </select>
+            {anyAssigned && (
+              <select
+                value={activeAssignee}
+                onChange={(e) => setAssigneeFilter(e.target.value)}
+                aria-label="Filter by assignee"
+                className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              >
+                <option value="all">Anyone</option>
+                <option value="me">Assigned to me</option>
+                <option value="unassigned">Not assigned</option>
+              </select>
+            )}
             <div className="flex overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
               {[
                 ["list", "☰ List"],
@@ -340,6 +363,21 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
                         {fixture.project_name} · {fixture.test_area}
                         {fixture.production_line ? ` · ${fixture.production_line}` : ""}
                       </p>
+                      {fixture.pm_assigned_to && (
+                        <p
+                          title={assignedByText(fixture.pm_assigned_by, fixture.pm_assigned_at)}
+                          className={`mt-0.5 text-xs font-medium ${
+                            fixture.pm_assigned_employee_id === myId
+                              ? "text-blue-700 dark:text-blue-300"
+                              : "text-gray-600 dark:text-gray-300"
+                          }`}
+                        >
+                          👤 {fixture.pm_assigned_employee_id === myId ? "Assigned to you" : fixture.pm_assigned_to}
+                          {fixture.pm_assigned_by && (
+                            <span className="font-normal text-gray-500 dark:text-gray-400"> · by {fixture.pm_assigned_by}</span>
+                          )}
+                        </p>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 align-top font-medium text-gray-700 dark:text-gray-200">
                       {pmTypeLabel(pmType)}
@@ -365,7 +403,7 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
                         onClick={() => navigate(fixtureDetailUrl(fixture, { tab: pmType }))}
                         className="whitespace-nowrap rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
                       >
-                        Start PM →
+                        {viewOnly ? "View →" : "Start PM →"}
                       </button>
                     </td>
                   </tr>

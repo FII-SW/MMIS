@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../../api";
+import { isViewerUser } from "../../utils/auth";
 import DashboardFilters from "./DashboardFilters";
 import PMActivityChart from "./PMActivityChart";
 import PMStatusBadge from "./PMStatusBadge";
@@ -104,6 +105,7 @@ function useDebounced(value, delay) {
 
 export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
   const navigate = useNavigate();
+  const viewOnly = isViewerUser();
   const [saved, setSaved] = useStickyState("mmis:pm-dashboard:filters", DEFAULT_FILTERS);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search.trim(), 350);
@@ -475,7 +477,9 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
 
         <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20 sm:flex-row sm:items-center">
           <div>
-            <p className="font-semibold text-blue-900 dark:text-blue-100">Ready to do a PM?</p>
+            <p className="font-semibold text-blue-900 dark:text-blue-100">
+              {viewOnly ? "Look up a fixture" : "Ready to do a PM?"}
+            </p>
             <p className="text-sm text-blue-800 dark:text-blue-300">Pick the project, test area and fixture step by step.</p>
           </div>
           <button
@@ -483,7 +487,7 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
             onClick={() => navigate(MAINTENANCE_PROJECTS_URL)}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
           >
-            Record PM →
+            {viewOnly ? "Browse fixtures →" : "Record PM →"}
           </button>
         </div>
       </div>

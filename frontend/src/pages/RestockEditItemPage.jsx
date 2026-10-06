@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { hasAdminAccess, isSuperAdminUser } from "../utils/auth";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import API from "../api";
 import AccessDenied from "../components/AccessDenied";
@@ -74,7 +75,7 @@ export default function RestockEditItemPage() {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setEmployeeId(payload.employee_id);
         // Token stores access level as "role" field
-        setAccessLevel(payload.role);
+        setAccessLevel(hasAdminAccess(payload.role) ? "admin" : payload.role);
       } catch (err) {
         console.error("Error decoding token:", err);
       }
@@ -272,6 +273,21 @@ export default function RestockEditItemPage() {
     } catch (err) {
       console.error(err);
       alert("Failed to restock item: " + apiErrorMessage(err, err.message));
+    }
+  };
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      `Permanently delete "${item.item_name}" (${item.project_name || "no project"})?\n\n` +
+        "This only works if the item has never been requested, returned, restocked or transferred. It cannot be undone."
+    );
+    if (!confirmed) return;
+    try {
+      await API.delete(`/inventory/${item_id}`);
+      alert("Item deleted.");
+      handleBack();
+    } catch (err) {
+      alert("Could not delete the item: " + apiErrorMessage(err, err.message));
     }
   };
 
@@ -693,6 +709,15 @@ export default function RestockEditItemPage() {
           >
             Submit Restock
           </button>
+
+          {isSuperAdminUser() && (
+            <button
+              className="px-8 py-2 border border-red-300 text-red-700 dark:border-red-800 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium"
+              onClick={handleDelete}
+            >
+              Delete item
+            </button>
+          )}
         </div>
       </div>
 
