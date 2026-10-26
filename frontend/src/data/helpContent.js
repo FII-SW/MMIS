@@ -51,7 +51,7 @@ export const WORKFLOW_CARDS = [
   },
   {
     id: "maintenance",
-    title: "Maintenance (PM)",
+    title: "Fixture Maintenance",
     icon: "🛠️",
     description: "Record fixture PMs, handle failed tasks, and check what is due.",
     color: "teal",
@@ -88,7 +88,7 @@ export const HELP_ARTICLES = [
     summary: "Overview of the Material Management Inventory System.",
     steps: [
       "Sign in with your employee username and password.",
-      "Use the left sidebar for Request, Return, Reports, Alerts, Documents, Maintenance, and more.",
+      "Use the left sidebar for Request, Return, Reports, Alerts, Documents, Fixture Maintenance, and more. How it works, at the bottom of the sidebar, shows the steps for each of these.",
       "Use the blue Back button at the top-left to go to the previous step.",
       "Admins also see Restock and Transfer in the sidebar.",
     ],
@@ -179,9 +179,9 @@ export const HELP_ARTICLES = [
   },
   {
     id: "maintenance-hub",
-    title: "How to use Maintenance (PM)",
+    title: "How to use Fixture Maintenance",
     icon: "🛠️",
-    category: "Maintenance",
+    category: "Fixture Maintenance",
     summary: "Record preventive maintenance (PM) on fixtures. Pick what you need to do.",
     branches: [
       {
@@ -189,10 +189,11 @@ export const HELP_ARTICLES = [
         label: "Record a PM (most common)",
         description: "Project → test area → fixture → fill the checklist → submit.",
         steps: [
-          "Click Maintenance in the left sidebar (or Record PM under it).",
+          "Click Fixture Maintenance in the left sidebar, then Fixtures.",
           "Select Project Name, for example Bondi Beach.",
           "Select Test Area, for example FBT_Mobo. Projects without test areas skip this step.",
           "Select Fixture: the list shows the most urgent first. Search by fixture name, asset tag, serial, line, or manufacturer, or tap a status button (Overdue, Due soon…) to filter.",
+          "Admins can click Edit asset, serial, line to change those fields for the fixtures on the list. Asset tag and serial are typed per fixture. The same line or manufacturer can be applied to several selected fixtures.",
           "Click Open on the fixture (or click its Weekly / Biweekly / Monthly status to go straight to that checklist).",
           "Click Record Weekly PM (or the PM type you are doing).",
           "FBT Weekly and Biweekly PMs start with Maintenance details (all required): choose Preventive or Corrective, enter the Activation counter, enter the Downtime while performing maintenance in minutes (0 if none), and say whether any commodity was replaced. If yes, describe its condition and location.",
@@ -202,22 +203,22 @@ export const HELP_ARTICLES = [
           "Click the green Submit Weekly PM button. The fixture status turns green (Up to date) and the PM appears under PM History.",
           "Tip: your progress is saved while you work. If you leave the page, it is restored next time.",
         ],
-        links: [{ label: "Record PM", path: "/dashboard/maintenance" }],
+        links: [{ label: "Fixtures", path: "/dashboard/maintenance" }],
       },
       {
         id: "pm-due",
         label: "Find which PMs are due",
         description: "See overdue and due-soon PMs for all fixtures.",
         steps: [
-          "The red “PM overdue” button at the top of every page shows how many PMs are late. Click it to see them.",
-          "Or open Maintenance → PM Dashboard → To do tab.",
-          "Filter by project, PM type, or search. Switch between List and Calendar view.",
+          "The red button at the top of every page shows how many fixtures have a late PM. Click it to open the To do list. If more than one project is late, pick the project. From a project's fixture list, the button opens that project.",
+          "Or open Fixture Maintenance → PM Dashboard → To do tab.",
+          "Filter by project, test area, PM type, or search. The test area list only shows areas in the project you picked. Switch between List and Calendar view.",
           "Click a row to open that fixture’s checklist and record the PM.",
-          "In Record PM, the project and test area cards also show counts like “3 overdue · 2 due soon”.",
+          "Under Fixtures, the project and test area cards also show counts like “3 overdue · 2 due soon”. A red border means that card has overdue PMs, and Open overdue shows only those fixtures.",
         ],
         links: [
           { label: "Open To do list", path: "/dashboard/maintenance/dashboard?tab=todo" },
-          { label: "Record PM", path: "/dashboard/maintenance" },
+          { label: "Fixtures", path: "/dashboard/maintenance" },
         ],
       },
       {
@@ -245,7 +246,7 @@ export const HELP_ARTICLES = [
           "Parts that are not in MMIS inventory: type them in the Parts replaced box instead (on FBT Weekly / Biweekly PMs, describe them in the commodity replaced question).",
           "Or use Request spare part on the fixture page to request an item separately.",
         ],
-        links: [{ label: "Record PM", path: "/dashboard/maintenance" }],
+        links: [{ label: "Fixtures", path: "/dashboard/maintenance" }],
       },
       {
         id: "pm-mistake",
@@ -276,7 +277,7 @@ export const HELP_ARTICLES = [
         label: "See the PM Dashboard",
         description: "Overview for leads: status, activity, and top users.",
         steps: [
-          "Open Maintenance → PM Dashboard in the sidebar.",
+          "Open Fixture Maintenance → PM Dashboard in the sidebar.",
           "Filter by search, project, test area, PM type, and From → To date & time.",
           "PM activity shows what happened in the selected dates: PMs completed, passed, failed tasks, issues found, and users who completed PMs.",
           "“Up next” lists the PMs that are overdue or due soon.",
@@ -291,7 +292,7 @@ export const HELP_ARTICLES = [
         description: "See the fixtures you are responsible for and start their PMs.",
         steps: [
           "When your Super Admin assigns fixtures to you, you get a 🔔 bell notification and a blue banner. You may also get an email.",
-          "Click View my PMs, or open Maintenance → My PMs in the sidebar.",
+          "Click View my PMs, or open Fixture Maintenance → My PMs in the sidebar.",
           "The tiles at the top count your Overdue, Due soon, Never done, Up to date and Paused fixtures. Click one to show only those.",
           "Fixtures are grouped by project and test area, most urgent first. New ones (last 7 days) have a New tag.",
           "Click Start … PM → to open the fixture on the PM that is most urgent, or click a PM badge to open that PM type.",
@@ -312,7 +313,7 @@ export const HELP_ARTICLES = [
     id: "maintenance-status",
     title: "PM status colours & schedule",
     icon: "🚦",
-    category: "Maintenance",
+    category: "Fixture Maintenance",
     summary: "What Overdue, Due soon, Never done, Up to date, and Paused mean, and how often each PM is due.",
     sections: [
       {
@@ -336,7 +337,7 @@ export const HELP_ARTICLES = [
         ],
       },
     ],
-    links: [{ label: "Record PM", path: "/dashboard/maintenance" }],
+    links: [{ label: "Fixtures", path: "/dashboard/maintenance" }],
     keywords: ["status", "colour", "color", "overdue", "due soon", "never done", "paused", "interval", "schedule", "how often"],
     routes: ["/dashboard/maintenance"],
   },
@@ -768,7 +769,7 @@ export const HELP_ARTICLES = [
           "Step 3: choose the person. Their badge, designation, shift, email and current PM fixtures show from the database.",
           "Click Assign. Fixtures already assigned to someone else move to the new person (the bar warns you first). Unassign clears it.",
           "The person is notified right away: a 🔔 bell notification and a banner saying which fixtures are now theirs. If they have an email address in MMIS, they also get an email (turn this off in Settings).",
-          "They see the fixtures under Maintenance → My PMs. Anyone who lost fixtures to someone else, or had them unassigned, is notified too.",
+          "They see the fixtures under Fixture Maintenance → My PMs. Anyone who lost fixtures to someone else, or had them unassigned, is notified too.",
           "The assignee also shows on the PM To-do list (with an \"Assigned to me\" filter) and on the fixture page.",
           "Anyone can still record the PM. Assigning only shows who is responsible.",
         ],
@@ -789,6 +790,16 @@ export const HELP_ARTICLES = [
           "It shows in their 🔔 bell and as a purple banner until they click Got it. Tick \"Also send by email\" to email it too.",
           "Optionally pick a page for the Open button (e.g. My PMs or Documents).",
           "Sent announcements are listed below the form, with who sent them and to how many people.",
+        ],
+      },
+      {
+        heading: "PM checklists",
+        steps: [
+          "The Checklists tab edits the Weekly, Biweekly and Monthly task lists.",
+          "Change the wording, add or remove a task, or reorder them, then Save checklist.",
+          "The next PM someone records uses the new list. PMs already recorded keep the tasks they had at the time.",
+          "A task with an open issue can't be removed until that issue is resolved.",
+          "Reset to built-in puts back the original list.",
         ],
       },
       {
@@ -815,7 +826,7 @@ export const HELP_ARTICLES = [
     links: [{ label: "Open Super Admin", path: "/dashboard/super-admin" }],
     keywords: [
       "super admin", "superadmin", "user", "role", "access", "password", "temporary", "deactivate", "audit", "assign",
-      "settings", "delete", "workload", "move", "reassign", "announcement", "reminder", "overdue",
+      "settings", "delete", "workload", "move", "reassign", "announcement", "reminder", "overdue", "checklist",
     ],
     routes: ["/dashboard/super-admin"],
   },
@@ -872,12 +883,13 @@ export function getPageContextLabel(pathname) {
   if (pathname.startsWith("/dashboard/reports")) return "Reports";
   if (pathname.startsWith("/dashboard/activity")) return "Activity History";
   if (pathname.startsWith("/dashboard/documents")) return "Project Documents";
+  if (pathname.startsWith("/dashboard/how-it-works")) return "How it works";
   if (pathname.startsWith("/dashboard/transfer")) return "Transfer";
-  if (pathname.startsWith("/dashboard/maintenance/dashboard")) return "Maintenance — PM Dashboard";
-  if (pathname.startsWith("/dashboard/maintenance/test-area")) return "Maintenance — Test Area";
-  if (pathname.startsWith("/dashboard/maintenance/work")) return "Maintenance — Select Fixture";
-  if (pathname.startsWith("/dashboard/maintenance/fixture")) return "Maintenance — Fixture PM";
-  if (pathname.startsWith("/dashboard/maintenance")) return "Maintenance — Project";
+  if (pathname.startsWith("/dashboard/maintenance/dashboard")) return "Fixture Maintenance — PM Dashboard";
+  if (pathname.startsWith("/dashboard/maintenance/test-area")) return "Fixture Maintenance — Test Area";
+  if (pathname.startsWith("/dashboard/maintenance/work")) return "Fixture Maintenance — Select Fixture";
+  if (pathname.startsWith("/dashboard/maintenance/fixture")) return "Fixture Maintenance — Fixture";
+  if (pathname.startsWith("/dashboard/maintenance")) return "Fixture Maintenance — Project";
   if (pathname.startsWith("/dashboard/super-admin")) return "Super Admin";
   if (pathname.startsWith("/dashboard/profile")) return "Profile";
   if (pathname.startsWith("/dashboard/change-password")) return "Change Password";

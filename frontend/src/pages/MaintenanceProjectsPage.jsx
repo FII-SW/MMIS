@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import API from "../api";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PMStatusLine from "../components/maintenance/PMStatusLine";
-import { fixtureListUrl, testAreaUrl } from "../components/maintenance/links";
+import { FIXTURE_MAINTENANCE_TITLE, fixtureListUrl, testAreaUrl } from "../components/maintenance/links";
 import { getProjects } from "../utils/projects";
 import { projectRequiresTestArea } from "../utils/inventoryRules";
 
@@ -54,16 +54,20 @@ export default function MaintenanceProjectsPage() {
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">
-      <PageHeaderWithBack title="Maintenance" onBack={() => navigate("/dashboard")} />
+      <PageHeaderWithBack title={FIXTURE_MAINTENANCE_TITLE} onBack={() => navigate("/dashboard")} />
 
-      <p className="mb-6 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
-        Select Project Name
+      <p className="mb-1 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
+        Select a project
+      </p>
+      <p className="mb-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        A red border means that project has overdue PMs. Open overdue to see only those fixtures.
       </p>
 
       <div className="mx-auto mb-6 max-w-5xl px-8">
         <input
           type="text"
-          placeholder="Project Names"
+          placeholder="Search projects"
+          aria-label="Search projects"
           className="w-full rounded-lg border-2 border-gray-300 bg-white p-3 shadow-sm transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -76,17 +80,45 @@ export default function MaintenanceProjectsPage() {
             <p>No projects found matching &quot;{search}&quot;</p>
           </div>
         ) : (
-          filteredProjects.map((project) => (
-            <button
-              key={project}
-              type="button"
-              onClick={() => openProject(project)}
-              className="flex flex-col items-center justify-center gap-1 rounded-xl border bg-white p-8 text-center shadow-md transition-all hover:bg-blue-100 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
-            >
-              <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">{project}</span>
-              {locations && <PMStatusLine counts={countsByProject[project]} />}
-            </button>
-          ))
+          filteredProjects.map((project) => {
+            const counts = countsByProject[project];
+            const overdue = counts?.overdue || 0;
+            return (
+              <div
+                key={project}
+                className={`flex flex-col items-center justify-center gap-2 rounded-xl border bg-white p-6 text-center shadow-md dark:bg-gray-800 ${
+                  overdue > 0
+                    ? "border-red-300 dark:border-red-800"
+                    : "border-gray-200 dark:border-gray-700"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => openProject(project)}
+                  className="flex w-full flex-col items-center justify-center gap-1 rounded-lg p-2 transition-all hover:bg-blue-100 dark:hover:bg-gray-700"
+                >
+                  <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">{project}</span>
+                  {locations && (
+                    <>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {counts?.fixtures || 0} PM fixture{(counts?.fixtures || 0) === 1 ? "" : "s"}
+                      </span>
+                      <PMStatusLine counts={counts} />
+                    </>
+                  )}
+                </button>
+                {overdue > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(fixtureListUrl(project, null, "overdue"))}
+                    className="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                  >
+                    Open {overdue} overdue
+                  </button>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </div>

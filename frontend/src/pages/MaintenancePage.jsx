@@ -88,7 +88,7 @@ export default function MaintenancePage() {
     setParams(next, { replace: nextTab === tab });
   };
   const openTodo = (status) => openTab("todo", status);
-  const todoCount = (reminders?.overdue || 0) + (reminders?.due_soon || 0);
+  const todoCount = reminders?.overdue_fixtures || reminders?.due_soon_fixtures || 0;
   const openIssues = summary?.open_issues || 0;
   const mySummary = mine.data?.summary;
   const myCount = (mySummary?.overdue || 0) + (mySummary?.due_soon || 0);
@@ -155,7 +155,14 @@ export default function MaintenancePage() {
             onOpenTodo={openTodo}
           />
         )}
-        {tab === "todo" && <MaintenanceTodoTab status={todoStatus} onStatusChange={(s) => openTab("todo", s)} />}
+        {tab === "todo" && (
+          <MaintenanceTodoTab
+            status={todoStatus}
+            project={params.get("project") || ""}
+            testArea={params.get("test_area") || ""}
+            onStatusChange={(s) => openTab("todo", s)}
+          />
+        )}
         {tab === "issues" && <MaintenanceIssuesTab onCountChange={adjustOpenIssues} />}
         {tab === "completed" && <MaintenanceCompletedTab />}
       </div>

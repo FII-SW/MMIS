@@ -23,7 +23,12 @@ function Field({ label, value, highlight = false }) {
 export default function FixtureDetailsPanel({ fixture, onUpdated }) {
   const isAdmin = isAdminUser();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState({ manufacturer: "", production_line: "" });
+  const [draft, setDraft] = useState({
+    manufacturer: "",
+    production_line: "",
+    asset_tag: "",
+    fixture_serial_number: "",
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,6 +36,8 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
     setDraft({
       manufacturer: fixture.manufacturer || "",
       production_line: fixture.production_line || "",
+      asset_tag: fixture.asset_tag || "",
+      fixture_serial_number: fixture.fixture_serial_number || "",
     });
     setError("");
     setEditing(true);
@@ -43,6 +50,8 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
       const res = await API.patch(`/fixtures/${fixture.fixture_id}/descriptors`, {
         manufacturer: draft.manufacturer.trim() || null,
         production_line: draft.production_line.trim() || null,
+        asset_tag: draft.asset_tag.trim() || null,
+        fixture_serial_number: draft.fixture_serial_number.trim() || null,
       });
       onUpdated?.(res.data);
       setEditing(false);
@@ -70,7 +79,7 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
         </div>
 
         {editing ? (
-          <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-800 dark:bg-blue-900/10">
+          <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-800 dark:bg-blue-900/10">
             <FixtureDescriptorFields
               layout="grid"
               manufacturer={draft.manufacturer}
@@ -79,7 +88,58 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
               labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
               inputClassName="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
             />
-            {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Manufacturer" value={fixture.manufacturer} highlight />
+            <Field label="Production Line" value={fixture.production_line} highlight />
+          </div>
+        )}
+      </div>
+
+      <div>
+        <p className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-100">Asset Descriptors</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Fixture Name" value={fixture.fixture_name} />
+          <Field label="Project Name" value={fixture.project_name} />
+          <Field label="Test Area" value={fixture.test_area} />
+          {editing ? (
+            <>
+              <label>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Asset Tag
+                </span>
+                <input
+                  type="text"
+                  value={draft.asset_tag}
+                  maxLength={50}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, asset_tag: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+              </label>
+              <label>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Serial Number
+                </span>
+                <input
+                  type="text"
+                  value={draft.fixture_serial_number}
+                  maxLength={50}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, fixture_serial_number: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <Field label="Asset Tag" value={fixture.asset_tag} />
+              <Field label="Serial Number" value={fixture.fixture_serial_number} />
+            </>
+          )}
+        </div>
+        {editing && (
+          <div className="mt-3">
+            {error && <p className="mb-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -98,23 +158,7 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
               </button>
             </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Production Line" value={fixture.production_line} highlight />
-            <Field label="Manufacturer" value={fixture.manufacturer} highlight />
-          </div>
         )}
-      </div>
-
-      <div>
-        <p className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-100">Asset Descriptors</p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Fixture Name" value={fixture.fixture_name} />
-          <Field label="Project Name" value={fixture.project_name} />
-          <Field label="Test Area" value={fixture.test_area} />
-          <Field label="Asset Tag" value={fixture.asset_tag} />
-          <Field label="Serial Number" value={fixture.fixture_serial_number} />
-        </div>
       </div>
     </div>
   );

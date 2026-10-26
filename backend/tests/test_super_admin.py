@@ -12,7 +12,7 @@ from app.utils.audit import changed_fields
 from app.utils.auth_deps import _password_change_allowed
 from app.routes.maintenance import clean_detail
 from app.utils.notifications import fixture_list
-from app.utils.pm_checklists import get_checklist
+from app.utils.pm_checklists import code_checklist_body, get_checklist, normalize_checklist_body
 from app.utils.roles import can_edit, is_admin, is_super_admin, normalize_role
 
 
@@ -142,6 +142,22 @@ class TestMaintenanceDetails(unittest.TestCase):
     def test_commodity_text(self):
         self.assertEqual(clean_detail("commodity_replacement", "  Pogo pin, slot 3 "), "Pogo pin, slot 3")
         self.assertIsNone(clean_detail("commodity_replacement", "   "))
+
+
+class TestChecklistEditor(unittest.TestCase):
+    def test_keeps_existing_task_ids(self):
+        body = code_checklist_body("FBT", "weekly")
+        body["sections"][0]["items"].append({"id": "", "task": "Check the new sensor"})
+        saved = normalize_checklist_body(body)
+        ids = [item["id"] for section in saved["sections"] for item in section["items"]]
+        self.assertIn("tim_pad", ids)
+        self.assertTrue(ids[-1].startswith("task_"))
+
+    def test_rejects_an_empty_task(self):
+        body = code_checklist_body("ICT", "monthly")
+        body["sections"][0]["items"][0]["task"] = "  "
+        with self.assertRaises(ValueError):
+            normalize_checklist_body(body)
 
 
 class TestFixtureList(unittest.TestCase):

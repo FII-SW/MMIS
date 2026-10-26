@@ -347,7 +347,7 @@ export default function AssignmentsTab() {
       });
       const { updated, employee_name: name, notified, emailed } = res.data;
       const told = notified
-        ? ` ${name} has been notified in MMIS${emailed ? " and by email" : ""} and will see them under Maintenance → My PMs.`
+        ? ` ${name} has been notified in MMIS${emailed ? " and by email" : ""} and will see them under Fixture Maintenance → My PMs.`
         : "";
       setSuccess(
         updated === 0

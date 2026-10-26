@@ -35,6 +35,7 @@ import MaintenanceTestAreaPage from "./pages/MaintenanceTestAreaPage";
 import MaintenanceWorkPage from "./pages/MaintenanceWorkPage";
 import MaintenanceFixtureDetailPage from "./pages/MaintenanceFixtureDetailPage";
 import DocumentsPage from "./pages/DocumentsPage";
+import HowItWorksPage from "./pages/HowItWorksPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import Layout from "./components/Layout";
 
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/dashboard/reports/preventive-maintenance" element={withLayout(EVERYONE, <PMReportPage />)} />
         <Route path="/dashboard/activity" element={withLayout(EVERYONE, <ActivityPage />)} />
         <Route path="/dashboard/documents" element={withLayout(EVERYONE, <DocumentsPage />)} />
+        <Route path="/dashboard/how-it-works" element={withLayout(EVERYONE, <HowItWorksPage />)} />
         <Route path="/dashboard/maintenance" element={withLayout(EVERYONE, <MaintenanceProjectsPage />)} />
         <Route path="/dashboard/maintenance/dashboard" element={withLayout(EVERYONE, <MaintenancePage />)} />
         <Route path="/dashboard/maintenance/projects" element={<Navigate to="/dashboard/maintenance" replace />} />

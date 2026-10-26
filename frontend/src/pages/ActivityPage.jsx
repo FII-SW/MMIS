@@ -59,11 +59,9 @@ export default function ActivityPage() {
 
   const testAreas = DEFAULT_TEST_AREAS;
 
-  // Get unique projects from history and merge with custom projects from localStorage
-  const uniqueProjectsFromData = [...new Set(history.map(h => h.project_name).filter(Boolean))];
-  const customProjects = getProjects();
-  const allProjects = [...new Set([...customProjects, ...uniqueProjectsFromData])].sort();
-  const uniqueProjects = allProjects;
+  // Official projects only. A one-off name saved on an old transaction, such as
+  // "Astoria Turin V2AD", stays on that row but is not offered as a project filter.
+  const uniqueProjects = [...getProjects()].sort((a, b) => a.localeCompare(b));
 
   // Filtered options for dropdowns
   const filteredProjects = uniqueProjects.filter(project =>

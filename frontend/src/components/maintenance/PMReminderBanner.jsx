@@ -2,19 +2,18 @@ import { describeReminderTypes } from "./usePMReminders";
 
 export default function PMReminderBanner({ reminders, onView }) {
   if (!reminders) return null;
-  const { overdue, due_soon: dueSoon, overdue_fixtures: overdueFixtures, by_pm_type: byPmType } = reminders;
+  const { overdue, due_soon: dueSoon, overdue_fixtures: overdueFixtures, due_soon_fixtures: dueSoonFixtures = 0, by_pm_type: byPmType } = reminders;
 
   if (overdue > 0) {
     return (
       <div className="flex flex-col gap-3 rounded-xl border-l-4 border-red-600 bg-red-50 p-4 shadow-sm dark:bg-red-900/20 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-bold text-red-800 dark:text-red-200">
-            ⚠ {overdue} PM{overdue === 1 ? " is" : "s are"} overdue on {overdueFixtures} fixture
-            {overdueFixtures === 1 ? "" : "s"}
+            ⚠ {overdueFixtures} fixture{overdueFixtures === 1 ? " has" : "s have"} overdue PMs
           </p>
           <p className="text-sm text-red-700 dark:text-red-300">
-            Not reported in time: {describeReminderTypes(byPmType, "overdue")}.
-            {dueSoon > 0 && ` Another ${dueSoon} due soon.`}
+            {overdue} PM check{overdue === 1 ? "" : "s"} not reported in time: {describeReminderTypes(byPmType, "overdue")}.
+            {dueSoonFixtures > 0 && ` Another ${dueSoonFixtures} fixture${dueSoonFixtures === 1 ? "" : "s"} due soon.`}
           </p>
         </div>
         <button
@@ -33,7 +32,7 @@ export default function PMReminderBanner({ reminders, onView }) {
       <div className="flex flex-col gap-3 rounded-xl border-l-4 border-yellow-500 bg-yellow-50 p-4 shadow-sm dark:bg-yellow-900/20 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-bold text-yellow-900 dark:text-yellow-200">
-            ⏰ {dueSoon} PM{dueSoon === 1 ? " is" : "s are"} due in the next few days
+            ⏰ {dueSoonFixtures} fixture{dueSoonFixtures === 1 ? " is" : "s are"} due in the next few days
           </p>
           <p className="text-sm text-yellow-800 dark:text-yellow-300">
             {describeReminderTypes(byPmType, "due_soon")}. Nothing is overdue yet.

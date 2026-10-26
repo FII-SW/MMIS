@@ -4,6 +4,7 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import AnnouncementsTab from "../components/superadmin/AnnouncementsTab";
 import AssignmentsTab from "../components/superadmin/AssignmentsTab";
 import AuditTab from "../components/superadmin/AuditTab";
+import ChecklistsTab from "../components/superadmin/ChecklistsTab";
 import SettingsTab from "../components/superadmin/SettingsTab";
 import UsersTab from "../components/superadmin/UsersTab";
 import WorkloadTab from "../components/superadmin/WorkloadTab";
@@ -13,6 +14,7 @@ const TABS = [
   { id: "assignments", label: "PM Assignments", Component: AssignmentsTab },
   { id: "workload", label: "Workload", Component: WorkloadTab },
   { id: "announcements", label: "Announcements", Component: AnnouncementsTab },
+  { id: "checklists", label: "Checklists", Component: ChecklistsTab },
   { id: "audit", label: "Audit Log", Component: AuditTab },
   { id: "settings", label: "Settings", Component: SettingsTab },
 ];

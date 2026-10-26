@@ -66,11 +66,11 @@ export default function Layout({ children }) {
       { path: "/dashboard/documents", label: "Documents" },
       {
         path: "/dashboard/maintenance",
-        label: "Maintenance",
+        label: "Fixture Maintenance",
         children: [
           {
             path: "/dashboard/maintenance",
-            label: viewer ? "Fixtures" : "Record PM",
+            label: "Fixtures",
             match: [
               "/dashboard/maintenance/test-area",
               "/dashboard/maintenance/work",
@@ -97,7 +97,7 @@ export default function Layout({ children }) {
     <LayoutProvider value={true}>
       <div className="flex h-screen bg-transparent transition-colors">
       {!hideSidebar && (
-        <aside className="w-56 shrink-0 overflow-y-auto bg-white p-4 shadow-md transition-colors dark:bg-gray-800 2xl:w-64 2xl:p-6 short:py-3">
+        <aside className="flex h-full w-56 shrink-0 flex-col overflow-y-auto bg-white p-4 shadow-md transition-colors dark:bg-gray-800 2xl:w-64 2xl:p-6 short:py-3">
           <Link
             to="/dashboard"
             className="mb-4 block text-2xl font-bold text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 2xl:mb-6 short:mb-3"
@@ -120,7 +120,7 @@ export default function Layout({ children }) {
                           : "text-gray-700 hover:bg-blue-50 hover:text-blue-600 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-blue-400"
                       }`}
                     >
-                      <Link to={item.path} className="flex-1 px-4 py-2.5 2xl:py-3 short:py-2">
+                      <Link to={item.path} className="flex-1 px-4 py-2.5 leading-tight 2xl:py-3 short:py-2">
                         {item.label}
                       </Link>
                       <button
@@ -190,6 +190,18 @@ export default function Layout({ children }) {
               👁 View-only access. Ask your Super Admin if you need to request items or record PMs.
             </p>
           )}
+          <div className="mt-auto border-t border-gray-200 pt-3 dark:border-gray-700">
+            <Link
+              to="/dashboard/how-it-works"
+              className={`block rounded-lg px-4 py-2.5 text-sm font-semibold leading-tight transition ${
+                location.pathname.startsWith("/dashboard/how-it-works")
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "text-gray-700 hover:bg-blue-50 hover:text-blue-600 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-blue-400"
+              }`}
+            >
+              How it works
+            </Link>
+          </div>
         </aside>
       )}
 

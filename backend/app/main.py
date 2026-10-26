@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import ProgrammingError
 from .database import Base, engine
-from .routes import admin, notifications, employees, inventory, transactions, reports, alerts, activity, fixtures, documents, maintenance, pm_workflow, pm_dashboard, pm_report
+from .routes import admin, checklist_admin, notifications, employees, inventory, transactions, reports, alerts, activity, fixtures, documents, maintenance, pm_workflow, pm_dashboard, pm_report
 from . import auth
 from .utils.scheduler import start_scheduler, stop_scheduler
 import os
@@ -243,6 +243,7 @@ app.include_router(pm_workflow.router)
 app.include_router(pm_dashboard.router)
 app.include_router(pm_report.router)
 app.include_router(admin.router)
+app.include_router(checklist_admin.router)
 app.include_router(notifications.router)
 
 @app.get("/")

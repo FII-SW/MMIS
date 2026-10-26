@@ -1,4 +1,12 @@
-"""Preventive maintenance checklists per test area family (FBT, ICT)."""
+"""Preventive maintenance checklists per test area family (FBT, ICT).
+
+The lists below are the built-in defaults. A Super Admin can replace one from the
+Checklists tab; that copy is stored on pm_checklist_templates and used here.
+"""
+import json
+import re
+from copy import deepcopy
+from uuid import uuid4
 
 PM_TYPES = ("weekly", "biweekly", "monthly", "quarterly")
 PM_INTERVAL_DAYS = {"weekly": 7, "biweekly": 14, "monthly": 30, "quarterly": 90}
@@ -158,13 +166,143 @@ def get_pm_types(test_area: str | None) -> list[str]:
     return [pm_type for pm_type in PM_TYPES if pm_type in _CHECKLISTS[family]]
 
 
-def get_checklist(pm_type: str, test_area: str | None) -> dict | None:
+_ITEM_ID = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
+
+
+def code_checklist_body(family: str, pm_type: str) -> dict | None:
+    """The built-in checklist, in the shape a Super Admin edits."""
+    config = _CHECKLISTS.get(family, {}).get(pm_type)
+    if not config:
+        return None
+    return {
+        "title": config["title"],
+        "description": config.get("description") or "",
+        "summary": config["summary"],
+        "reference": config.get("reference"),
+        "note": config.get("note") or "",
+        "sections": [
+            {"name": section, "items": [{"id": item_id, "task": task} for item_id, task in tasks]}
+            for section, tasks in config["sections"]
+        ],
+    }
+
+
+def checklist_item_ids(body: dict) -> set[str]:
+    return {item["id"] for section in body.get("sections") or [] for item in section.get("items") or []}
+
+
+def normalize_checklist_body(body: dict) -> dict:
+    """Check a Super Admin edit and return the stored shape. Raises ValueError."""
+    if not isinstance(body, dict):
+        raise ValueError("Checklist must be an object")
+
+    def text(key, limit, required=False):
+        value = str(body.get(key) or "").strip()
+        label = key.replace("_", " ").capitalize()
+        if required and not value:
+            raise ValueError(f"{label} is required")
+        if len(value) > limit:
+            raise ValueError(f"{label} is too long (max {limit} characters)")
+        return value
+
+    title = text("title", 200, required=True)
+    description = text("description", 300)
+    summary = text("summary", 1000, required=True)
+    reference = text("reference", 300) or None
+    note = text("note", 2000)
+    raw_sections = body.get("sections")
+    if not isinstance(raw_sections, list) or not raw_sections:
+        raise ValueError("Add at least one section")
+    if len(raw_sections) > 20:
+        raise ValueError("Too many sections (max 20)")
+
+    sections = []
+    seen = set()
+    for section in raw_sections:
+        if not isinstance(section, dict):
+            raise ValueError("Each section needs a name and tasks")
+        name = str(section.get("name") or "").strip()
+        if not name or len(name) > 80:
+            raise ValueError("Each section needs a name (max 80 characters)")
+        items_in = section.get("items")
+        if not isinstance(items_in, list) or not items_in:
+            raise ValueError(f"Section '{name}' needs at least one task")
+        items = []
+        for item in items_in:
+            if not isinstance(item, dict):
+                raise ValueError(f"Section '{name}' has an empty task")
+            task = str(item.get("task") or "").strip()
+            if not task or len(task) > 500:
+                raise ValueError("Each task needs text (max 500 characters)")
+            item_id = str(item.get("id") or "").strip().lower().replace(" ", "_").replace("-", "_")
+            if not item_id:
+                item_id = f"task_{uuid4().hex[:8]}"
+            if not _ITEM_ID.match(item_id):
+                raise ValueError(f"Task id '{item_id}' must be lowercase letters, numbers and underscores")
+            if item_id in seen:
+                raise ValueError(f"Task id '{item_id}' is used more than once")
+            seen.add(item_id)
+            items.append({"id": item_id, "task": task})
+        sections.append({"name": name, "items": items})
+    if len(seen) > 80:
+        raise ValueError("Too many tasks (max 80)")
+    return {
+        "title": title,
+        "description": description,
+        "summary": summary,
+        "reference": reference,
+        "note": note,
+        "sections": sections,
+    }
+
+
+def _saved_body(db, family: str, pm_type: str) -> dict | None:
+    if db is None:
+        return None
+    from .. import models
+
+    row = (
+        db.query(models.PMChecklistTemplate)
+        .filter(
+            models.PMChecklistTemplate.family == family,
+            models.PMChecklistTemplate.pm_type == pm_type,
+        )
+        .first()
+    )
+    if row is None or not row.body:
+        return None
+    try:
+        saved = json.loads(row.body)
+    except ValueError:
+        return None
+    return saved if isinstance(saved, dict) else None
+
+
+def _apply_saved(config: dict, saved: dict) -> dict:
+    config = deepcopy(config)
+    for key in ("title", "description", "summary", "reference", "note"):
+        if key in saved and saved[key] is not None:
+            config[key] = saved[key]
+    sections = []
+    for section in saved.get("sections") or []:
+        tasks = [(item["id"], item["task"]) for item in section.get("items") or [] if item.get("id")]
+        if tasks:
+            sections.append((section.get("name") or "Tasks", tasks))
+    if sections:
+        config["sections"] = sections
+    return config
+
+
+def get_checklist(pm_type: str, test_area: str | None, db=None) -> dict | None:
     """Return the checklist for a PM type and test area, or None when not configured."""
     pm_type = (pm_type or "").strip().lower()
     family = _family(test_area)
     config = _CHECKLISTS.get(family, {}).get(pm_type) if family else None
     if not config:
         return None
+    saved = _saved_body(db, family, pm_type)
+    if saved:
+        config = _apply_saved(config, saved)
 
     items = [
         {"id": item_id, "section": section, "task": task}

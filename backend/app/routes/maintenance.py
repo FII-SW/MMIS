@@ -393,7 +393,7 @@ def _fixture_pm(
 
 @router.get("/checklists/{pm_type}")
 def get_pm_checklist(pm_type: str, test_area: str | None = None):
-    checklist = get_checklist(pm_type, test_area)
+    checklist = get_checklist(pm_type, test_area, db)
     if not checklist:
         raise HTTPException(
             status_code=404,
@@ -505,9 +505,20 @@ def get_pm_reminders(db: Session = Depends(get_db)):
         for pm_type, label in PM_TYPE_LABELS.items()
     }
     overdue_fixtures = 0
-    for _, pm in items:
+    due_soon_fixtures = 0
+    by_project: dict[str, dict] = {}
+    for fixture, pm in items:
+        project_name = fixture.project_name or "—"
+        project_row = by_project.setdefault(
+            project_name,
+            {"project": project_name, "overdue_fixtures": 0, "due_soon_fixtures": 0},
+        )
         if pm["state"] == "overdue":
             overdue_fixtures += 1
+            project_row["overdue_fixtures"] += 1
+        elif pm["state"] == "due_soon":
+            due_soon_fixtures += 1
+            project_row["due_soon_fixtures"] += 1
         for pm_type, entry in pm["status"].items():
             if entry["state"] in ("overdue", "due_soon"):
                 by_pm_type[pm_type][entry["state"]] += 1
@@ -517,6 +528,11 @@ def get_pm_reminders(db: Session = Depends(get_db)):
         "overdue": sum(v["overdue"] for v in by_pm_type.values()),
         "due_soon": sum(v["due_soon"] for v in by_pm_type.values()),
         "overdue_fixtures": overdue_fixtures,
+        "due_soon_fixtures": due_soon_fixtures,
+        "by_project": sorted(
+            (row for row in by_project.values() if row["overdue_fixtures"] or row["due_soon_fixtures"]),
+            key=lambda row: (-row["overdue_fixtures"], -row["due_soon_fixtures"], row["project"].lower()),
+        ),
         "by_pm_type": by_pm_type,
         "tracking_start": tracking_start,
     }
@@ -767,7 +783,7 @@ def create_pm_record(
 
     pm_type = payload.pm_type.strip().lower()
     label = PM_TYPE_LABELS.get(pm_type, pm_type)
-    checklist = get_checklist(pm_type, fixture.test_area)
+    checklist = get_checklist(pm_type, fixture.test_area, db)
     if not checklist:
         raise HTTPException(
             status_code=400,
@@ -985,7 +1001,7 @@ def download_pm_record_pdf(
         **_serialize_record(record, employee_name),
         "parts": _parts_by_pm(db, [record.pm_id]).get(record.pm_id, []),
     }
-    pdf = build_pm_record_pdf(record_data, fixture, tz)
+    pdf = build_pm_record_pdf(record_data, fixture, tz, db)
 
     fixture_label = fixture.fixture_name if fixture else f"fixture_{record.fixture_id}"
     performed = _as_utc(record.performed_at)

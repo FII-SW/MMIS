@@ -5,6 +5,8 @@ import { useFixtureDescriptorOptions } from "../FixtureDescriptorFields";
 const INPUT_CLASS =
   "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white";
 
+const EMPTY_DRAFT = { asset_tag: "", fixture_serial_number: "", manufacturer: "", production_line: "" };
+
 function clean(value) {
   return (value || "").trim();
 }
@@ -15,7 +17,12 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
     Object.fromEntries(
       fixtures.map((fx) => [
         fx.fixture_id,
-        { manufacturer: fx.manufacturer || "", production_line: fx.production_line || "" },
+        {
+          asset_tag: fx.asset_tag || "",
+          fixture_serial_number: fx.fixture_serial_number || "",
+          manufacturer: fx.manufacturer || "",
+          production_line: fx.production_line || "",
+        },
       ])
     )
   );
@@ -25,11 +32,7 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const draftFor = (fx) =>
-    drafts[fx.fixture_id] || {
-      manufacturer: fx.manufacturer || "",
-      production_line: fx.production_line || "",
-    };
+  const draftFor = (fx) => drafts[fx.fixture_id] || EMPTY_DRAFT;
 
   const changed = useMemo(
     () =>
@@ -37,6 +40,8 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
         const draft = drafts[fx.fixture_id];
         if (!draft) return false;
         return (
+          clean(draft.asset_tag) !== clean(fx.asset_tag) ||
+          clean(draft.fixture_serial_number) !== clean(fx.fixture_serial_number) ||
           clean(draft.manufacturer) !== clean(fx.manufacturer) ||
           clean(draft.production_line) !== clean(fx.production_line)
         );
@@ -73,6 +78,7 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
         .forEach((fx) => {
           const current = next[fx.fixture_id] || draftFor(fx);
           next[fx.fixture_id] = {
+            ...current,
             manufacturer: applyManufacturer.trim() ? applyManufacturer : current.manufacturer,
             production_line: applyLine.trim() ? applyLine : current.production_line,
           };
@@ -90,11 +96,16 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
     if (changed.length === 0) return;
     setSaving(true);
     setError("");
-    const updates = changed.map((fx) => ({
-      fixture_id: fx.fixture_id,
-      manufacturer: clean(drafts[fx.fixture_id].manufacturer) || null,
-      production_line: clean(drafts[fx.fixture_id].production_line) || null,
-    }));
+    const updates = changed.map((fx) => {
+      const draft = drafts[fx.fixture_id];
+      return {
+        fixture_id: fx.fixture_id,
+        asset_tag: clean(draft.asset_tag) || null,
+        fixture_serial_number: clean(draft.fixture_serial_number) || null,
+        manufacturer: clean(draft.manufacturer) || null,
+        production_line: clean(draft.production_line) || null,
+      };
+    });
     try {
       await API.patch("/fixtures/bulk-descriptors", { updates });
       onSaved(updates);
@@ -121,9 +132,10 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
       <div className="flex flex-col gap-2 border-b border-gray-200 p-3 dark:border-gray-700">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Edit production info</p>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Edit fixture info</p>
             <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Type each fixture&apos;s own line and manufacturer, or select several and apply a value to all of them.
+              Type each fixture&apos;s asset tag, serial, line and manufacturer. Select several to apply the same line or
+              manufacturer to all of them. Clearing a box and saving removes that value.
             </p>
           </div>
           <div className="flex gap-2">
@@ -187,9 +199,10 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all" />
               </th>
               <th className="px-3 py-2 font-semibold">Fixture</th>
-              <th className="px-3 py-2 font-semibold">Asset / Serial</th>
-              <th className="px-3 py-2 font-semibold w-40">Line</th>
-              <th className="px-3 py-2 font-semibold w-64">Manufacturer</th>
+              <th className="px-3 py-2 font-semibold w-40">Asset tag</th>
+              <th className="px-3 py-2 font-semibold w-40">Serial number</th>
+              <th className="px-3 py-2 font-semibold w-36">Line</th>
+              <th className="px-3 py-2 font-semibold w-56">Manufacturer</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -207,8 +220,25 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
                     />
                   </td>
                   <td className="px-3 py-1.5 font-medium text-gray-800 dark:text-gray-100">{fx.fixture_name}</td>
-                  <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {fx.asset_tag || "—"} · {fx.fixture_serial_number || "—"}
+                  <td className="px-3 py-1.5">
+                    <input
+                      type="text"
+                      value={draft.asset_tag}
+                      onChange={(e) => setField(fx, "asset_tag", e.target.value)}
+                      placeholder="Asset tag"
+                      maxLength={50}
+                      className={INPUT_CLASS}
+                    />
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <input
+                      type="text"
+                      value={draft.fixture_serial_number}
+                      onChange={(e) => setField(fx, "fixture_serial_number", e.target.value)}
+                      placeholder="Serial number"
+                      maxLength={50}
+                      className={INPUT_CLASS}
+                    />
                   </td>
                   <td className="px-3 py-1.5">
                     <input

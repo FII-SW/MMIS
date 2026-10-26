@@ -48,11 +48,11 @@ def _p(text, style) -> Paragraph:
     return Paragraph(escape(str(text or "")).replace("\n", "<br/>"), style)
 
 
-def build_pm_record_pdf(record: dict, fixture, tz_name: str | None = None) -> bytes:
+def build_pm_record_pdf(record: dict, fixture, tz_name: str | None = None, db=None) -> bytes:
     tz = _zone(tz_name)
     pm_label = PM_TYPE_LABELS.get(record["pm_type"], record["pm_type"])
     test_area = record.get("test_area") or getattr(fixture, "test_area", None)
-    checklist = get_checklist(record["pm_type"], test_area) or {}
+    checklist = get_checklist(record["pm_type"], test_area, db) or {}
     title = checklist.get("title") or pm_label
     fixture_name = getattr(fixture, "fixture_name", None) or f"Fixture #{record['fixture_id']}"
 

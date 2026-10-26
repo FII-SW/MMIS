@@ -9,14 +9,21 @@ import SparePartsHistory from "../components/maintenance/SparePartsHistory";
 import FixtureDetailsPanel from "../components/maintenance/FixtureDetailsPanel";
 import { formatDate } from "../components/maintenance/formatDate";
 import { pmTypeLabel } from "../components/maintenance/pmTypes";
-import { describeDue } from "../components/maintenance/pmStatus";
+import { PM_STATE_RANK, describeDue } from "../components/maintenance/pmStatus";
 import PMStatusBadge from "../components/maintenance/PMStatusBadge";
 import PMPauseControl from "../components/maintenance/PMPauseControl";
 import PMIssuesList from "../components/maintenance/PMIssuesList";
 import PMAssignmentCard from "../components/maintenance/PMAssignmentCard";
-import { MAINTENANCE_PROJECTS_URL, fixtureListUrl } from "../components/maintenance/links";
+import { FIXTURE_MAINTENANCE_TITLE, MAINTENANCE_PROJECTS_URL, fixtureListUrl, testAreaUrl } from "../components/maintenance/links";
+import { projectRequiresTestArea } from "../utils/inventoryRules";
 import { isAdminUser, isViewerUser } from "../utils/auth";
 import { useNotifications } from "../contexts/NotificationContext";
+
+const NEXT_ACTION_TONE = {
+  overdue: "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200",
+  due_soon: "border-yellow-300 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200",
+  never: "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-100",
+};
 
 function PMStatusCard({ title, entry, onStart }) {
   return (
@@ -81,6 +88,10 @@ export default function MaintenanceFixtureDetailPage() {
   ];
   const requestedTab = params.get("tab") || "details";
   const activeTab = tabs.some((t) => t.id === requestedTab) ? requestedTab : "details";
+  const nextAction = pmTypes
+    .map((type) => ({ type, entry: pmStatus?.status?.[type] }))
+    .filter((item) => ["overdue", "due_soon", "never"].includes(item.entry?.state))
+    .sort((a, b) => (PM_STATE_RANK[a.entry.state] ?? 9) - (PM_STATE_RANK[b.entry.state] ?? 9))[0];
 
   const setActiveTab = (tab) => {
     const next = new URLSearchParams(params);
@@ -158,13 +169,13 @@ export default function MaintenanceFixtureDetailPage() {
   };
 
   if (loading) {
-    return <PageLoadingState title="Maintenance" onBack={handleBack} message="Loading fixture details..." />;
+    return <PageLoadingState title={FIXTURE_MAINTENANCE_TITLE} onBack={handleBack} message="Loading fixture details..." />;
   }
 
   if (error || !fixture) {
     return (
       <div className="min-h-screen bg-transparent transition-colors">
-        <PageHeaderWithBack title="Maintenance" onBack={handleBack} />
+        <PageHeaderWithBack title={FIXTURE_MAINTENANCE_TITLE} onBack={handleBack} />
         <p className="mt-10 text-center text-red-600 dark:text-red-400">{error || "Fixture not found."}</p>
       </div>
     );
@@ -172,26 +183,39 @@ export default function MaintenanceFixtureDetailPage() {
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">
-      <PageHeaderWithBack title="Maintenance" onBack={handleBack} />
+      <PageHeaderWithBack title={FIXTURE_MAINTENANCE_TITLE} onBack={handleBack} />
 
-      <p className="mb-5 px-4 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
-        Project: <span className="text-blue-600 dark:text-blue-400">{fixture.project_name || project}</span>
-        {(fixture.test_area || testArea) && (
+      <nav className="mb-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 text-sm text-gray-600 dark:text-gray-300">
+        <button
+          type="button"
+          onClick={() => navigate(projectRequiresTestArea(fixture.project_name || project) ? testAreaUrl(fixture.project_name || project) : fixtureListUrl(fixture.project_name || project))}
+          className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
+        >
+          {fixture.project_name || project}
+        </button>
+        {(fixture.test_area || testArea) && projectRequiresTestArea(fixture.project_name || project) && (
           <>
-            {" "}
-            — Test Area: <span className="text-blue-600 dark:text-blue-400">{fixture.test_area || testArea}</span>
+            <span aria-hidden="true">/</span>
+            <button
+              type="button"
+              onClick={() => navigate(fixtureListUrl(fixture.project_name || project, fixture.test_area || testArea))}
+              className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
+            >
+              {fixture.test_area || testArea}
+            </button>
           </>
         )}
-        {" "}
-        — Fixture: <span className="text-blue-600 dark:text-blue-400">{fixture.fixture_name}</span>
-      </p>
+        <span aria-hidden="true">/</span>
+        <span className="font-semibold text-gray-800 dark:text-gray-100">{fixture.fixture_name}</span>
+      </nav>
 
       <div className="mx-auto max-w-5xl space-y-4 px-2 pb-8">
         <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="truncate text-lg font-semibold text-gray-800 dark:text-gray-100">{fixture.fixture_name}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {fixture.project_name} · {fixture.test_area} · Asset {fixture.asset_tag || "—"}
+              {fixture.project_name} · {fixture.test_area} · Asset {fixture.asset_tag || "—"} · Serial{" "}
+              {fixture.fixture_serial_number || "—"}
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
@@ -212,6 +236,23 @@ export default function MaintenanceFixtureDetailPage() {
             </button>
           )}
         </div>
+
+        {nextAction && !viewOnly && activeTab !== nextAction.type && (
+          <div
+            className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${NEXT_ACTION_TONE[nextAction.entry.state]}`}
+          >
+            <p className="text-sm font-semibold">
+              {pmTypeLabel(nextAction.type)} · {describeDue(nextAction.entry)}
+            </p>
+            <button
+              type="button"
+              onClick={() => setActiveTab(nextAction.type)}
+              className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Record {pmTypeLabel(nextAction.type)}
+            </button>
+          </div>
+        )}
 
         <PMAssignmentCard status={pmStatus} />
 
@@ -283,7 +324,7 @@ export default function MaintenanceFixtureDetailPage() {
                 fixture={fixture}
                 onUpdated={(updated) => {
                   setFixture(updated);
-                  addNotification(`Updated production info for ${updated.fixture_name}.`);
+                  addNotification(`Updated fixture info for ${updated.fixture_name}.`);
                 }}
               />
             )}

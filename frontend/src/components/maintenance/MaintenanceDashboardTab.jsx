@@ -487,7 +487,7 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
             onClick={() => navigate(MAINTENANCE_PROJECTS_URL)}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
           >
-            {viewOnly ? "Browse fixtures →" : "Record PM →"}
+            Fixtures →
           </button>
         </div>
       </div>

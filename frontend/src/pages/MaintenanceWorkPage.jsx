@@ -8,6 +8,7 @@ import FixturePMTable from "../components/maintenance/FixturePMTable";
 import useStickyState from "../components/maintenance/useStickyState";
 import { isAdminUser } from "../utils/auth";
 import {
+  FIXTURE_MAINTENANCE_TITLE,
   MAINTENANCE_DASHBOARD_URL,
   MAINTENANCE_PROJECTS_URL,
   fixtureDetailUrl,
@@ -116,16 +117,12 @@ export default function MaintenanceWorkPage() {
     setFixtures((prev) =>
       prev.map((fx) =>
         byId[fx.fixture_id]
-          ? {
-              ...fx,
-              manufacturer: byId[fx.fixture_id].manufacturer,
-              production_line: byId[fx.fixture_id].production_line,
-            }
+          ? { ...fx, ...byId[fx.fixture_id] }
           : fx
       )
     );
     setBulkEditing(false);
-    setSavedMessage(`Saved production info for ${updates.length} fixture${updates.length === 1 ? "" : "s"}.`);
+    setSavedMessage(`Saved fixture info for ${updates.length} fixture${updates.length === 1 ? "" : "s"}.`);
   };
   const [error, setError] = useState("");
 
@@ -241,7 +238,7 @@ export default function MaintenanceWorkPage() {
   };
 
   if (loading) {
-    return <PageLoadingState title="Maintenance" onBack={handleBack} message="Loading fixtures..." />;
+    return <PageLoadingState title={FIXTURE_MAINTENANCE_TITLE} onBack={handleBack} message="Loading fixtures..." />;
   }
 
   const locationLabel = allMode
@@ -257,7 +254,7 @@ export default function MaintenanceWorkPage() {
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">
-      <PageHeaderWithBack title="Maintenance" onBack={handleBack} />
+      <PageHeaderWithBack title={FIXTURE_MAINTENANCE_TITLE} onBack={handleBack} />
 
       <p className="mb-2 px-4 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
         {allMode ? (
@@ -364,7 +361,7 @@ export default function MaintenanceWorkPage() {
                     }}
                     className="rounded-lg border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-300 dark:hover:bg-gray-700"
                   >
-                    Edit line / manufacturer
+                    Edit asset, serial, line
                   </button>
                 )}
               </div>

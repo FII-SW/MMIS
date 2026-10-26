@@ -88,7 +88,7 @@ function TypeCard({ pmType, counts, active, onPick }) {
   );
 }
 
-export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
+export default function MaintenanceTodoTab({ status = "all", project = "", testArea = "", onStatusChange }) {
   const navigate = useNavigate();
   const [fixtures, setFixtures] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,10 +96,22 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useStickyState("mmis:pm-todo:type", "all");
   const [projectFilter, setProjectFilter] = useStickyState("mmis:pm-todo:project", "all");
+  const [testAreaFilter, setTestAreaFilter] = useStickyState("mmis:pm-todo:test-area", "all");
   const [assigneeFilter, setAssigneeFilter] = useStickyState("mmis:pm-todo:assignee", "all");
   const myId = getTokenSession()?.employee_id;
   const viewOnly = isViewerUser();
   const [view, setView] = useStickyState("mmis:pm-todo:view", "list");
+  const [projectFromUrl, setProjectFromUrl] = useState(project);
+  if (project !== projectFromUrl) {
+    setProjectFromUrl(project);
+    if (project) setProjectFilter(project);
+  }
+  const [areaFromUrl, setAreaFromUrl] = useState(testArea);
+  if (testArea !== areaFromUrl) {
+    setAreaFromUrl(testArea);
+    if (testArea) setTestAreaFilter(testArea);
+  }
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useStickyState("mmis:pm-todo:page-size", PAGE_SIZES[0]);
 
@@ -139,6 +151,11 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
 
   const activeType = typeCounts.some(([type]) => type === typeFilter) ? typeFilter : "all";
   const activeProject = projects.includes(projectFilter) ? projectFilter : "all";
+  const testAreas = useMemo(() => {
+    const source = activeProject === "all" ? tasks : tasks.filter((t) => t.fixture.project_name === activeProject);
+    return [...new Set(source.map((t) => t.fixture.test_area).filter(Boolean))].sort(naturalCompare);
+  }, [tasks, activeProject]);
+  const activeTestArea = testAreas.includes(testAreaFilter) ? testAreaFilter : "all";
   const anyAssigned = useMemo(() => tasks.some((t) => t.fixture.pm_assigned_employee_id), [tasks]);
   const activeAssignee = anyAssigned ? assigneeFilter : "all";
 
@@ -147,6 +164,7 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
     return tasks.filter(({ fixture, pmType }) => {
       if (activeType !== "all" && pmType !== activeType) return false;
       if (activeProject !== "all" && fixture.project_name !== activeProject) return false;
+      if (activeTestArea !== "all" && fixture.test_area !== activeTestArea) return false;
       if (activeAssignee === "me" && fixture.pm_assigned_employee_id !== myId) return false;
       if (activeAssignee === "unassigned" && fixture.pm_assigned_employee_id) return false;
       if (!q) return true;
@@ -160,7 +178,7 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
         fixture.pm_assigned_to,
       ].some((value) => (value || "").toLowerCase().includes(q));
     });
-  }, [tasks, search, activeType, activeProject, activeAssignee, myId]);
+  }, [tasks, search, activeType, activeProject, activeTestArea, activeAssignee, myId]);
 
   const stateCounts = useMemo(() => {
     const counts = { overdue: 0, due_soon: 0, never: 0 };
@@ -177,7 +195,7 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
 
   useEffect(() => {
     setPage(1);
-  }, [search, activeType, activeProject, activeAssignee, status, pageSize]);
+  }, [search, activeType, activeProject, activeTestArea, activeAssignee, status, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -271,7 +289,10 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
             </select>
             <select
               value={activeProject}
-              onChange={(e) => setProjectFilter(e.target.value)}
+              onChange={(e) => {
+                setProjectFilter(e.target.value);
+                setTestAreaFilter("all");
+              }}
               aria-label="Filter by project"
               className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
             >
@@ -279,6 +300,19 @@ export default function MaintenanceTodoTab({ status = "all", onStatusChange }) {
               {projects.map((project) => (
                 <option key={project} value={project}>
                   {project}
+                </option>
+              ))}
+            </select>
+            <select
+              value={activeTestArea}
+              onChange={(e) => setTestAreaFilter(e.target.value)}
+              aria-label="Filter by test area"
+              className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+            >
+              <option value="all">All test areas</option>
+              {testAreas.map((area) => (
+                <option key={area} value={area}>
+                  {area}
                 </option>
               ))}
             </select>

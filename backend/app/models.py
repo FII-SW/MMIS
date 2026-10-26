@@ -224,6 +224,18 @@ class PMOverdueAlert(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class PMChecklistTemplate(Base):
+    """Super Admin replacement for a built-in PM checklist. Missing row = use the code default."""
+
+    __tablename__ = "pm_checklist_templates"
+
+    family = Column(String(20), primary_key=True)
+    pm_type = Column(String(20), primary_key=True)
+    body = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
+
+
 class AppSetting(Base):
     """System settings a Super Admin can change from the app."""
 

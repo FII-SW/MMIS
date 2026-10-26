@@ -24,8 +24,8 @@ const ACTIONS = [
   },
   {
     id: "maintenance",
-    label: "Maintenance",
-    description: "Fixture PM & history",
+    label: "Fixture Maintenance",
+    description: "Fixtures, PM, and spare parts",
     path: "/dashboard/maintenance",
     icon: "🛠️",
     tone: "slate",

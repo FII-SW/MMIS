@@ -1,14 +1,16 @@
 export const MAINTENANCE_PROJECTS_URL = "/dashboard/maintenance";
 export const MAINTENANCE_DASHBOARD_URL = "/dashboard/maintenance/dashboard";
+export const FIXTURE_MAINTENANCE_TITLE = "Fixture Maintenance";
 
 export function testAreaUrl(project) {
   return `/dashboard/maintenance/test-area?project=${encodeURIComponent(project)}`;
 }
 
-export function fixtureListUrl(project, testArea) {
+export function fixtureListUrl(project, testArea, status) {
   const query = new URLSearchParams();
   if (project) query.set("project", project);
   if (testArea) query.set("test_area", testArea);
+  if (status) query.set("status", status);
   return `/dashboard/maintenance/work?${query.toString()}`;
 }
 

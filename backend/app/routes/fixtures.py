@@ -58,7 +58,7 @@ def bulk_update_fixture_descriptors(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """Admin: set manufacturer / production line for many fixtures, each with its own values."""
+    """Admin: set asset tag, serial, manufacturer and production line for many fixtures."""
     admin = require_admin(request)
     if not data.updates:
         return {"updated": 0}
@@ -90,7 +90,7 @@ def bulk_update_fixture_descriptors(
     if changed:
         log_action(
             db, admin, "update", "fixture", None,
-            f"Bulk edited manufacturer / line on {len(changed)} fixture(s)",
+            f"Bulk edited fixture info on {len(changed)} fixture(s)",
             {"fixtures": changed},
         )
     db.commit()
@@ -104,7 +104,7 @@ def update_fixture_descriptors(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """Admin quick edit of manufacturer / production line."""
+    """Admin quick edit of asset tag, serial, manufacturer and production line."""
     admin = require_admin(request)
     db_fixture = db.query(models.Fixture).filter(models.Fixture.fixture_id == fixture_id).first()
     if not db_fixture:
@@ -146,7 +146,7 @@ def update_fixture(fixture_id: int, fixture: schemas.FixtureBase, request: Reque
     update_data = fixture.dict(exclude_unset=True)
     values = {}
     for key, value in update_data.items():
-        if key in ("manufacturer", "production_line"):
+        if key in ("manufacturer", "production_line", "asset_tag", "fixture_serial_number"):
             values[key] = (value or "").strip() or None
         else:
             values[key] = value if value is not None else ""
@@ -173,7 +173,7 @@ def add_fixture(data: dict, request: Request, db: Session = Depends(get_db)):
     # Create FixtureBase from the data (excluding employee_id)
     # Convert None to empty string for optional fields
     fixture_data = {k: (v if v is not None else "") for k, v in data.items() if k != "employee_id"}
-    for key in ("manufacturer", "production_line"):
+    for key in ("manufacturer", "production_line", "asset_tag", "fixture_serial_number"):
         fixture_data[key] = str(fixture_data.get(key) or "").strip() or None
     fx = schemas.FixtureBase(**fixture_data)
     

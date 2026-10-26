@@ -133,8 +133,10 @@ class FixtureBase(BaseModel):
     production_line: Optional[str] = None
 
 class FixtureDescriptorsUpdate(BaseModel):
-    manufacturer: Optional[str] = None
-    production_line: Optional[str] = None
+    manufacturer: Optional[str] = Field(default=None, max_length=100)
+    production_line: Optional[str] = Field(default=None, max_length=50)
+    asset_tag: Optional[str] = Field(default=None, max_length=50)
+    fixture_serial_number: Optional[str] = Field(default=None, max_length=50)
 
 class FixtureDescriptorsBulkItem(FixtureDescriptorsUpdate):
     fixture_id: int
