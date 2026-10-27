@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import API from "../api";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PasswordVisibilityButton from "../components/PasswordVisibilityButton";
 import { CHANGE_PASSWORD_URL } from "../utils/auth";
 
@@ -166,6 +166,15 @@ export default function Login() {
             )}
           </button>
 
+          <p className="mt-5 text-center text-sm text-gray-600 dark:text-gray-300">
+            New here?{" "}
+            <Link to="/signup" className="font-semibold text-blue-600 hover:underline dark:text-blue-400">
+              Create an account
+            </Link>
+            <span className="block mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Self-signup starts as Viewer. A Super Admin can change your access level.
+            </span>
+          </p>
         </form>
       </div>
     </div>

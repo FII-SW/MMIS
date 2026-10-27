@@ -13,8 +13,14 @@ const NOTIFICATION_ICONS = {
   pm_weekly: "🗓️",
   pm_overdue: "⏰",
   announcement: "📣",
+  signup: "👤",
 };
-const LINK_LABELS = { pm_assignment: "View my PMs →", pm_weekly: "View my PMs →", pm_overdue: "View overdue →" };
+const LINK_LABELS = {
+  pm_assignment: "View my PMs →",
+  pm_weekly: "View my PMs →",
+  pm_overdue: "View overdue →",
+  signup: "Open Users →",
+};
 
 export default function Header({ showMMIS = true, brandLogo = false }) {
   const [userName, setUserName] = useState("");

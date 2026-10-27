@@ -296,7 +296,7 @@ export default function MaintenanceFixtureDetailPage() {
           </div>
         ) : (
           <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-            PM checklists are configured for FBT (weekly, biweekly) and ICT (monthly) fixtures only.
+            PM checklists are configured for FBT (weekly, biweekly), BSI (weekly, biweekly, monthly), and ICT (monthly) fixtures only.
           </p>
         )}
 

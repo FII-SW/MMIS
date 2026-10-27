@@ -13,6 +13,7 @@ export function pmTypeLabel(pmType) {
 const PM_TYPES_BY_AREA_PREFIX = {
   FBT: ["weekly", "biweekly"],
   ICT: ["monthly"],
+  BSI: ["weekly", "biweekly", "monthly"],
 };
 
 export function pmTypesForArea(testArea) {

@@ -224,6 +224,7 @@ export default function UsersTab() {
   }, [users, search, roleFilter, showInactive]);
 
   const inactiveCount = users.filter((user) => !user.active).length;
+  const viewerCount = users.filter((user) => user.active && user.role === "viewer").length;
 
   const done = (message) => {
     setPanel(null);
@@ -313,6 +314,28 @@ export default function UsersTab() {
               onCancel={() => setPanel(null)}
             />
           )}
+        </div>
+      )}
+
+      {viewerCount > 0 && (
+        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            <span className="font-semibold">
+              {viewerCount} Viewer{viewerCount === 1 ? "" : "s"}
+            </span>{" "}
+            can look at MMIS but cannot request, restock, or record PMs. Self-signup always starts as Viewer — edit the
+            person and raise Access level when ready.
+          </p>
+          <button
+            type="button"
+            className={BUTTON_SECONDARY}
+            onClick={() => {
+              setRoleFilter("viewer");
+              setShowInactive(false);
+            }}
+          >
+            Show Viewers
+          </button>
         </div>
       )}
 

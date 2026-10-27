@@ -30,6 +30,12 @@ export default function Dashboard() {
         type: location.state.flashType || "info",
       });
       navigate(location.pathname, { replace: true, state: {} });
+    } else if (location.state?.signupNotice) {
+      setFlash({
+        message: location.state.signupNotice,
+        type: "info",
+      });
+      navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location, navigate]);
 

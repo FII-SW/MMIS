@@ -394,7 +394,7 @@ export default function AssignmentsTab() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className={CARD}>
-          <StepTitle number={1} hint="Only fixtures that have PM checklists (FBT, ICT…) are listed.">
+          <StepTitle number={1} hint="Only fixtures that have PM checklists (FBT, BSI, ICT…) are listed.">
             Choose project and test area
           </StepTitle>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

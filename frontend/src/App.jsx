@@ -1,6 +1,7 @@
 // src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import RequestPage from "./pages/RequestPage";
 import ReturnPage from "./pages/ReturnPage";
@@ -53,6 +54,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         {/* ADMIN + USER (not viewers: these pages change stock) */}
         <Route path="/dashboard/request" element={withLayout(EDITORS, <RequestProjectPage />)} />
         <Route path="/dashboard/request/test-area" element={withLayout(EDITORS, <RequestTestAreaPage />)} />

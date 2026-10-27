@@ -1,22 +1,135 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import logging
+import re
 from . import crud, models
 from .database import get_db
 from .utils.jwt_handler import create_access_token
 from .utils.password_utils import verify_stored_password, normalize_password_for_storage, is_bcrypt_hash
 from .utils.auth_deps import get_current_user
-from .utils.roles import normalize_role
+from .utils.audit import log_action
+from .utils.notifications import notify
+from .utils.roles import ROLE_LABELS, SUPER_ADMIN, VIEWER, normalize_role
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+MIN_PASSWORD_LENGTH = 6
+_USERNAME_RE = re.compile(r"^[A-Za-z0-9._-]{3,50}$")
+_BADGE_RE = re.compile(r"^[A-Za-z0-9._-]{1,20}$")
+
 
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+class SignupRequest(BaseModel):
+    employee_name: str = Field(min_length=1, max_length=100)
+    employee_username: str = Field(min_length=3, max_length=50)
+    employee_badge_number: str = Field(min_length=1, max_length=20)
+    password: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=128)
+    employee_email: str | None = Field(default=None, max_length=255)
+    employee_designation: str | None = Field(default=None, max_length=50)
+    employee_shift: str | None = Field(default=None, max_length=20)
+
+
+def _clean(value: str | None) -> str | None:
+    value = (value or "").strip()
+    return value or None
+
+
+@router.post("/signup", status_code=201)
+def signup(payload: SignupRequest, db: Session = Depends(get_db)):
+    """Public self-registration. New accounts always start as Viewer until a Super Admin raises access."""
+    name = _clean(payload.employee_name)
+    username = _clean(payload.employee_username)
+    badge = _clean(payload.employee_badge_number)
+    email = _clean(payload.employee_email)
+    designation = _clean(payload.employee_designation)
+    shift = _clean(payload.employee_shift)
+
+    if not (name and username and badge):
+        raise HTTPException(status_code=400, detail="Name, username, and badge number are required")
+    if not _USERNAME_RE.match(username):
+        raise HTTPException(
+            status_code=400,
+            detail="Username must be 3–50 characters: letters, numbers, dot, underscore, or hyphen",
+        )
+    if not _BADGE_RE.match(badge):
+        raise HTTPException(
+            status_code=400,
+            detail="Badge number must be 1–20 characters: letters, numbers, dot, underscore, or hyphen",
+        )
+    if len(payload.password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
+
+    if db.query(models.Employee).filter(func.lower(models.Employee.employee_username) == username.lower()).first():
+        raise HTTPException(status_code=400, detail=f"Username '{username}' is already taken")
+    if db.query(models.Employee).filter(models.Employee.employee_badge_number == badge).first():
+        raise HTTPException(status_code=400, detail=f"Badge number '{badge}' is already used")
+
+    emp = models.Employee(
+        employee_name=name,
+        employee_username=username,
+        employee_badge_number=badge,
+        employee_password=normalize_password_for_storage(payload.password),
+        employee_access_level=VIEWER,
+        employee_email=email,
+        employee_designation=designation,
+        employee_shift=shift,
+        employee_active=True,
+        employee_must_change_password=False,
+    )
+    db.add(emp)
+    db.flush()
+
+    log_action(
+        db,
+        None,
+        "create",
+        "user",
+        emp.employee_id,
+        f"Self-signup: {name} ({username}) as {ROLE_LABELS[VIEWER]}",
+        {"source": "signup", "role": VIEWER},
+    )
+
+    super_admins = [
+        admin.employee_id
+        for admin in db.query(models.Employee).filter(models.Employee.employee_active.isnot(False)).all()
+        if normalize_role(admin.employee_access_level) == SUPER_ADMIN
+    ]
+    for admin_id in super_admins:
+        notify(
+            db,
+            admin_id,
+            "signup",
+            "New viewer signup",
+            f"{name} ({username}) signed up with Viewer access. Change their access level in Super Admin → Users if needed.",
+            "/dashboard/super-admin?tab=users",
+        )
+
+    db.commit()
+    db.refresh(emp)
+
+    token = create_access_token(
+        {
+            "sub": emp.employee_username,
+            "role": VIEWER,
+            "employee_id": emp.employee_id,
+        }
+    )
+    return {
+        "message": "Account created. You have Viewer access until a Super Admin changes your role.",
+        "access_token": token,
+        "token_type": "bearer",
+        "must_change_password": False,
+        "role": VIEWER,
+        "role_label": ROLE_LABELS[VIEWER],
+    }
 
 
 @router.post("/login")

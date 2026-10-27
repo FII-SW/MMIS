@@ -88,6 +88,7 @@ export const HELP_ARTICLES = [
     summary: "Overview of the Material Management Inventory System.",
     steps: [
       "Sign in with your employee username and password.",
+      "New people can Create an account on the sign-in page. Self-signup always starts as Viewer. A Super Admin changes the access level under Super Admin → Users.",
       "Use the left sidebar for Request, Return, Reports, Alerts, Documents, Fixture Maintenance, and more. How it works, at the bottom of the sidebar, shows the steps for each of these.",
       "Use the blue Back button at the top-left to go to the previous step.",
       "Admins also see Restock and Transfer in the sidebar.",
@@ -196,7 +197,7 @@ export const HELP_ARTICLES = [
           "Admins can click Edit asset, serial, line to change those fields for the fixtures on the list. Asset tag and serial are typed per fixture. The same line or manufacturer can be applied to several selected fixtures.",
           "Click Open on the fixture (or click its Weekly / Biweekly / Monthly status to go straight to that checklist).",
           "Click Record Weekly PM (or the PM type you are doing).",
-          "FBT Weekly and Biweekly PMs start with Maintenance details (all required): choose Preventive or Corrective, enter the Activation counter, enter the Downtime while performing maintenance in minutes (0 if none), and say whether any commodity was replaced. If yes, describe its condition and location.",
+          "FBT and BSI PMs start with Maintenance details (all required): choose Preventive or Corrective, enter the Activation counter, enter the Downtime while performing maintenance in minutes (0 if none), and say whether any commodity was replaced. If yes, describe its condition and location.",
           "Mark every task Passed, Failed, or N/A. Use Mark all passed when everything is OK, then change any that failed.",
           "If a task failed, write what you found or fixed in Notes (required).",
           "Add spare parts if you used any (see “Use spare parts during a PM”).",
@@ -243,7 +244,7 @@ export const HELP_ARTICLES = [
           "Search the item name or part number (items from this project and test area are listed).",
           "Add it and set the quantity used. Repeat for more parts.",
           "When you submit, the quantity is taken out of inventory and linked to this PM and fixture.",
-          "Parts that are not in MMIS inventory: type them in the Parts replaced box instead (on FBT Weekly / Biweekly PMs, describe them in the commodity replaced question).",
+          "Parts that are not in MMIS inventory: type them in the Parts replaced box instead (on FBT and BSI PMs, describe them in the commodity replaced question).",
           "Or use Request spare part on the fixture page to request an item separately.",
         ],
         links: [{ label: "Fixtures", path: "/dashboard/maintenance" }],
@@ -331,7 +332,8 @@ export const HELP_ARTICLES = [
         heading: "Which PMs apply",
         steps: [
           "FBT test areas (FBT_Mobo, FBT_Agora): Weekly PM once every work week (Monday–Sunday), and Biweekly PM within 2 work weeks (done in WW38 → due by the end of WW40).",
-          "A Biweekly PM also counts as that week’s Weekly PM — no need to do both on the same day.",
+          "BSI test areas (BSI_Mobo): Weekly, Biweekly, and Monthly PM. The checklist is the same for all three; only how often it is due changes.",
+          "A Biweekly PM also counts as that week’s Weekly PM. A Monthly PM also counts for Weekly and Biweekly — no need to do all three on the same day.",
           "ICT test areas (ICT_Mobo, ICT_Agora): Monthly PM once every calendar month.",
           "Other test areas have no PM checklist yet. Quarterly PM will appear once its checklist is set up.",
         ],
@@ -528,6 +530,7 @@ export const HELP_ARTICLES = [
         heading: "When to use Transfer",
         steps: [
           "Use Transfer when you need to move quantity from one project/test area to another.",
+          "Both locations must already have that same part in inventory (same name, part number, and description).",
           "Automatic cross-project transfer may also happen during Request when local stock is insufficient.",
         ],
       },
@@ -535,10 +538,12 @@ export const HELP_ARTICLES = [
         heading: "Transfer steps",
         steps: [
           "Open Transfer from the sidebar (admin only).",
-          "Search for the source inventory row (same part can exist in multiple projects).",
-          "Select the item row showing the correct project and test area.",
-          "Complete the transfer to the destination (follow on-screen fields).",
-          "Check Activity History to confirm the move was recorded.",
+          "Search by item name or part number.",
+          "Select the source row (the project/test area you are taking quantity from).",
+          "Select the destination row (another project/test area for the same part).",
+          "Enter the quantity. Fixture and remarks are optional.",
+          "Click Transfer stock. Activity History records transfer out and transfer in.",
+          "If the destination project does not have that item yet, add it first with Restock → Add New Stock, then transfer.",
         ],
       },
     ],
@@ -751,6 +756,7 @@ export const HELP_ARTICLES = [
         heading: "Users",
         steps: [
           "Open Super Admin from the sidebar, then the Users tab.",
+          "People can also Create an account on the sign-in page. Self-signup always starts as Viewer, and every Super Admin gets a bell notification. Use Show Viewers, then Edit, to raise Access level to User, Admin, or Super Admin.",
           "Add user: enter name, badge, username and access level. A temporary password is filled in for you (click Generate for another, Copy to copy it). Give it to the person.",
           "With \"Ask them to choose their own password at next sign-in\" ticked (the default), they have to choose their own password before they can use MMIS. The list shows 🔒 Temp password until they do.",
           "Edit changes name, email, designation, shift or access level (Viewer, User, Admin, Super Admin).",
@@ -795,7 +801,7 @@ export const HELP_ARTICLES = [
       {
         heading: "PM checklists",
         steps: [
-          "The Checklists tab edits the Weekly, Biweekly and Monthly task lists.",
+          "The Checklists tab edits FBT, BSI, and ICT task lists (Weekly, Biweekly, and Monthly where each family has them).",
           "Change the wording, add or remove a task, or reorder them, then Save checklist.",
           "The next PM someone records uses the new list. PMs already recorded keep the tasks they had at the time.",
           "A task with an open issue can't be removed until that issue is resolved.",

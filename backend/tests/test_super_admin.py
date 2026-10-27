@@ -120,10 +120,18 @@ class TestPasswordChangeAllowed(unittest.TestCase):
 
 
 class TestMaintenanceDetails(unittest.TestCase):
-    def test_only_fbt_weekly_and_biweekly_ask_for_details(self):
+    def test_fbt_and_bsi_ask_for_details(self):
         self.assertTrue(get_checklist("weekly", "FBT")["requires_details"])
         self.assertTrue(get_checklist("biweekly", "FBT-2")["requires_details"])
+        self.assertTrue(get_checklist("weekly", "BSI_Mobo")["requires_details"])
+        self.assertTrue(get_checklist("biweekly", "BSI")["requires_details"])
+        self.assertTrue(get_checklist("monthly", "BSI_Mobo")["requires_details"])
         self.assertFalse(get_checklist("monthly", "ICT")["requires_details"])
+        self.assertEqual(len(get_checklist("weekly", "BSI_Mobo")["items"]), 13)
+        self.assertEqual(
+            get_checklist("weekly", "BSI")["items"][0]["id"],
+            get_checklist("monthly", "BSI")["items"][0]["id"],
+        )
 
     def test_maintenance_type(self):
         self.assertEqual(clean_detail("maintenance_type", " Corrective "), "corrective")

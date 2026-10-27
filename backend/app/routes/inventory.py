@@ -584,57 +584,85 @@ def get_alternative_items(item_id: int, db: Session = Depends(get_db)):
 # New endpoint for explicit transfer between projects
 @router.post("/transfer")
 def transfer_item(data: dict, request: Request, db: Session = Depends(get_db)):
-    """Explicitly transfer items from one project to another (admin only)."""
+    """Explicitly transfer items from one project/test area row to another (admin only).
+
+    Source and destination must already exist as inventory rows for the same catalog
+    item (same name, part number, and description). Fixture is optional — this is a
+    stock move between locations, not a request against a fixture.
+    """
     admin = require_admin(request)
     employee_id = employee_id_from_token(admin)
 
     source_item_id = data.get("source_item_id")
     dest_item_id = data.get("dest_item_id")
     quantity = data.get("quantity")
-    fixture_id = data.get("fixture_id")
-    remarks = data.get("remarks", "")
+    fixture_id = data.get("fixture_id") or None
+    remarks = (data.get("remarks") or "").strip()
 
-    if not all([source_item_id, dest_item_id, quantity, fixture_id]):
-        raise HTTPException(status_code=400, detail="Missing required fields")
-    
+    if not source_item_id or not dest_item_id or quantity is None or quantity == "":
+        raise HTTPException(status_code=400, detail="Source item, destination item, and quantity are required")
+
+    try:
+        quantity = int(quantity)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Quantity must be a whole number")
+
     if quantity <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
-    
-    # Lock both items
+
+    if str(source_item_id) == str(dest_item_id):
+        raise HTTPException(status_code=400, detail="Source and destination must be different inventory rows")
+
+    if fixture_id not in (None, ""):
+        try:
+            fixture_id = int(fixture_id)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Fixture is invalid")
+        fixture = db.query(models.Fixture).filter(models.Fixture.fixture_id == fixture_id).first()
+        if not fixture:
+            raise HTTPException(status_code=404, detail="Fixture not found")
+    else:
+        fixture_id = None
+
     source_item = (
         db.query(models.Inventory)
         .filter(models.Inventory.item_id == source_item_id)
         .with_for_update()
         .first()
     )
-    
     dest_item = (
         db.query(models.Inventory)
         .filter(models.Inventory.item_id == dest_item_id)
         .with_for_update()
         .first()
     )
-    
+
     if not source_item or not dest_item:
         raise HTTPException(status_code=404, detail="Source or destination item not found")
-    
+
     if not crud.is_same_catalog_item(source_item, dest_item):
         raise HTTPException(
             status_code=400,
             detail="Items must have the same name, part number, and description",
         )
-    
+
     if source_item.item_current_quantity < quantity:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Insufficient stock. Available: {source_item.item_current_quantity}, Requested: {quantity}"
+            status_code=400,
+            detail=f"Insufficient stock. Available: {source_item.item_current_quantity}, Requested: {quantity}",
         )
-    
-    # Perform transfer
+
     source_item.item_current_quantity -= quantity
     dest_item.item_current_quantity += quantity
-    
-    # Create transactions
+
+    dest_label = f"{dest_item.project_name}" + (f" · {dest_item.test_area}" if dest_item.test_area else "")
+    source_label = f"{source_item.project_name}" + (f" · {source_item.test_area}" if source_item.test_area else "")
+    out_remarks = f"Transferred to {dest_label}."
+    in_remarks = f"Transferred from {source_label}."
+    if remarks:
+        out_remarks = f"{out_remarks} {remarks}"
+        in_remarks = f"{in_remarks} {remarks}"
+
     transfer_out_tx = models.Transaction(
         item_id=source_item_id,
         employee_id=employee_id,
@@ -643,9 +671,8 @@ def transfer_item(data: dict, request: Request, db: Session = Depends(get_db)):
         test_area=source_item.test_area,
         project_name=source_item.project_name,
         transaction_type="transfer_out",
-        remarks=f"Transferred to {dest_item.project_name}. {remarks}"
+        remarks=out_remarks,
     )
-    
     transfer_in_tx = models.Transaction(
         item_id=dest_item_id,
         employee_id=employee_id,
@@ -654,23 +681,31 @@ def transfer_item(data: dict, request: Request, db: Session = Depends(get_db)):
         test_area=dest_item.test_area,
         project_name=dest_item.project_name,
         transaction_type="transfer_in",
-        remarks=f"Transferred from {source_item.project_name}. {remarks}"
+        remarks=in_remarks,
     )
-    
+
     db.add(transfer_out_tx)
     db.add(transfer_in_tx)
     log_action(
         db, admin, "transfer", "item", source_item_id,
-        f"Transferred {quantity} × {source_item.item_name} from {source_item.project_name} to {dest_item.project_name}",
-        {"quantity": quantity, "dest_item_id": dest_item_id, "remarks": remarks or None},
+        f"Transferred {quantity} × {source_item.item_name} from {source_label} to {dest_label}",
+        {
+            "quantity": quantity,
+            "dest_item_id": dest_item_id,
+            "fixture_id": fixture_id,
+            "remarks": remarks or None,
+        },
     )
     db.commit()
     db.refresh(source_item)
     db.refresh(dest_item)
-    
+
     return {
         "message": "Transfer successful",
         "source_quantity": source_item.item_current_quantity,
-        "dest_quantity": dest_item.item_current_quantity
+        "dest_quantity": dest_item.item_current_quantity,
+        "quantity": quantity,
+        "source_item_id": source_item.item_id,
+        "dest_item_id": dest_item.item_id,
     }
     

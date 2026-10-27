@@ -1,4 +1,4 @@
-"""Preventive maintenance checklists per test area family (FBT, ICT).
+"""Preventive maintenance checklists per test area family (FBT, ICT, BSI).
 
 The lists below are the built-in defaults. A Super Admin can replace one from the
 Checklists tab; that copy is stored on pm_checklist_templates and used here.
@@ -22,8 +22,11 @@ PM_TYPE_LABELS = {
     "quarterly": "Quarterly PM",
 }
 # Recording the key PM type also completes the listed types
-# (the FBT biweekly checklist includes every weekly task).
-PM_COVERS = {"biweekly": ("weekly",)}
+# (FBT biweekly includes every weekly task; BSI monthly includes weekly and biweekly).
+PM_COVERS = {
+    "biweekly": ("weekly",),
+    "monthly": ("weekly", "biweekly"),
+}
 RESULT_VALUES = ("passed", "failed", "na")
 PM_DIVISION = "SMC TEST ENG"
 
@@ -90,6 +93,98 @@ _ICT_NOTE = (
     "Order and list any replacement parts needed."
 )
 
+# Same task list for BSI weekly, biweekly, and monthly (schedule differs; tasks do not).
+_BSI_SECTION = "BSI Preventive Maintenance"
+_BSI_TASKS = [
+    (
+        "safety_esd",
+        "Safety and ESD Check: Power off the fixture, disconnect all power cables, "
+        "and wear appropriate ESD protection gloves before maintenance.",
+    ),
+    (
+        "visual_inspection",
+        "Fixture Visual Inspection: Check screws, bolts, and mounting hardware for damage or missing parts, "
+        "especially on the Carrier Plate, DIMM, and PCIe modules. Tighten any loose screws.",
+    ),
+    (
+        "fixture_cleaning",
+        "Fixture Cleaning: Remove dust, debris, and foreign materials using approved ESD-safe brushes, "
+        "wipes, or a vacuum, especially on the Carrier Plate.",
+    ),
+    (
+        "fan_airflow",
+        "Fan and Airflow Cleaning: Check fans for dust buildup or blockages and clean them to ensure proper airflow.",
+    ),
+    (
+        "interposer_inspection",
+        "Interposer Inspection: Inspect DIMM, PCIe/DCSCM, and M.2 interposers on Bondi/Athena BSI, "
+        "and Gen-Z, CEM, and CDFP interposers on Zebra BSI for contamination, wear and tear, damage, "
+        "and proper seating. If interposers are worn out, replace them. Interposers must be cleaned with WD-40 contact cleaner.",
+    ),
+    (
+        "test_probe",
+        "Test Probe Inspection: Check test probes for damage or contamination and clean them with ESD cleaning cloth if necessary.",
+    ),
+    (
+        "cable_wiring",
+        "Cable and Wiring Inspection: Check Ethernet, USB, PCIe, M.2/Gen-Z/CEM/CDFP cables, "
+        "and internal wiring for damage or loose connections, and reseat them if necessary.",
+    ),
+    (
+        "power_supply",
+        "Power Supply Inspection: Verify that PSU connections, AC input cables, and internal power harnesses "
+        "are secure and free from damage or burn marks.",
+    ),
+    (
+        "pneumatic_air",
+        "Pneumatic/Air Pressure System Check: Verify that air pressure is greater than 0.6 MPa "
+        "and inspect hoses and fittings for leaks or damage.",
+    ),
+    (
+        "mechanical_function",
+        "Mechanical Function Check: Verify that Carrier Plate Tau Up/Down, Tau In/Out, CDFP Home/Origin, "
+        "DIMM/PCIe/M.2 movements, and locking mechanisms operate smoothly using a Golden Board where applicable.",
+    ),
+    (
+        "sensor_safety",
+        "Sensor and Safety Check: Verify that all sensors and door latches function correctly "
+        "and provide the expected status indications.",
+    ),
+    (
+        "golden_board",
+        "Golden Board Verification Test: After preventive maintenance, ensure the Golden Board passes three consecutive tests.",
+    ),
+    (
+        "pm_records_release",
+        "PM Records and Final Release: Record maintenance results, issues, and replaced parts, "
+        "and confirm that the fixture is functioning properly before releasing it to Production.",
+    ),
+]
+
+_BSI_SUMMARY = (
+    "Power off and ESD protect, inspect and clean the fixture, check interposers, probes, cables, "
+    "PSU, air pressure, mechanics, sensors, then pass Golden Board three times and release to Production."
+)
+
+_BSI_NOTE = (
+    "Bondi/Athena BSI: inspect DIMM, PCIe/DCSCM, and M.2 interposers. "
+    "Zebra BSI: inspect Gen-Z, CEM, and CDFP interposers. "
+    "Clean interposers with WD-40 contact cleaner. Replace worn interposers."
+)
+
+
+def _bsi_checklist(title: str) -> dict:
+    return {
+        "title": title,
+        "description": "BSI FIXTURE",
+        "summary": _BSI_SUMMARY,
+        "reference": None,
+        "note": _BSI_NOTE,
+        "details": True,
+        "sections": [(_BSI_SECTION, _BSI_TASKS)],
+    }
+
+
 # Each family: predicate on the test area + checklist config per PM type.
 _CHECKLISTS = {
     "FBT": {
@@ -131,6 +226,11 @@ _CHECKLISTS = {
             "sections": [("Monthly PM", _ICT_MONTHLY)],
         },
     },
+    "BSI": {
+        "weekly": _bsi_checklist("BSI Fixture Weekly PM"),
+        "biweekly": _bsi_checklist("BSI Fixture Biweekly PM"),
+        "monthly": _bsi_checklist("BSI Fixture Monthly PM"),
+    },
 }
 
 
@@ -151,6 +251,10 @@ def is_fbt_test_area(test_area: str | None) -> bool:
 
 def is_ict_test_area(test_area: str | None) -> bool:
     return _family(test_area) == "ICT"
+
+
+def is_bsi_test_area(test_area: str | None) -> bool:
+    return _family(test_area) == "BSI"
 
 
 def configured_pm_types() -> set[str]:
