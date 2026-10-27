@@ -41,7 +41,7 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden transition-colors">
+    <div className="relative flex min-h-screen items-start justify-center overflow-y-auto bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 py-4 transition-colors sm:items-center dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Decorative Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Large Circle - Top Right */}
@@ -57,31 +57,29 @@ export default function Login() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       </div>
 
-      {/* Login Form Container */}
-      <div className="w-full max-w-md px-6 relative z-10">
-        <form onSubmit={handleLogin} className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-8 border border-gray-100 dark:border-gray-700 transition-colors">
-          {/* Logo/Title Section */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">MMIS</h1>
-            <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-1">Welcome Back</h2>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">Sign in to access your inventory management system</p>
+      <div className="relative z-10 w-full max-w-md px-4 py-4 sm:px-6">
+        <form
+          onSubmit={handleLogin}
+          className="rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl transition-colors sm:p-6 dark:border-gray-700 dark:bg-gray-800"
+        >
+          <div className="mb-4 text-center">
+            <h1 className="mb-1 text-3xl font-bold text-blue-600 dark:text-blue-400">MMIS</h1>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Welcome Back</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Sign in to your inventory management system</p>
           </div>
 
-          {/* Username Field */}
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Username
-            </label>
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Username</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
               <input
                 type="text"
                 placeholder="Enter your username"
-                className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full rounded-lg border-2 border-gray-300 py-2 pl-9 pr-3 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 value={username}
                 onChange={(e) => {
                   setUsername(e.target.value);
@@ -93,14 +91,11 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Password Field */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Password
-            </label>
+          <div className="mb-4">
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Password</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
@@ -108,7 +103,7 @@ export default function Login() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 autoComplete="current-password"
-                className="w-full pl-10 pr-11 py-3 border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full rounded-lg border-2 border-gray-300 py-2 pl-9 pr-10 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -126,68 +121,36 @@ export default function Login() {
               />
             </div>
             {capsLock && (
-              <p className="mt-2 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                </svg>
+              <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                 Caps Lock is on
               </p>
             )}
           </div>
 
-          {/* Error Message */}
           {error && (
-            <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-red-600 dark:text-red-400 text-sm text-center flex items-center justify-center gap-2">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {error}
-              </p>
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800 dark:bg-red-900/20">
+              <p className="text-center text-xs text-red-600 dark:text-red-400">{error}</p>
             </div>
           )}
 
-          {/* Login Button */}
           <button
             type="submit"
             disabled={loading || !username || !password}
-            className="w-full bg-blue-600 dark:bg-blue-700 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all shadow-md hover:shadow-lg disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:shadow-none"
+            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:shadow-none dark:bg-blue-700 dark:hover:bg-blue-600 dark:focus:ring-offset-gray-800 dark:disabled:bg-gray-600"
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Signing in...
-              </span>
-            ) : (
-              "Sign in"
-            )}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
 
-          <div className="mt-6 border-t border-gray-200 pt-5 dark:border-gray-700">
-            <div className="rounded-xl border border-blue-100 bg-blue-50/80 p-4 text-center dark:border-blue-900/50 dark:bg-blue-950/40">
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                New to MMIS?
+          <div className="mt-4 border-t border-gray-200 pt-3 dark:border-gray-700">
+            <div className="rounded-lg border border-blue-100 bg-blue-50/80 px-3 py-2.5 text-center dark:border-blue-900/50 dark:bg-blue-950/40">
+              <p className="text-xs text-gray-700 dark:text-gray-200">
+                New to MMIS?{" "}
+                <Link to="/signup" className="font-semibold text-blue-600 hover:underline dark:text-blue-400">
+                  Create an account
+                </Link>
               </p>
-              <Link
-                to="/signup"
-                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border-2 border-blue-600 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 shadow-sm transition-all hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-blue-400 dark:bg-gray-800 dark:text-blue-300 dark:hover:bg-blue-600 dark:hover:text-white dark:focus:ring-offset-gray-800"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-                Create an account
-              </Link>
-              <p className="mt-3 flex items-start justify-center gap-1.5 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                <svg className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>
-                  New accounts start as <span className="font-medium text-gray-700 dark:text-gray-300">Viewer</span>.
-                  A Super Admin can raise your access when you need it.
-                </span>
+              <p className="mt-1 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                Starts as Viewer. A Super Admin can raise your access later.
               </p>
             </div>
           </div>

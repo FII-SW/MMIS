@@ -209,10 +209,10 @@ export default function MaintenanceFixtureDetailPage() {
         <span className="font-semibold text-gray-800 dark:text-gray-100">{fixture.fixture_name}</span>
       </nav>
 
-      <div className="mx-auto max-w-5xl space-y-4 px-2 pb-8">
-        <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto max-w-5xl space-y-3 px-2 pb-6">
+        <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="truncate text-lg font-semibold text-gray-800 dark:text-gray-100">{fixture.fixture_name}</p>
+            <p className="truncate text-base font-semibold text-gray-800 dark:text-gray-100">{fixture.fixture_name}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {fixture.project_name} · {fixture.test_area} · Asset {fixture.asset_tag || "—"} · Serial{" "}
               {fixture.fixture_serial_number || "—"}

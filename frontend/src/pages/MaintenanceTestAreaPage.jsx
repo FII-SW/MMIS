@@ -62,61 +62,64 @@ export default function MaintenanceTestAreaPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <PageHeaderWithBack title={FIXTURE_MAINTENANCE_TITLE} onBack={() => navigate(MAINTENANCE_PROJECTS_URL)} />
 
-      <p className="mb-2 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
-        Project: <span className="text-blue-600 dark:text-blue-400">{project}</span>
-      </p>
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6">
+        <p className="mb-0.5 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Project: <span className="text-blue-600 dark:text-blue-400">{project}</span>
+        </p>
+        <p className="mb-3 text-center text-base font-semibold text-gray-700 dark:text-gray-300">Select test area</p>
 
-      <p className="mb-6 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">Select Test Area</p>
+        {error && <p className="mb-3 text-center text-xs text-red-600 dark:text-red-400">{error}</p>}
 
-      {error && <p className="mb-4 text-center text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-      <div className="mx-auto grid max-w-4xl grid-cols-2 justify-center gap-6 px-4 pb-8 md:grid-cols-3">
-        {testAreas.map((area) => {
-          const counts = byArea[area] || emptyCounts();
-          const hasPM = pmTypesForArea(area).length > 0;
-          const overdue = counts.overdue || 0;
-          return (
-            <div
-              key={area}
-              className={`flex flex-col items-center justify-center gap-2 rounded-xl border bg-white p-6 text-center shadow-md dark:bg-gray-800 ${
-                overdue > 0 ? "border-red-300 dark:border-red-800" : "border-gray-200 dark:border-gray-700"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => navigate(fixtureListUrl(project, area))}
-                className="flex w-full flex-col items-center justify-center gap-1 rounded-lg p-2 transition-all hover:bg-blue-100 dark:hover:bg-gray-700"
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {testAreas.map((area) => {
+            const counts = byArea[area] || emptyCounts();
+            const hasPM = pmTypesForArea(area).length > 0;
+            const overdue = counts.overdue || 0;
+            return (
+              <div
+                key={area}
+                className={`flex flex-col items-center justify-center gap-1 rounded-lg border bg-white px-2 py-3 text-center shadow-sm dark:bg-gray-800 ${
+                  overdue > 0 ? "border-red-300 dark:border-red-800" : "border-gray-200 dark:border-gray-700"
+                }`}
               >
-                <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">{area}</span>
-                {loading ? (
-                  <span className="text-xs text-gray-400">Loading…</span>
-                ) : counts.fixtures === 0 ? (
-                  <span className="text-xs text-gray-400 dark:text-gray-500">No fixtures</span>
-                ) : (
-                  <>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {counts.fixtures} fixture{counts.fixtures === 1 ? "" : "s"}
-                    </span>
-                    {hasPM ? (
-                      <PMStatusLine counts={counts} />
-                    ) : (
-                      <span className="text-xs text-gray-400 dark:text-gray-500">No PM checklist</span>
-                    )}
-                  </>
-                )}
-              </button>
-              {overdue > 0 && (
                 <button
                   type="button"
-                  onClick={() => navigate(fixtureListUrl(project, area, "overdue"))}
-                  className="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                  onClick={() => navigate(fixtureListUrl(project, area))}
+                  className="flex w-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 transition-all hover:bg-blue-50 dark:hover:bg-gray-700"
                 >
-                  Open {overdue} overdue
+                  <span className="line-clamp-2 text-sm font-semibold leading-snug text-gray-800 dark:text-gray-200">
+                    {area}
+                  </span>
+                  {loading ? (
+                    <span className="text-[11px] text-gray-400">Loading…</span>
+                  ) : counts.fixtures === 0 ? (
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500">No fixtures</span>
+                  ) : (
+                    <>
+                      <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                        {counts.fixtures} fixture{counts.fixtures === 1 ? "" : "s"}
+                      </span>
+                      {hasPM ? (
+                        <PMStatusLine counts={counts} />
+                      ) : (
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500">No PM checklist</span>
+                      )}
+                    </>
+                  )}
                 </button>
-              )}
-            </div>
-          );
-        })}
+                {overdue > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(fixtureListUrl(project, area, "overdue"))}
+                    className="text-[11px] font-semibold text-red-600 hover:underline dark:text-red-400"
+                  >
+                    Open {overdue} overdue
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

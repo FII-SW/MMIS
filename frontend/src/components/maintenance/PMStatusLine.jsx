@@ -11,15 +11,15 @@ export default function PMStatusLine({ counts, emptyLabel = "No PM fixtures" }) 
     0
   );
   if (!total) {
-    return <span className="text-xs text-gray-400 dark:text-gray-500">{emptyLabel}</span>;
+    return <span className="text-[11px] text-gray-400 dark:text-gray-500">{emptyLabel}</span>;
   }
 
   const parts = PARTS.filter(({ state }) => counts[state] > 0);
   if (parts.length === 0) {
-    return <span className="text-xs font-semibold text-green-600 dark:text-green-400">✓ PM up to date</span>;
+    return <span className="text-[11px] font-semibold text-green-600 dark:text-green-400">✓ PM up to date</span>;
   }
   return (
-    <span className="text-xs font-semibold">
+    <span className="text-[11px] font-semibold leading-tight">
       {parts.map(({ state, label, className }, index) => (
         <span key={state} className={className}>
           {index > 0 && <span className="text-gray-400"> · </span>}

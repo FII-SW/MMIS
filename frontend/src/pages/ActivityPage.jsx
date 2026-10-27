@@ -208,30 +208,30 @@ export default function ActivityPage() {
         )}
         {/* STATISTICS CARDS */}
         {!loading && history.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500 transition-colors">
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Total Transactions</div>
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1">{stats.total}</div>
+          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-lg border-l-4 border-blue-500 bg-white p-3 shadow transition-colors dark:bg-gray-800">
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Transactions</div>
+              <div className="mt-0.5 text-xl font-bold text-gray-800 dark:text-gray-200">{stats.total}</div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500 transition-colors">
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Requests</div>
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1">{stats.requests}</div>
+            <div className="rounded-lg border-l-4 border-red-500 bg-white p-3 shadow transition-colors dark:bg-gray-800">
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400">Requests</div>
+              <div className="mt-0.5 text-xl font-bold text-gray-800 dark:text-gray-200">{stats.requests}</div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-green-500 transition-colors">
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Returns</div>
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1">{stats.returns}</div>
+            <div className="rounded-lg border-l-4 border-green-500 bg-white p-3 shadow transition-colors dark:bg-gray-800">
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400">Returns</div>
+              <div className="mt-0.5 text-xl font-bold text-gray-800 dark:text-gray-200">{stats.returns}</div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500 transition-colors">
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Restocks</div>
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1">{stats.restocks}</div>
+            <div className="rounded-lg border-l-4 border-blue-500 bg-white p-3 shadow transition-colors dark:bg-gray-800">
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400">Restocks</div>
+              <div className="mt-0.5 text-xl font-bold text-gray-800 dark:text-gray-200">{stats.restocks}</div>
             </div>
           </div>
         )}
 
         {/* FILTER SECTION */}
         {!loading && history.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6 transition-colors">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Filters</h3>
+          <div className="mb-4 rounded-lg bg-white p-4 shadow transition-colors dark:bg-gray-800">
+            <h3 className="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Filters</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               {/* Transaction Type Filter */}

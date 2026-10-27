@@ -134,9 +134,9 @@ export default function AlertsPage() {
       <PageHeaderWithBack title="Low Stock Alert" onBack={() => navigate("/dashboard")} />
 
       {/* FILTERS */}
-      <div className="max-w-6xl mx-auto px-8 mb-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6 transition-colors">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="mx-auto mb-6 max-w-6xl px-4 sm:px-6">
+        <div className="mb-4 rounded-lg bg-white p-4 shadow transition-colors dark:bg-gray-800">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Project Name Filter */}
             <div className="relative" ref={projectRef}>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -243,8 +243,8 @@ export default function AlertsPage() {
       </div>
 
       {/* LOW STOCK ITEMS TABLE */}
-      <div className="max-w-6xl mx-auto px-8 mb-8">
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 transition-colors">
+      <div className="mx-auto mb-6 max-w-6xl px-4 sm:px-6">
+        <div className="rounded-lg bg-white p-4 shadow transition-colors dark:bg-gray-800">
           {loading ? (
             <p className="text-gray-500 dark:text-gray-400">Loading...</p>
           ) : filteredItems.length === 0 ? (

@@ -10,80 +10,72 @@ export default function RequestProjectPage() {
   const [searchInput, setSearchInput] = useState("");
   const [projects, setProjects] = useState(getProjects());
 
-  // Reload projects when component mounts or when projects are updated
   useEffect(() => {
     const handleProjectsUpdate = () => {
       setProjects(getProjects());
     };
 
-    // Listen for custom event and storage changes
-    window.addEventListener('projectsUpdated', handleProjectsUpdate);
-    window.addEventListener('storage', handleProjectsUpdate);
+    window.addEventListener("projectsUpdated", handleProjectsUpdate);
+    window.addEventListener("storage", handleProjectsUpdate);
 
     return () => {
-      window.removeEventListener('projectsUpdated', handleProjectsUpdate);
-      window.removeEventListener('storage', handleProjectsUpdate);
+      window.removeEventListener("projectsUpdated", handleProjectsUpdate);
+      window.removeEventListener("storage", handleProjectsUpdate);
     };
   }, []);
 
-  // Filter projects based on search input
   const filteredProjects = projects.filter((project) =>
     project.toLowerCase().includes(searchInput.toLowerCase().trim())
   );
 
-  // Projects that skip test area selection
   const skipTestAreaProjects = ["Hi-Lo", "Flying Probe", "Development"];
 
-  // Handle project selection - skip test area for specific projects
   const handleProjectClick = (project) => {
     if (skipTestAreaProjects.includes(project)) {
-      // Navigate directly to items page without test_area
       navigate(`/dashboard/request/search?project=${encodeURIComponent(project)}`);
     } else {
-      // Navigate to test area selection page
       navigate(`/dashboard/request/test-area?project=${encodeURIComponent(project)}`);
     }
   };
 
-    return (
+  return (
     <div className="min-h-screen bg-transparent transition-colors">
       <Header />
 
       <PageHeaderWithBack title="Request" onBack={() => navigate("/dashboard")} />
 
-      <p className="text-center font-semibold text-gray-700 dark:text-gray-300 mb-6 text-lg">
-        Select Project Name
-      </p>
+      <div className="mx-auto max-w-6xl px-4 pb-6 sm:px-6">
+        <p className="mb-3 text-center text-base font-semibold text-gray-700 dark:text-gray-300">
+          Select project
+        </p>
 
-      {/* SEARCH BOX */}
-      <div className="max-w-5xl mx-auto mb-6 px-8">
         <input
           type="text"
-          placeholder="Project Names"
-          className="w-full p-3 border-2 border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-lg shadow-sm transition-all"
+          placeholder="Search projects"
+          aria-label="Search projects"
+          className="mb-3 w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
         />
-      </div>
 
-      {/* PROJECT GRID */}
-      <div className="grid grid-cols-4 gap-6 justify-center mx-auto max-w-5xl px-8">
-        {filteredProjects.length === 0 ? (
-          <div className="col-span-4 text-center text-gray-500 dark:text-gray-400 py-8">
-            <p>No projects found matching "{searchInput}"</p>
-          </div>
-        ) : (
-          filteredProjects.map((p) => (
-            <div
-              key={p}
-              onClick={() => handleProjectClick(p)}
-              className="border dark:border-gray-700 p-8 text-center rounded-xl bg-white dark:bg-gray-800 cursor-pointer 
-                         hover:bg-blue-100 dark:hover:bg-gray-700 hover:shadow-lg transition-all shadow-md"
-            >
-              <span className="font-semibold text-gray-800 dark:text-gray-200 text-lg">{p}</span>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {filteredProjects.length === 0 ? (
+            <div className="col-span-full py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              <p>No projects found matching &quot;{searchInput}&quot;</p>
             </div>
-          ))
-        )}
+          ) : (
+            filteredProjects.map((p) => (
+              <button
+                type="button"
+                key={p}
+                onClick={() => handleProjectClick(p)}
+                className="rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-sm font-semibold leading-snug text-gray-800 shadow-sm transition-all hover:bg-blue-50 hover:shadow dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+              >
+                <span className="line-clamp-2">{p}</span>
+              </button>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

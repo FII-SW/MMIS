@@ -5,11 +5,11 @@ import PasswordVisibilityButton from "../components/PasswordVisibilityButton";
 import { apiErrorMessage } from "../utils/apiError";
 
 const FIELD =
-  "w-full rounded-lg border-2 border-gray-300 py-3 pl-10 pr-4 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white";
+  "w-full rounded-lg border-2 border-gray-300 py-2 pl-9 pr-3 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white";
 
 function FieldIcon({ children }) {
   return (
-    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
+    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400 dark:text-gray-500">
       {children}
     </span>
   );
@@ -49,9 +49,12 @@ export default function Signup() {
 
     setLoading(true);
     try {
+      const username = form.employee_username.trim();
+      const badge = `SG${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.slice(0, 20);
       const res = await API.post("/auth/signup", {
         employee_name: form.employee_name.trim(),
-        employee_username: form.employee_username.trim(),
+        employee_username: username,
+        employee_badge_number: badge,
         employee_email: form.employee_email.trim() || null,
         employee_designation: form.employee_designation.trim() || null,
         password: form.password,
@@ -66,7 +69,19 @@ export default function Signup() {
         },
       });
     } catch (err) {
-      setError(apiErrorMessage(err, "Could not create the account. Please try again."));
+      const status = err?.response?.status;
+      if (!err?.response) {
+        setError("Cannot reach the server. Check your network or VPN, then try again.");
+      } else {
+        setError(
+          apiErrorMessage(
+            err,
+            status >= 500
+              ? "Server error during sign-up. Ask an admin to check mmis-backend logs, or try again shortly."
+              : "Could not create the account. Please try again."
+          )
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -76,51 +91,36 @@ export default function Signup() {
     form.employee_name.trim() && form.employee_username.trim() && form.password && form.confirm;
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 px-4 py-10 transition-colors dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="relative flex min-h-screen items-start justify-center overflow-y-auto bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 px-4 py-4 sm:items-center sm:py-6 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -right-40 -top-40 h-80 w-80 rounded-full bg-blue-200 opacity-20 blur-3xl dark:bg-blue-900" />
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-200 opacity-20 blur-3xl dark:bg-indigo-900" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] dark:bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-10 w-full max-w-xl">
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-gray-100 bg-white p-8 shadow-2xl transition-colors dark:border-gray-700 dark:bg-gray-800"
+          className="rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl transition-colors sm:p-6 dark:border-gray-700 dark:bg-gray-800"
         >
-          <div className="mb-6 text-center">
-            <h1 className="mb-2 text-4xl font-bold text-blue-600 dark:text-blue-400">MMIS</h1>
-            <h2 className="mb-1 text-2xl font-semibold text-gray-800 dark:text-gray-200">Create an account</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Join with Viewer access — a Super Admin can raise it later.</p>
-          </div>
-
-          <div className="mb-6 flex gap-3 rounded-xl border border-blue-100 bg-blue-50/90 p-3.5 dark:border-blue-900/60 dark:bg-blue-950/40">
-            <svg
-              className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-left text-xs leading-relaxed text-blue-900 dark:text-blue-100">
-              Viewers can browse inventory, reports, documents, and fixture status. Requesting parts, restocking, and
-              recording PMs need a higher access level.
+          <div className="mb-3 text-center">
+            <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400 sm:text-3xl">MMIS</h1>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Create an account</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Starts as Viewer — a Super Admin can raise access later.
             </p>
           </div>
 
-          <div className="space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Full name</span>
+          <p className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-snug text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-100">
+            Viewers can browse inventory, reports, documents, and fixtures. Parts, restock, and PMs need higher access.
+          </p>
+
+          <div className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2">
+            <label className="block sm:col-span-1">
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Full name</span>
               <div className="relative">
                 <FieldIcon>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -143,9 +143,11 @@ export default function Signup() {
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Username</span>
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Username</span>
               <div className="relative">
-                <FieldIcon>@</FieldIcon>
+                <FieldIcon>
+                  <span className="text-sm">@</span>
+                </FieldIcon>
                 <input
                   className={FIELD}
                   value={form.employee_username}
@@ -154,19 +156,19 @@ export default function Signup() {
                   minLength={3}
                   maxLength={50}
                   disabled={loading}
-                  placeholder="Choose a username"
+                  placeholder="Login username"
                   autoComplete="username"
                 />
               </div>
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                 Email <span className="font-normal text-gray-400">(optional)</span>
               </span>
               <div className="relative">
                 <FieldIcon>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -189,12 +191,12 @@ export default function Signup() {
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                 Designation <span className="font-normal text-gray-400">(optional)</span>
               </span>
               <div className="relative">
                 <FieldIcon>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -215,10 +217,10 @@ export default function Signup() {
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Password</span>
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Password</span>
               <div className="relative">
                 <FieldIcon>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -229,7 +231,7 @@ export default function Signup() {
                 </FieldIcon>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className={`${FIELD} pr-11`}
+                  className={`${FIELD} pr-10`}
                   value={form.password}
                   onChange={set("password")}
                   required
@@ -247,10 +249,10 @@ export default function Signup() {
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm password</span>
+              <span className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Confirm password</span>
               <div className="relative">
                 <FieldIcon>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -275,27 +277,25 @@ export default function Signup() {
           </div>
 
           {error && (
-            <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
-              <p className="whitespace-pre-line text-center text-sm text-red-600 dark:text-red-400">{error}</p>
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800 dark:bg-red-900/20">
+              <p className="whitespace-pre-line text-center text-xs text-red-600 dark:text-red-400">{error}</p>
             </div>
           )}
 
           <button
             type="submit"
             disabled={loading || !ready}
-            className="mt-6 w-full rounded-lg bg-blue-600 py-3 font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:shadow-none dark:bg-blue-700 dark:hover:bg-blue-600 dark:focus:ring-offset-gray-800 dark:disabled:bg-gray-600"
+            className="mt-4 w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:shadow-none dark:bg-blue-700 dark:hover:bg-blue-600 dark:focus:ring-offset-gray-800 dark:disabled:bg-gray-600"
           >
             {loading ? "Creating account…" : "Sign up"}
           </button>
 
-          <div className="mt-6 border-t border-gray-200 pt-5 text-center dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Already have an account?{" "}
-              <Link to="/" className="font-semibold text-blue-600 hover:underline dark:text-blue-400">
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <p className="mt-3 text-center text-xs text-gray-600 dark:text-gray-300">
+            Already have an account?{" "}
+            <Link to="/" className="font-semibold text-blue-600 hover:underline dark:text-blue-400">
+              Sign in
+            </Link>
+          </p>
         </form>
       </div>
     </div>

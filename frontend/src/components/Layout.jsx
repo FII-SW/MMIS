@@ -97,15 +97,15 @@ export default function Layout({ children }) {
     <LayoutProvider value={true}>
       <div className="flex h-screen bg-transparent transition-colors">
       {!hideSidebar && (
-        <aside className="flex h-full w-56 shrink-0 flex-col overflow-y-auto bg-white p-4 shadow-md transition-colors dark:bg-gray-800 2xl:w-64 2xl:p-6 short:py-3">
+        <aside className="flex h-full w-52 shrink-0 flex-col overflow-y-auto bg-white p-3 shadow-md transition-colors dark:bg-gray-800 2xl:w-64 2xl:p-6 short:py-2">
           <Link
             to="/dashboard"
-            className="mb-4 block text-2xl font-bold text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 2xl:mb-6 short:mb-3"
+            className="mb-3 block text-xl font-bold text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 2xl:mb-6 2xl:text-2xl short:mb-2"
           >
             MMIS
           </Link>
 
-          <nav className="space-y-1 2xl:space-y-2 short:space-y-0.5">
+          <nav className="space-y-0.5 text-sm 2xl:space-y-2 2xl:text-base short:space-y-0.5">
             {navItems.map((item) => {
               if (item.children) {
                 const childActive = item.children.map(isChildActive);

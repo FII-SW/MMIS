@@ -8,7 +8,6 @@ export default function RequestTestAreaPage() {
   const [params] = useSearchParams();
 
   const project = params.get("project");
-
   const testAreas = DEFAULT_TEST_AREAS;
 
   return (
@@ -17,29 +16,28 @@ export default function RequestTestAreaPage() {
 
       <PageHeaderWithBack title="Request" onBack={() => navigate("/dashboard/request")} />
 
-      {/* SUBTITLE */}
-      <p className="text-center font-semibold text-gray-700 dark:text-gray-300 mb-2 text-lg">
-        Project: <span className="text-blue-600 dark:text-blue-400">{project}</span>
-      </p>
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6">
+        <p className="mb-0.5 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Project: <span className="text-blue-600 dark:text-blue-400">{project}</span>
+        </p>
+        <p className="mb-3 text-center text-base font-semibold text-gray-700 dark:text-gray-300">
+          Select test area
+        </p>
 
-      <p className="text-center font-semibold text-gray-700 dark:text-gray-300 mb-6 text-lg">
-        Select Test Area
-      </p>
-
-      {/* TEST AREA GRID */}
-      <div className="grid grid-cols-3 gap-6 justify-center mx-auto max-w-4xl">
-        {testAreas.map((area) => (
-          <div
-            key={area}
-            onClick={() =>
-              navigate(`/dashboard/request/search?project=${project}&test_area=${area}`)
-            }
-            className="border dark:border-gray-700 p-8 text-center rounded-xl bg-white dark:bg-gray-800 cursor-pointer 
-                       hover:bg-blue-100 dark:hover:bg-gray-700 hover:shadow-lg transition-all shadow-md"
-          >
-            <span className="font-semibold text-gray-800 dark:text-gray-200 text-lg">{area}</span>
-          </div>
-        ))}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {testAreas.map((area) => (
+            <button
+              type="button"
+              key={area}
+              onClick={() =>
+                navigate(`/dashboard/request/search?project=${project}&test_area=${area}`)
+              }
+              className="rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-sm font-semibold leading-snug text-gray-800 shadow-sm transition-all hover:bg-blue-50 hover:shadow dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            >
+              <span className="line-clamp-2">{area}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -82,47 +82,47 @@ export default function RestockProjectPage() {
 
       <PageHeaderWithBack title="Restock" onBack={() => navigate("/dashboard")} />
 
-      <p className="text-center font-semibold text-gray-700 dark:text-gray-300 mb-6 text-lg">
-        Select Project Name
-      </p>
+      <div className="mx-auto max-w-6xl px-4 pb-6 sm:px-6">
+        <p className="mb-3 text-center text-base font-semibold text-gray-700 dark:text-gray-300">
+          Select project
+        </p>
 
-      {/* SEARCH AND ADD SECTION */}
-      <div className="max-w-5xl mx-auto mb-6 flex items-center gap-4">
-        <div className="flex-1">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             type="text"
-            placeholder="Project Names"
-            className="w-full p-3 border dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded shadow-sm transition-colors"
+            placeholder="Search projects"
+            aria-label="Search projects"
+            className="w-full flex-1 rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard/restock/project/add-new")}
+            className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+          >
+            Add New Stock
+          </button>
         </div>
-        <button
-          onClick={() => navigate("/dashboard/restock/project/add-new")}
-          className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 shadow transition-colors"
-        >
-          Add New Stock
-        </button>
-      </div>
 
-      {/* PROJECT GRID */}
-      <div className="grid grid-cols-4 gap-6 justify-center mx-auto max-w-5xl px-8">
-        {filteredProjects.length === 0 ? (
-          <div className="col-span-4 text-center text-gray-500 dark:text-gray-400 py-8">
-            <p>No projects found matching "{searchInput}"</p>
-          </div>
-        ) : (
-          filteredProjects.map((p) => (
-            <div
-              key={p}
-              onClick={() => handleProjectClick(p)}
-              className="border dark:border-gray-700 p-8 text-center rounded-xl bg-white dark:bg-gray-800 cursor-pointer 
-                         hover:bg-blue-100 dark:hover:bg-gray-700 hover:shadow-lg transition-all shadow-md"
-            >
-              <span className="font-semibold text-gray-800 dark:text-gray-200 text-lg">{p}</span>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {filteredProjects.length === 0 ? (
+            <div className="col-span-full py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              <p>No projects found matching &quot;{searchInput}&quot;</p>
             </div>
-          ))
-        )}
+          ) : (
+            filteredProjects.map((p) => (
+              <button
+                type="button"
+                key={p}
+                onClick={() => handleProjectClick(p)}
+                className="rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-sm font-semibold leading-snug text-gray-800 shadow-sm transition-all hover:bg-blue-50 hover:shadow dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+              >
+                <span className="line-clamp-2">{p}</span>
+              </button>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

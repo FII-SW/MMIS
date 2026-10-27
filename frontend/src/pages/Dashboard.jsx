@@ -155,7 +155,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Total Items</p>
-                  <p className="text-2xl font-bold text-gray-800 dark:text-gray-200 mt-1">{stats.totalItems}</p>
+                  <p className="mt-0.5 text-xl font-bold text-gray-800 dark:text-gray-200">{stats.totalItems}</p>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400">Active inventory</p>
                 </div>
                 <div className="text-2xl opacity-20">📦</div>
@@ -169,7 +169,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Low Stock</p>
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{stats.lowStockCount}</p>
+                  <p className="mt-0.5 text-xl font-bold text-red-600 dark:text-red-400">{stats.lowStockCount}</p>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400">{lowStockPercentage}% of total</p>
                 </div>
                 <div className="text-2xl opacity-20">⚠️</div>
@@ -188,7 +188,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Transactions</p>
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">{stats.totalTransactions}</p>
+                  <p className="mt-0.5 text-xl font-bold text-purple-600 dark:text-purple-400">{stats.totalTransactions}</p>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400">All time</p>
                 </div>
                 <div className="text-2xl opacity-20">📊</div>
@@ -199,7 +199,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Today</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+                  <p className="mt-0.5 text-xl font-bold text-green-600 dark:text-green-400">
                     {stats.todayActivity}
                   </p>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400">Transactions today</p>

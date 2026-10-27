@@ -56,70 +56,72 @@ export default function MaintenanceProjectsPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <PageHeaderWithBack title={FIXTURE_MAINTENANCE_TITLE} onBack={() => navigate("/dashboard")} />
 
-      <p className="mb-1 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
-        Select a project
-      </p>
-      <p className="mb-6 text-center text-sm text-gray-500 dark:text-gray-400">
-        A red border means that project has overdue PMs. Open overdue to see only those fixtures.
-      </p>
+      <div className="mx-auto max-w-6xl px-4 pb-6 sm:px-6">
+        <p className="mb-0.5 text-center text-base font-semibold text-gray-700 dark:text-gray-300">
+          Select a project
+        </p>
+        <p className="mb-3 text-center text-xs text-gray-500 dark:text-gray-400">
+          Red border = overdue PMs. Open overdue to filter those fixtures.
+        </p>
 
-      <div className="mx-auto mb-6 max-w-5xl px-8">
         <input
           type="text"
           placeholder="Search projects"
           aria-label="Search projects"
-          className="w-full rounded-lg border-2 border-gray-300 bg-white p-3 shadow-sm transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          className="mb-3 w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-      </div>
 
-      <div className="mx-auto grid max-w-5xl grid-cols-2 justify-center gap-6 px-8 pb-8 md:grid-cols-3 lg:grid-cols-4">
-        {filteredProjects.length === 0 ? (
-          <div className="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">
-            <p>No projects found matching &quot;{search}&quot;</p>
-          </div>
-        ) : (
-          filteredProjects.map((project) => {
-            const counts = countsByProject[project];
-            const overdue = counts?.overdue || 0;
-            return (
-              <div
-                key={project}
-                className={`flex flex-col items-center justify-center gap-2 rounded-xl border bg-white p-6 text-center shadow-md dark:bg-gray-800 ${
-                  overdue > 0
-                    ? "border-red-300 dark:border-red-800"
-                    : "border-gray-200 dark:border-gray-700"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => openProject(project)}
-                  className="flex w-full flex-col items-center justify-center gap-1 rounded-lg p-2 transition-all hover:bg-blue-100 dark:hover:bg-gray-700"
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {filteredProjects.length === 0 ? (
+            <div className="col-span-full py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              <p>No projects found matching &quot;{search}&quot;</p>
+            </div>
+          ) : (
+            filteredProjects.map((project) => {
+              const counts = countsByProject[project];
+              const overdue = counts?.overdue || 0;
+              return (
+                <div
+                  key={project}
+                  className={`flex flex-col items-center justify-center gap-1 rounded-lg border bg-white px-2 py-3 text-center shadow-sm dark:bg-gray-800 ${
+                    overdue > 0
+                      ? "border-red-300 dark:border-red-800"
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
                 >
-                  <span className="text-lg font-semibold text-gray-800 dark:text-gray-200">{project}</span>
-                  {locations && (
-                    <>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {counts?.fixtures || 0} PM fixture{(counts?.fixtures || 0) === 1 ? "" : "s"}
-                      </span>
-                      <PMStatusLine counts={counts} />
-                    </>
-                  )}
-                </button>
-                {overdue > 0 && (
                   <button
                     type="button"
-                    onClick={() => navigate(fixtureListUrl(project, null, "overdue"))}
-                    className="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                    onClick={() => openProject(project)}
+                    className="flex w-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 transition-all hover:bg-blue-50 dark:hover:bg-gray-700"
                   >
-                    Open {overdue} overdue
+                    <span className="line-clamp-2 text-sm font-semibold leading-snug text-gray-800 dark:text-gray-200">
+                      {project}
+                    </span>
+                    {locations && (
+                      <>
+                        <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                          {counts?.fixtures || 0} PM fixture{(counts?.fixtures || 0) === 1 ? "" : "s"}
+                        </span>
+                        <PMStatusLine counts={counts} />
+                      </>
+                    )}
                   </button>
-                )}
-              </div>
-            );
-          })
-        )}
+                  {overdue > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(fixtureListUrl(project, null, "overdue"))}
+                      className="text-[11px] font-semibold text-red-600 hover:underline dark:text-red-400"
+                    >
+                      Open {overdue} overdue
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );

@@ -256,7 +256,7 @@ export default function MaintenanceWorkPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <PageHeaderWithBack title={FIXTURE_MAINTENANCE_TITLE} onBack={handleBack} />
 
-      <p className="mb-2 px-4 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">
+      <p className="mb-1 px-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
         {allMode ? (
           "All projects · PM fixtures"
         ) : (
@@ -271,14 +271,14 @@ export default function MaintenanceWorkPage() {
           </>
         )}
       </p>
-      <p className="mb-1 text-center text-lg font-semibold text-gray-700 dark:text-gray-300">Select Fixture</p>
-      <p className="mb-5 text-center text-sm text-gray-500 dark:text-gray-400">
+      <p className="mb-0.5 text-center text-base font-semibold text-gray-700 dark:text-gray-300">Select fixture</p>
+      <p className="mb-3 text-center text-xs text-gray-500 dark:text-gray-400">
         {fixtures.length} fixture{fixtures.length === 1 ? "" : "s"}
         {pmTypeColumns.length > 0 && ` · ${pmTypeColumns.map((t) => PM_TYPE_LABELS[t]).join(" & ")}`}
         {hasPM && ` · ${upToDatePct}% PM up to date`}
       </p>
 
-      <div className="max-w-7xl mx-auto px-2 pb-8 space-y-4">
+      <div className="mx-auto max-w-7xl space-y-3 px-2 pb-6">
         {hasPM && (
           <div className="flex flex-wrap justify-center gap-2">
             <StatusPill label="All" value={fixtures.length} active={stateFilter === "all"} onClick={() => setStateFilter("all")} />

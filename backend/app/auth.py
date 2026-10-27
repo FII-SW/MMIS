@@ -98,8 +98,16 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
         employee_active=True,
         employee_must_change_password=False,
     )
-    db.add(emp)
-    db.flush()
+    try:
+        db.add(emp)
+        db.flush()
+    except Exception:
+        db.rollback()
+        logger.exception("Self-signup failed while creating employee %s", username)
+        raise HTTPException(
+            status_code=500,
+            detail="Could not create the account (database error). The username may already exist — try another.",
+        )
 
     log_action(
         db,
@@ -111,23 +119,35 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
         {"source": "signup", "role": VIEWER},
     )
 
-    super_admins = [
-        admin.employee_id
-        for admin in db.query(models.Employee).filter(models.Employee.employee_active.isnot(False)).all()
-        if normalize_role(admin.employee_access_level) == SUPER_ADMIN
-    ]
-    for admin_id in super_admins:
-        notify(
-            db,
-            admin_id,
-            "signup",
-            "New viewer signup",
-            f"{name} ({username}) signed up with Viewer access. Change their access level in Super Admin → Users if needed.",
-            "/dashboard/super-admin?tab=users",
-        )
+    try:
+        super_admins = [
+            admin.employee_id
+            for admin in db.query(models.Employee).filter(models.Employee.employee_active.isnot(False)).all()
+            if normalize_role(admin.employee_access_level) == SUPER_ADMIN
+        ]
+        for admin_id in super_admins:
+            notify(
+                db,
+                admin_id,
+                "signup",
+                "New viewer signup",
+                f"{name} ({username}) signed up with Viewer access. Change their access level in Super Admin → Users if needed.",
+                "/dashboard/super-admin?tab=users",
+            )
+    except Exception:
+        # Account should still succeed if bell notifications fail.
+        logger.exception("Self-signup: could not notify Super Admins about %s", username)
 
-    db.commit()
-    db.refresh(emp)
+    try:
+        db.commit()
+        db.refresh(emp)
+    except Exception:
+        db.rollback()
+        logger.exception("Self-signup commit failed for %s", username)
+        raise HTTPException(
+            status_code=500,
+            detail="Could not finish creating the account. Please try again.",
+        )
 
     token = create_access_token(
         {
