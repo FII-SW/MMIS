@@ -361,18 +361,23 @@ def normalize_checklist_body(body: dict) -> dict:
 
 
 def _saved_body(db, family: str, pm_type: str) -> dict | None:
+    """Load a Super Admin override, or None. Never raise — fall back to code defaults."""
     if db is None:
         return None
     from .. import models
 
-    row = (
-        db.query(models.PMChecklistTemplate)
-        .filter(
-            models.PMChecklistTemplate.family == family,
-            models.PMChecklistTemplate.pm_type == pm_type,
+    try:
+        row = (
+            db.query(models.PMChecklistTemplate)
+            .filter(
+                models.PMChecklistTemplate.family == family,
+                models.PMChecklistTemplate.pm_type == pm_type,
+            )
+            .first()
         )
-        .first()
-    )
+    except Exception:
+        # Table missing / DB blip must not block the built-in checklist.
+        return None
     if row is None or not row.body:
         return None
     try:

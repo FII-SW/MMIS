@@ -337,7 +337,10 @@ export default function MaintenanceFixtureDetailPage() {
             {pmTypes.includes(activeTab) && !viewOnly && (
               <PMChecklistForm
                 key={activeTab}
-                fixture={fixture}
+                fixture={{
+                  ...fixture,
+                  test_area: fixture.test_area || testArea || undefined,
+                }}
                 pmType={activeTab}
                 lastEntry={pmStatus?.status?.[activeTab]}
                 onSaved={handlePMSaved}

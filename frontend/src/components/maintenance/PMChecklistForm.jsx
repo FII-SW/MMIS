@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import API from "../../api";
+import { apiErrorMessage } from "../../utils/apiError";
 import { formatDateTime } from "./formatDate";
 import { describeDue } from "./pmStatus";
 import PMPartsPicker from "./PMPartsPicker";
@@ -38,6 +39,8 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
+  const [reloadToken, setReloadToken] = useState(0);
+
   useEffect(() => {
     setLoading(true);
     setLoadError("");
@@ -66,10 +69,24 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
       })
       .catch((err) => {
         setChecklist(null);
-        setLoadError(err?.response?.data?.detail || "Failed to load checklist.");
+        const status = err?.response?.status;
+        if (status === 404) {
+          setLoadError(
+            apiErrorMessage(
+              err,
+              `No ${pmType} checklist is configured for ${fixture.test_area || "this test area"}.`
+            )
+          );
+        } else if (status >= 500 || !err?.response) {
+          setLoadError(
+            "Could not load the checklist from the server. Pull the latest code, restart mmis-backend, then try again."
+          );
+        } else {
+          setLoadError(apiErrorMessage(err, "Failed to load checklist."));
+        }
       })
       .finally(() => setLoading(false));
-  }, [pmType, fixture.test_area, draftKey]);
+  }, [pmType, fixture.test_area, draftKey, reloadToken]);
 
   useEffect(() => {
     if (!checklist) return;
@@ -192,9 +209,18 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
 
   if (loadError || !checklist) {
     return (
-      <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
-        {loadError || "Checklist not available."}
-      </p>
+      <div className="flex flex-col items-center gap-3 py-8 text-center">
+        <p className="max-w-md text-sm text-gray-600 dark:text-gray-400">
+          {loadError || "Checklist not available."}
+        </p>
+        <button
+          type="button"
+          onClick={() => setReloadToken((n) => n + 1)}
+          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Retry
+        </button>
+      </div>
     );
   }
 

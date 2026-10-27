@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 import logging
 import re
+import secrets
 from . import crud, models
 from .database import get_db
 from .utils.jwt_handler import create_access_token
@@ -30,16 +31,27 @@ class LoginRequest(BaseModel):
 class SignupRequest(BaseModel):
     employee_name: str = Field(min_length=1, max_length=100)
     employee_username: str = Field(min_length=3, max_length=50)
-    employee_badge_number: str = Field(min_length=1, max_length=20)
     password: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=128)
     employee_email: str | None = Field(default=None, max_length=255)
     employee_designation: str | None = Field(default=None, max_length=50)
+    # Optional / legacy — form no longer collects these; badge is auto-assigned when omitted.
+    employee_badge_number: str | None = Field(default=None, max_length=20)
     employee_shift: str | None = Field(default=None, max_length=20)
 
 
 def _clean(value: str | None) -> str | None:
     value = (value or "").strip()
     return value or None
+
+
+def _allocate_signup_badge(db: Session, username: str) -> str:
+    """Unique placeholder badge so self-signup does not require a badge number."""
+    base = re.sub(r"[^A-Za-z0-9._-]", "", username)[:12] or "user"
+    for _ in range(12):
+        candidate = f"SG-{base}-{secrets.token_hex(2)}"[:20]
+        if not db.query(models.Employee).filter(models.Employee.employee_badge_number == candidate).first():
+            return candidate
+    raise HTTPException(status_code=500, detail="Could not allocate a badge number. Try again.")
 
 
 @router.post("/signup", status_code=201)
@@ -52,14 +64,14 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
     designation = _clean(payload.employee_designation)
     shift = _clean(payload.employee_shift)
 
-    if not (name and username and badge):
-        raise HTTPException(status_code=400, detail="Name, username, and badge number are required")
+    if not (name and username):
+        raise HTTPException(status_code=400, detail="Name and username are required")
     if not _USERNAME_RE.match(username):
         raise HTTPException(
             status_code=400,
             detail="Username must be 3–50 characters: letters, numbers, dot, underscore, or hyphen",
         )
-    if not _BADGE_RE.match(badge):
+    if badge and not _BADGE_RE.match(badge):
         raise HTTPException(
             status_code=400,
             detail="Badge number must be 1–20 characters: letters, numbers, dot, underscore, or hyphen",
@@ -69,8 +81,10 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
 
     if db.query(models.Employee).filter(func.lower(models.Employee.employee_username) == username.lower()).first():
         raise HTTPException(status_code=400, detail=f"Username '{username}' is already taken")
-    if db.query(models.Employee).filter(models.Employee.employee_badge_number == badge).first():
+    if badge and db.query(models.Employee).filter(models.Employee.employee_badge_number == badge).first():
         raise HTTPException(status_code=400, detail=f"Badge number '{badge}' is already used")
+    if not badge:
+        badge = _allocate_signup_badge(db, username)
 
     emp = models.Employee(
         employee_name=name,

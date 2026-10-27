@@ -166,15 +166,31 @@ export default function Login() {
             )}
           </button>
 
-          <p className="mt-5 text-center text-sm text-gray-600 dark:text-gray-300">
-            New here?{" "}
-            <Link to="/signup" className="font-semibold text-blue-600 hover:underline dark:text-blue-400">
-              Create an account
-            </Link>
-            <span className="block mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Self-signup starts as Viewer. A Super Admin can change your access level.
-            </span>
-          </p>
+          <div className="mt-6 border-t border-gray-200 pt-5 dark:border-gray-700">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/80 p-4 text-center dark:border-blue-900/50 dark:bg-blue-950/40">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                New to MMIS?
+              </p>
+              <Link
+                to="/signup"
+                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border-2 border-blue-600 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 shadow-sm transition-all hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-blue-400 dark:bg-gray-800 dark:text-blue-300 dark:hover:bg-blue-600 dark:hover:text-white dark:focus:ring-offset-gray-800"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Create an account
+              </Link>
+              <p className="mt-3 flex items-start justify-center gap-1.5 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                <svg className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                  New accounts start as <span className="font-medium text-gray-700 dark:text-gray-300">Viewer</span>.
+                  A Super Admin can raise your access when you need it.
+                </span>
+              </p>
+            </div>
+          </div>
         </form>
       </div>
     </div>

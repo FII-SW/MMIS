@@ -392,8 +392,16 @@ def _fixture_pm(
 
 
 @router.get("/checklists/{pm_type}")
-def get_pm_checklist(pm_type: str, test_area: str | None = None):
-    checklist = get_checklist(pm_type, test_area, db)
+def get_pm_checklist(
+    pm_type: str,
+    test_area: str | None = None,
+    db: Session = Depends(get_db),
+):
+    try:
+        checklist = get_checklist(pm_type, test_area, db)
+    except Exception:
+        # Template overlay failed — still serve the built-in checklist.
+        checklist = get_checklist(pm_type, test_area, db=None)
     if not checklist:
         raise HTTPException(
             status_code=404,

@@ -37,7 +37,14 @@ export default function ChecklistsTab() {
       setSelected((current) => current || (rows[0] ? `${rows[0].family}:${rows[0].pm_type}` : ""));
       setError("");
     } catch (err) {
-      setError(apiErrorMessage(err, "Could not load the checklists."));
+      const status = err?.response?.status;
+      if (status === 404) {
+        setError(
+          "Checklist API not found on the server. Pull the latest code, restart mmis-backend, then refresh this page (Ctrl+F5)."
+        );
+      } else {
+        setError(apiErrorMessage(err, "Could not load the checklists."));
+      }
     } finally {
       setLoading(false);
     }
