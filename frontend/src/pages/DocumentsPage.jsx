@@ -6,6 +6,7 @@ import API from "../api";
 import { getProjects } from "../utils/projects";
 import { getTokenSession, hasAdminAccess, isSuperAdminRole } from "../utils/auth";
 import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
+import { formatDateTime } from "../utils/datetime";
 
 const TEST_AREAS = DEFAULT_TEST_AREAS;
 
@@ -704,7 +705,7 @@ export default function DocumentsPage() {
                               {doc.original_filename}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {doc.uploaded_by_name || "-"} • {new Date(doc.created_at).toLocaleString()}
+                              {doc.uploaded_by_name || "-"} • {formatDateTime(doc.created_at)}
                             </p>
                           </div>
                         </div>
@@ -742,7 +743,7 @@ export default function DocumentsPage() {
                               {doc.original_filename}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {(doc.test_area || "No test area")} • {doc.uploaded_by_name || "-"} • {new Date(doc.created_at).toLocaleString()}
+                              {(doc.test_area || "No test area")} • {doc.uploaded_by_name || "-"} • {formatDateTime(doc.created_at)}
                             </p>
                           </div>
                         </div>

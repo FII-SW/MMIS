@@ -70,7 +70,7 @@ export default function MaintenanceTestAreaPage() {
 
         {error && <p className="mb-3 text-center text-xs text-red-600 dark:text-red-400">{error}</p>}
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {testAreas.map((area) => {
             const counts = byArea[area] || emptyCounts();
             const hasPM = pmTypesForArea(area).length > 0;
@@ -78,7 +78,7 @@ export default function MaintenanceTestAreaPage() {
             return (
               <div
                 key={area}
-                className={`flex flex-col items-center justify-center gap-1 rounded-lg border bg-white px-2 py-3 text-center shadow-sm dark:bg-gray-800 ${
+                className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border bg-white px-3 py-3.5 text-center shadow-sm dark:bg-gray-800 ${
                   overdue > 0 ? "border-red-300 dark:border-red-800" : "border-gray-200 dark:border-gray-700"
                 }`}
               >

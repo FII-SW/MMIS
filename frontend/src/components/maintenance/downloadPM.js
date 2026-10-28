@@ -39,7 +39,7 @@ async function blobErrorDetail(err) {
 }
 
 export async function downloadPMRecordPdf(record, fixture) {
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const tz = "America/Chicago";
   try {
     const res = await API.get(`/maintenance/pm-records/${record.pm_id}/pdf`, {
       params: { tz },

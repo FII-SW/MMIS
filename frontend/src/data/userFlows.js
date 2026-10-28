@@ -213,7 +213,7 @@ export const USER_FLOWS = [
     who: "everyone",
     whoLabel: "Everyone",
     path: "/dashboard/activity",
-    outcome: "Each row is one transaction, with the time shown in CST.",
+    outcome: "Each row is one transaction, with the time shown in Chicago time (CST/CDT).",
     steps: [
       { title: "Open Activity History", detail: "It is in the left sidebar." },
       { title: "Pick Requests, Returns, Restocks, or All", detail: "The cards at the top count each kind of transaction." },

@@ -6,6 +6,7 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import SearchableSelect from "../components/SearchableSelect";
 import { getProjects } from "../utils/projects";
 import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
+import { formatDateTime } from "../utils/datetime";
 
 export default function CustomizedReportPage() {
   const ROWS_PER_PAGE = 20;
@@ -94,7 +95,7 @@ export default function CustomizedReportPage() {
     // CSV Rows
     const rows = transactions.map((tx) => [
       tx.transaction_id || "",
-      new Date(tx.created_at).toLocaleString(),
+      formatDateTime(tx.created_at),
       tx.transaction_type || "",
       tx.employee_name || "",
       tx.item_name || "",
@@ -265,7 +266,7 @@ export default function CustomizedReportPage() {
                           : "hover:bg-gray-50 dark:hover:bg-gray-700"
                       }`}
                     >
-                      <td className="p-3 text-gray-800 dark:text-gray-200">{new Date(tx.created_at).toLocaleString()}</td>
+                      <td className="p-3 text-gray-800 dark:text-gray-200">{formatDateTime(tx.created_at)}</td>
                       <td className="p-3 text-gray-800 dark:text-gray-200">{tx.transaction_type}</td>
                       <td className="p-3 text-gray-800 dark:text-gray-200">{tx.employee_name}</td>
                       <td className={`p-3 text-gray-800 dark:text-gray-200 ${selectedTransactionId === tx.transaction_id ? "text-blue-700 dark:text-blue-400 font-bold" : ""}`}>{tx.item_name || "N/A"}</td>

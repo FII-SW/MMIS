@@ -56,7 +56,7 @@ export default function MaintenanceProjectsPage() {
     <div className="min-h-screen bg-transparent transition-colors">
       <PageHeaderWithBack title={FIXTURE_MAINTENANCE_TITLE} onBack={() => navigate("/dashboard")} />
 
-      <div className="mx-auto max-w-6xl px-4 pb-6 sm:px-6">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6">
         <p className="mb-0.5 text-center text-base font-semibold text-gray-700 dark:text-gray-300">
           Select a project
         </p>
@@ -68,12 +68,12 @@ export default function MaintenanceProjectsPage() {
           type="text"
           placeholder="Search projects"
           aria-label="Search projects"
-          className="mb-3 w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          className="mb-4 w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {filteredProjects.length === 0 ? (
             <div className="col-span-full py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               <p>No projects found matching &quot;{search}&quot;</p>
@@ -85,7 +85,7 @@ export default function MaintenanceProjectsPage() {
               return (
                 <div
                   key={project}
-                  className={`flex flex-col items-center justify-center gap-1 rounded-lg border bg-white px-2 py-3 text-center shadow-sm dark:bg-gray-800 ${
+                  className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border bg-white px-3 py-3.5 text-center shadow-sm dark:bg-gray-800 ${
                     overdue > 0
                       ? "border-red-300 dark:border-red-800"
                       : "border-gray-200 dark:border-gray-700"
@@ -94,7 +94,7 @@ export default function MaintenanceProjectsPage() {
                   <button
                     type="button"
                     onClick={() => openProject(project)}
-                    className="flex w-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 transition-all hover:bg-blue-50 dark:hover:bg-gray-700"
+                    className="flex w-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-0.5 transition-all hover:bg-blue-50 dark:hover:bg-gray-700"
                   >
                     <span className="line-clamp-2 text-sm font-semibold leading-snug text-gray-800 dark:text-gray-200">
                       {project}

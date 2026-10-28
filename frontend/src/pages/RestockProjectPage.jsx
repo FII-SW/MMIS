@@ -82,30 +82,30 @@ export default function RestockProjectPage() {
 
       <PageHeaderWithBack title="Restock" onBack={() => navigate("/dashboard")} />
 
-      <div className="mx-auto max-w-6xl px-4 pb-6 sm:px-6">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6">
         <p className="mb-3 text-center text-base font-semibold text-gray-700 dark:text-gray-300">
           Select project
         </p>
 
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             type="text"
             placeholder="Search projects"
             aria-label="Search projects"
-            className="w-full flex-1 rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            className="w-full flex-1 rounded-lg border-2 border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm transition-all dark:border-gray-600 dark:bg-gray-800 dark:text-white"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
           <button
             type="button"
             onClick={() => navigate("/dashboard/restock/project/add-new")}
-            className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+            className="shrink-0 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
           >
             Add New Stock
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {filteredProjects.length === 0 ? (
             <div className="col-span-full py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               <p>No projects found matching &quot;{searchInput}&quot;</p>
@@ -116,7 +116,7 @@ export default function RestockProjectPage() {
                 type="button"
                 key={p}
                 onClick={() => handleProjectClick(p)}
-                className="rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-sm font-semibold leading-snug text-gray-800 shadow-sm transition-all hover:bg-blue-50 hover:shadow dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                className="flex min-h-[3.75rem] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-3.5 text-center text-sm font-semibold leading-snug text-gray-800 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:shadow dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-blue-700 dark:hover:bg-gray-700"
               >
                 <span className="line-clamp-2">{p}</span>
               </button>

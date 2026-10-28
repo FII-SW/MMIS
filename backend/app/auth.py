@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import func
+from sqlalchemy import func, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 import logging
@@ -20,7 +21,6 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 MIN_PASSWORD_LENGTH = 6
 _USERNAME_RE = re.compile(r"^[A-Za-z0-9._-]{3,50}$")
-_BADGE_RE = re.compile(r"^[A-Za-z0-9._-]{1,20}$")
 
 
 class LoginRequest(BaseModel):
@@ -44,14 +44,50 @@ def _clean(value: str | None) -> str | None:
     return value or None
 
 
-def _allocate_signup_badge(db: Session, username: str) -> str:
-    """Unique placeholder badge so self-signup does not require a badge number."""
-    base = re.sub(r"[^A-Za-z0-9._-]", "", username)[:12] or "user"
-    for _ in range(12):
-        candidate = f"SG-{base}-{secrets.token_hex(2)}"[:20]
+def _allocate_signup_badge(db: Session) -> str:
+    """Unique placeholder badge (Super Admin can edit later)."""
+    for _ in range(16):
+        candidate = f"SG{secrets.token_hex(8)}"[:20]
         if not db.query(models.Employee).filter(models.Employee.employee_badge_number == candidate).first():
             return candidate
     raise HTTPException(status_code=500, detail="Could not allocate a badge number. Try again.")
+
+
+def _resync_employee_id_sequence(db: Session) -> None:
+    """Fix employees_pkey conflicts when the serial is behind MAX(employee_id)."""
+    db.execute(
+        text(
+            "SELECT setval("
+            "pg_get_serial_sequence('employees', 'employee_id'), "
+            "GREATEST(COALESCE((SELECT MAX(employee_id) FROM employees), 1), 1), "
+            "true)"
+        )
+    )
+
+
+def _integrity_detail(exc: IntegrityError) -> str:
+    return str(getattr(exc, "orig", None) or exc).lower()
+
+
+def _is_username_conflict(detail: str) -> bool:
+    return "employee_username" in detail or "employees_employee_username" in detail
+
+
+def _is_badge_conflict(detail: str) -> bool:
+    return "employee_badge" in detail or "employees_employee_badge" in detail
+
+
+def _is_pkey_conflict(detail: str) -> bool:
+    return "employees_pkey" in detail or "employee_id" in detail and "unique" in detail
+
+
+def _username_taken(db: Session, username: str) -> bool:
+    return (
+        db.query(models.Employee)
+        .filter(func.lower(models.Employee.employee_username) == username.lower())
+        .first()
+        is not None
+    )
 
 
 @router.post("/signup", status_code=201)
@@ -59,7 +95,6 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
     """Public self-registration. New accounts always start as Viewer until a Super Admin raises access."""
     name = _clean(payload.employee_name)
     username = _clean(payload.employee_username)
-    badge = _clean(payload.employee_badge_number)
     email = _clean(payload.employee_email)
     designation = _clean(payload.employee_designation)
     shift = _clean(payload.employee_shift)
@@ -71,42 +106,74 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
             status_code=400,
             detail="Username must be 3–50 characters: letters, numbers, dot, underscore, or hyphen",
         )
-    if badge and not _BADGE_RE.match(badge):
-        raise HTTPException(
-            status_code=400,
-            detail="Badge number must be 1–20 characters: letters, numbers, dot, underscore, or hyphen",
-        )
     if len(payload.password) < MIN_PASSWORD_LENGTH:
         raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
 
-    if db.query(models.Employee).filter(func.lower(models.Employee.employee_username) == username.lower()).first():
+    if _username_taken(db, username):
         raise HTTPException(status_code=400, detail=f"Username '{username}' is already taken")
-    if badge and db.query(models.Employee).filter(models.Employee.employee_badge_number == badge).first():
-        raise HTTPException(status_code=400, detail=f"Badge number '{badge}' is already used")
-    if not badge:
-        badge = _allocate_signup_badge(db, username)
 
-    emp = models.Employee(
-        employee_name=name,
-        employee_username=username,
-        employee_badge_number=badge,
-        employee_password=normalize_password_for_storage(payload.password),
-        employee_access_level=VIEWER,
-        employee_email=email,
-        employee_designation=designation,
-        employee_shift=shift,
-        employee_active=True,
-        employee_must_change_password=False,
-    )
     try:
-        db.add(emp)
-        db.flush()
+        password_hash = normalize_password_for_storage(payload.password)
     except Exception:
-        db.rollback()
-        logger.exception("Self-signup failed while creating employee %s", username)
+        logger.exception("Self-signup password hashing failed for %s", username)
+        raise HTTPException(status_code=500, detail="Could not secure the password. Please try again.")
+
+    # Always assign a server-side badge — ignore any client value to avoid collisions.
+    emp = None
+    last_error = None
+    for attempt in range(2):
+        emp = models.Employee(
+            employee_name=name,
+            employee_username=username,
+            employee_badge_number=_allocate_signup_badge(db),
+            employee_password=password_hash,
+            employee_access_level=VIEWER,
+            employee_email=email,
+            employee_designation=designation,
+            employee_shift=shift,
+            employee_active=True,
+            employee_must_change_password=False,
+        )
+        try:
+            db.add(emp)
+            db.flush()
+            last_error = None
+            break
+        except IntegrityError as exc:
+            db.rollback()
+            last_error = exc
+            detail = _integrity_detail(exc)
+            logger.warning("Self-signup IntegrityError for %s (attempt %s): %s", username, attempt + 1, detail)
+            if _is_username_conflict(detail) or _username_taken(db, username):
+                raise HTTPException(status_code=400, detail=f"Username '{username}' is already taken")
+            if _is_pkey_conflict(detail):
+                try:
+                    _resync_employee_id_sequence(db)
+                    db.commit()
+                except Exception:
+                    db.rollback()
+                    logger.exception("Failed to resync employees employee_id sequence")
+                continue
+            if _is_badge_conflict(detail) and attempt == 0:
+                continue
+            break
+        except Exception as exc:
+            db.rollback()
+            logger.exception("Self-signup failed while creating employee %s", username)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Could not create the account: {type(exc).__name__}. Please try again or contact an admin.",
+            )
+
+    if last_error is not None or emp is None or getattr(emp, "employee_id", None) is None:
+        detail = _integrity_detail(last_error) if last_error else "unknown"
+        logger.error("Self-signup gave up for %s: %s", username, detail)
         raise HTTPException(
             status_code=500,
-            detail="Could not create the account (database error). The username may already exist — try another.",
+            detail=(
+                "Could not create the account (database constraint). "
+                "Try a different username, or ask an admin to check the employees table / ID sequence."
+            ),
         )
 
     log_action(
@@ -141,6 +208,16 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
     try:
         db.commit()
         db.refresh(emp)
+    except IntegrityError as exc:
+        db.rollback()
+        detail = _integrity_detail(exc)
+        logger.exception("Self-signup commit IntegrityError for %s: %s", username, detail)
+        if _is_username_conflict(detail):
+            raise HTTPException(status_code=400, detail=f"Username '{username}' is already taken")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not finish creating the account. Please try again with a different username.",
+        )
     except Exception:
         db.rollback()
         logger.exception("Self-signup commit failed for %s", username)

@@ -6,18 +6,7 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { getProjects } from "../utils/projects";
 import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
-
-// US Central (plant) time for everyone, whatever time zone their computer is set to.
-// "America/Chicago" is the IANA name for US Central; it follows daylight saving like the plant clocks.
-const CENTRAL_TIME = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Chicago",
-  month: "2-digit",
-  day: "2-digit",
-  year: "2-digit",
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true,
-});
+import { formatDateTimeCentral } from "../utils/datetime";
 
 export default function ActivityPage() {
   const TRANSACTIONS_PER_PAGE = 20;
@@ -174,16 +163,6 @@ export default function ActivityPage() {
       return <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-semibold">RESTOCK</span>;
     }
     return <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-semibold">{type?.toUpperCase() || "N/A"}</span>;
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "—";
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return "—";
-    const parts = Object.fromEntries(
-      CENTRAL_TIME.formatToParts(date).map((part) => [part.type, part.value])
-    );
-    return `${parts.month}/${parts.day}/${parts.year} ${parts.hour}:${parts.minute} ${parts.dayPeriod} CST`;
   };
 
   // Calculate statistics
@@ -483,7 +462,7 @@ export default function ActivityPage() {
                     <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Fixture</th>
                     <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
                     <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Remarks</th>
-                    <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                    <th className="p-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Date (CT)</th>
                   </tr>
                 </thead>
 
@@ -536,7 +515,7 @@ export default function ActivityPage() {
                         )}
                       </td>
                       <td className="p-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-700 dark:text-gray-300">{formatDate(row.created_at)}</div>
+                        <div className="text-sm text-gray-700 dark:text-gray-300">{formatDateTimeCentral(row.created_at)}</div>
                       </td>
                     </tr>
                   ))}

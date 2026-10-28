@@ -110,7 +110,8 @@ export default function Header({ showMMIS = true, brandLogo = false }) {
 
   const formatTime = (ts) => {
     try {
-      return new Date(ts).toLocaleString(undefined, {
+      return new Date(ts).toLocaleString("en-US", {
+        timeZone: "America/Chicago",
         month: "short",
         day: "numeric",
         hour: "2-digit",

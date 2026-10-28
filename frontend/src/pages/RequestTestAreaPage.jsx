@@ -24,7 +24,7 @@ export default function RequestTestAreaPage() {
           Select test area
         </p>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {testAreas.map((area) => (
             <button
               type="button"
@@ -32,7 +32,7 @@ export default function RequestTestAreaPage() {
               onClick={() =>
                 navigate(`/dashboard/request/search?project=${project}&test_area=${area}`)
               }
-              className="rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-sm font-semibold leading-snug text-gray-800 shadow-sm transition-all hover:bg-blue-50 hover:shadow dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+              className="flex min-h-[3.75rem] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-3.5 text-center text-sm font-semibold leading-snug text-gray-800 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:shadow dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-blue-700 dark:hover:bg-gray-700"
             >
               <span className="line-clamp-2">{area}</span>
             </button>

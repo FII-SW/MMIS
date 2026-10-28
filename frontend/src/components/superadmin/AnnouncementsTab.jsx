@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import API from "../../api";
 import { apiErrorMessage } from "../../utils/apiError";
 import { ROLE_LABELS } from "../../utils/auth";
+import { formatDateTime } from "../../utils/datetime";
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, CARD, FIELD, Label, Notice } from "./ui";
 
 const ROLE_ORDER = ["user", "admin", "superadmin", "viewer"];
@@ -16,7 +17,7 @@ const LINKS = [
 const EMPTY = { title: "", message: "", roles: [], email: false, link: "" };
 
 function formatWhen(value) {
-  return value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
+  return value ? formatDateTime(value) : "";
 }
 
 /** Super Admin: send a message to everyone's bell (or only some access levels). */

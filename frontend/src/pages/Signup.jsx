@@ -50,11 +50,9 @@ export default function Signup() {
     setLoading(true);
     try {
       const username = form.employee_username.trim();
-      const badge = `SG${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.slice(0, 20);
       const res = await API.post("/auth/signup", {
         employee_name: form.employee_name.trim(),
         employee_username: username,
-        employee_badge_number: badge,
         employee_email: form.employee_email.trim() || null,
         employee_designation: form.employee_designation.trim() || null,
         password: form.password,

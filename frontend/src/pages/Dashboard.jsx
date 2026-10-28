@@ -5,6 +5,7 @@ import API from "../api";
 import FlashBanner from "../components/FlashBanner";
 import DashboardItemSearch from "../components/DashboardItemSearch";
 import DashboardQuickActions from "../components/DashboardQuickActions";
+import { MAINTENANCE_DASHBOARD_URL } from "../components/maintenance/links";
 
 export default function Dashboard() {
   const [flash, setFlash] = useState(null);
@@ -12,13 +13,14 @@ export default function Dashboard() {
     totalItems: 0,
     lowStockCount: 0,
     totalTransactions: 0,
-    requests: 0,
-    returns: 0,
-    restocks: 0,
     todayActivity: 0,
   });
   const [inventory, setInventory] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
+  const [pmAttention, setPmAttention] = useState({
+    overdueFixtures: 0,
+    dueSoonFixtures: 0,
+    topProjects: [],
+  });
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,29 +44,21 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const inventoryRes = await API.get("/inventory/");
+        const [inventoryRes, lowStockRes, transactionsRes, remindersRes] = await Promise.all([
+          API.get("/inventory/"),
+          API.get("/alerts/low-stock"),
+          API.get("/transactions/all"),
+          API.get("/maintenance/reminders").catch(() => ({ data: null })),
+        ]);
+
         const allItems = inventoryRes.data || [];
         setInventory(Array.isArray(allItems) ? allItems : []);
 
-        const lowStockRes = await API.get("/alerts/low-stock");
-        const lowStockItems = lowStockRes.data || [];
+        const lowStock = lowStockRes.data || [];
 
-        const transactionsRes = await API.get("/transactions/all");
         const allTransactions = transactionsRes.data || [];
-
-        const requests = allTransactions.filter(
-          (t) => t.transaction_type?.toLowerCase() === "request"
-        ).length;
-        const returns = allTransactions.filter(
-          (t) => t.transaction_type?.toLowerCase() === "return"
-        ).length;
-        const restocks = allTransactions.filter(
-          (t) => t.transaction_type?.toLowerCase() === "restock"
-        ).length;
-
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
         const todayTransactions = allTransactions.filter((t) => {
           const transactionDate = new Date(t.created_at);
           transactionDate.setHours(0, 0, 0, 0);
@@ -73,20 +67,21 @@ export default function Dashboard() {
 
         setStats({
           totalItems: allItems.length,
-          lowStockCount: lowStockItems.length,
+          lowStockCount: lowStock.length,
           totalTransactions: allTransactions.length,
-          requests,
-          returns,
-          restocks,
           todayActivity: todayTransactions.length,
         });
 
-        const recentSorted = [...allTransactions].sort((a, b) => {
-          const aTime = new Date(a.created_at || 0).getTime();
-          const bTime = new Date(b.created_at || 0).getTime();
-          return bTime - aTime;
-        });
-        setRecentActivity(recentSorted.slice(0, 5));
+        const reminders = remindersRes?.data;
+        if (reminders) {
+          setPmAttention({
+            overdueFixtures: reminders.overdue_fixtures || 0,
+            dueSoonFixtures: reminders.due_soon_fixtures || 0,
+            topProjects: (reminders.by_project || [])
+              .filter((row) => (row.overdue_fixtures || 0) > 0)
+              .slice(0, 4),
+          });
+        }
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       } finally {
@@ -97,172 +92,133 @@ export default function Dashboard() {
     fetchDashboardData();
   }, []);
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const getTransactionTypeColor = (type) => {
-    const typeLower = type?.toLowerCase() || "";
-    if (typeLower === "request") return "text-red-600";
-    if (typeLower === "return") return "text-green-600";
-    if (typeLower === "restock") return "text-blue-600";
-    return "text-gray-600";
-  };
-
-  const getTransactionTypeIcon = (type) => {
-    const typeLower = type?.toLowerCase() || "";
-    if (typeLower === "request") return "📤";
-    if (typeLower === "return") return "📥";
-    if (typeLower === "restock") return "📦";
-    return "📋";
-  };
-
-  const getTransactionTypeBadge = (type) => {
-    const typeLower = type?.toLowerCase() || "";
-    if (typeLower === "request") return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
-    if (typeLower === "return") return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
-    if (typeLower === "restock") return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
-    return "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
-  };
-
   const lowStockPercentage =
-    stats.totalItems > 0
-      ? Math.round((stats.lowStockCount / stats.totalItems) * 100)
-      : 0;
+    stats.totalItems > 0 ? Math.round((stats.lowStockCount / stats.totalItems) * 100) : 0;
+
+  const hasPmAttention = pmAttention.overdueFixtures > 0 || pmAttention.dueSoonFixtures > 0;
 
   return (
     <>
       <FlashBanner message={flash?.message} type={flash?.type} onDismiss={() => setFlash(null)} />
 
       {loading ? (
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-7 w-7 border-b-2 border-blue-600"></div>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-3">Loading dashboard…</p>
+        <div className="py-8 text-center">
+          <div className="inline-block h-7 w-7 animate-spin rounded-full border-b-2 border-blue-600" />
+          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Loading dashboard…</p>
         </div>
       ) : (
         <>
           <DashboardItemSearch inventory={inventory} />
 
-          {/* Key Metrics Cards — compact for 14" laptops */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500 hover:shadow-md transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Total Items</p>
-                  <p className="mt-0.5 text-xl font-bold text-gray-800 dark:text-gray-200">{stats.totalItems}</p>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Active inventory</p>
-                </div>
-                <div className="text-2xl opacity-20">📦</div>
-              </div>
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="rounded-lg border-l-4 border-blue-500 bg-white p-4 shadow transition-all hover:shadow-md dark:bg-gray-800">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">
+                Total Items
+              </p>
+              <p className="mt-0.5 text-xl font-bold text-gray-800 dark:text-gray-200">{stats.totalItems}</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">Active inventory</p>
             </div>
 
-            <div
-              className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500 hover:shadow-md transition-all cursor-pointer"
+            <button
+              type="button"
+              className="rounded-lg border-l-4 border-red-500 bg-white p-4 text-left shadow transition-all hover:shadow-md dark:bg-gray-800"
               onClick={() => navigate("/dashboard/alerts")}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Low Stock</p>
-                  <p className="mt-0.5 text-xl font-bold text-red-600 dark:text-red-400">{stats.lowStockCount}</p>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{lowStockPercentage}% of total</p>
-                </div>
-                <div className="text-2xl opacity-20">⚠️</div>
-              </div>
-              {stats.lowStockCount > 0 && (
-                <div className="mt-2 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1 text-[10px] text-red-700 dark:text-red-400">
-                  Action required
-                </div>
-              )}
-            </div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">
+                Low Stock
+              </p>
+              <p className="mt-0.5 text-xl font-bold text-red-600 dark:text-red-400">{stats.lowStockCount}</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">{lowStockPercentage}% of total</p>
+            </button>
 
-            <div
-              className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-purple-500 hover:shadow-md transition-all cursor-pointer"
+            <button
+              type="button"
+              className="rounded-lg border-l-4 border-purple-500 bg-white p-4 text-left shadow transition-all hover:shadow-md dark:bg-gray-800"
               onClick={() => navigate("/dashboard/activity")}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Transactions</p>
-                  <p className="mt-0.5 text-xl font-bold text-purple-600 dark:text-purple-400">{stats.totalTransactions}</p>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">All time</p>
-                </div>
-                <div className="text-2xl opacity-20">📊</div>
-              </div>
-            </div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">
+                Transactions
+              </p>
+              <p className="mt-0.5 text-xl font-bold text-purple-600 dark:text-purple-400">
+                {stats.totalTransactions}
+              </p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">All time · open history</p>
+            </button>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-green-500 hover:shadow-md transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Today</p>
-                  <p className="mt-0.5 text-xl font-bold text-green-600 dark:text-green-400">
-                    {stats.todayActivity}
-                  </p>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Transactions today</p>
-                </div>
-                <div className="text-2xl opacity-20">⚡</div>
-              </div>
+            <div className="rounded-lg border-l-4 border-green-500 bg-white p-4 shadow transition-all dark:bg-gray-800">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">Today</p>
+              <p className="mt-0.5 text-xl font-bold text-green-600 dark:text-green-400">{stats.todayActivity}</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">Transactions today</p>
             </div>
           </div>
 
-          {/* Recent Activity & Quick Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <div className="flex items-center justify-between mb-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">Recent Activity</h3>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Latest 5 transactions</p>
+                  <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">Needs attention</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Overdue and due-soon PMs</p>
                 </div>
                 <button
-                  onClick={() => navigate("/dashboard/activity")}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                  type="button"
+                  onClick={() => navigate(`${MAINTENANCE_DASHBOARD_URL}?tab=todo&status=overdue`)}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                 >
-                  View All →
+                  PM To do →
                 </button>
               </div>
-              {recentActivity.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-6 text-sm">No recent activity</p>
+
+              {!hasPmAttention ? (
+                <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                  No overdue or due-soon PMs right now.
+                </p>
               ) : (
-                <div className="space-y-2">
-                  {recentActivity.map((activity) => (
-                    <div
-                      key={activity.transaction_id}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow text-base shrink-0">
-                          {getTransactionTypeIcon(activity.transaction_type)}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
-                              {activity.item_name || "Item"}
-                            </p>
-                            <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${getTransactionTypeBadge(activity.transaction_type)}`}
-                            >
-                              {activity.transaction_type || "N/A"}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                            {activity.project_name || "Project"}
-                            {activity.test_area ? ` • ${activity.test_area}` : ""} •{" "}
-                            {formatDate(activity.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                      <div
-                        className={`text-sm font-semibold shrink-0 ml-2 ${getTransactionTypeColor(activity.transaction_type)}`}
+                <div className="rounded-lg border border-red-100 bg-red-50/80 p-3 dark:border-red-900/40 dark:bg-red-950/30">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {pmAttention.overdueFixtures > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`${MAINTENANCE_DASHBOARD_URL}?tab=todo&status=overdue`)}
+                        className="rounded-full bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
                       >
-                        {activity.transaction_type?.toLowerCase() === "request" ? "-" : "+"}
-                        {activity.quantity_used}
-                      </div>
-                    </div>
-                  ))}
+                        {pmAttention.overdueFixtures} fixture
+                        {pmAttention.overdueFixtures === 1 ? "" : "s"} overdue
+                      </button>
+                    )}
+                    {pmAttention.dueSoonFixtures > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`${MAINTENANCE_DASHBOARD_URL}?tab=todo&status=due_soon`)}
+                        className="rounded-full bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"
+                      >
+                        {pmAttention.dueSoonFixtures} due soon
+                      </button>
+                    )}
+                  </div>
+                  {pmAttention.topProjects.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {pmAttention.topProjects.map((row) => (
+                        <li key={row.project}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(
+                                `${MAINTENANCE_DASHBOARD_URL}?tab=todo&status=overdue&project=${encodeURIComponent(row.project)}`
+                              )
+                            }
+                            className="flex w-full items-center justify-between rounded-md px-1.5 py-1 text-left text-xs hover:bg-white/70 dark:hover:bg-gray-800/60"
+                          >
+                            <span className="truncate font-medium text-gray-800 dark:text-gray-200">
+                              {row.project}
+                            </span>
+                            <span className="shrink-0 font-semibold text-red-600 dark:text-red-400">
+                              {row.overdue_fixtures} overdue
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>
