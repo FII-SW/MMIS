@@ -53,20 +53,43 @@ def _allocate_signup_badge(db: Session) -> str:
     raise HTTPException(status_code=500, detail="Could not allocate a badge number. Try again.")
 
 
+def _next_employee_id(db: Session) -> int:
+    current = db.query(func.max(models.Employee.employee_id)).scalar()
+    return int(current or 0) + 1
+
+
 def _resync_employee_id_sequence(db: Session) -> None:
-    """Fix employees_pkey conflicts when the serial is behind MAX(employee_id)."""
+    """Align the employees.employee_id sequence with MAX(employee_id)."""
+    nxt = _next_employee_id(db)
+    seq = db.execute(text("SELECT pg_get_serial_sequence('employees', 'employee_id')")).scalar()
+    if not seq:
+        return
+    # is_called=false → next nextval() returns nxt
     db.execute(
-        text(
-            "SELECT setval("
-            "pg_get_serial_sequence('employees', 'employee_id'), "
-            "GREATEST(COALESCE((SELECT MAX(employee_id) FROM employees), 1), 1), "
-            "true)"
-        )
+        text("SELECT setval(cast(:seq as regclass), :nxt, false)"),
+        {"seq": seq, "nxt": nxt},
     )
 
 
 def _integrity_detail(exc: IntegrityError) -> str:
     return str(getattr(exc, "orig", None) or exc).lower()
+
+
+def _constraint_hint(detail: str) -> str:
+    """Short, safe snippet from a Postgres IntegrityError for the UI."""
+    for marker in (
+        "employees_pkey",
+        "employee_username",
+        "employee_badge",
+        "employee_access_level",
+        "check constraint",
+        "unique constraint",
+        "not-null",
+        "foreign key",
+    ):
+        if marker in detail:
+            return marker
+    return "database constraint"
 
 
 def _is_username_conflict(detail: str) -> bool:
@@ -78,7 +101,11 @@ def _is_badge_conflict(detail: str) -> bool:
 
 
 def _is_pkey_conflict(detail: str) -> bool:
-    return "employees_pkey" in detail or "employee_id" in detail and "unique" in detail
+    return "employees_pkey" in detail or ("employee_id" in detail and "unique" in detail)
+
+
+def _is_access_level_conflict(detail: str) -> bool:
+    return "access_level" in detail or "check constraint" in detail
 
 
 def _username_taken(db: Session, username: str) -> bool:
@@ -118,10 +145,17 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
         logger.exception("Self-signup password hashing failed for %s", username)
         raise HTTPException(status_code=500, detail="Could not secure the password. Please try again.")
 
-    # Always assign a server-side badge — ignore any client value to avoid collisions.
+    # Heal a stuck ID sequence before the first insert (common after restores / manual SQL).
+    try:
+        _resync_employee_id_sequence(db)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Self-signup: could not resync employee_id sequence before insert")
+
     emp = None
     last_error = None
-    for attempt in range(2):
+    for attempt in range(3):
         emp = models.Employee(
             employee_name=name,
             employee_username=username,
@@ -134,6 +168,9 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
             employee_active=True,
             employee_must_change_password=False,
         )
+        # After a pkey clash, set the id ourselves so we do not depend on the sequence.
+        if attempt > 0:
+            emp.employee_id = _next_employee_id(db)
         try:
             db.add(emp)
             db.flush()
@@ -146,15 +183,21 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
             logger.warning("Self-signup IntegrityError for %s (attempt %s): %s", username, attempt + 1, detail)
             if _is_username_conflict(detail) or _username_taken(db, username):
                 raise HTTPException(status_code=400, detail=f"Username '{username}' is already taken")
-            if _is_pkey_conflict(detail):
+            if _is_access_level_conflict(detail) and "access_level" in detail:
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        "Database rejected access level 'viewer'. "
+                        "Ask an admin to allow viewer on employees.employee_access_level "
+                        "(drop or update the CHECK constraint)."
+                    ),
+                )
+            if _is_pkey_conflict(detail) or _is_badge_conflict(detail) or attempt < 2:
                 try:
                     _resync_employee_id_sequence(db)
                     db.commit()
                 except Exception:
                     db.rollback()
-                    logger.exception("Failed to resync employees employee_id sequence")
-                continue
-            if _is_badge_conflict(detail) and attempt == 0:
                 continue
             break
         except Exception as exc:
@@ -167,12 +210,15 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
 
     if last_error is not None or emp is None or getattr(emp, "employee_id", None) is None:
         detail = _integrity_detail(last_error) if last_error else "unknown"
+        hint = _constraint_hint(detail)
         logger.error("Self-signup gave up for %s: %s", username, detail)
         raise HTTPException(
             status_code=500,
             detail=(
-                "Could not create the account (database constraint). "
-                "Try a different username, or ask an admin to check the employees table / ID sequence."
+                f"Could not create the account ({hint}). "
+                "Try a different username, or ask an admin to run: "
+                "SELECT setval(pg_get_serial_sequence('employees','employee_id'), "
+                "(SELECT COALESCE(MAX(employee_id),1) FROM employees));"
             ),
         )
 

@@ -9,6 +9,8 @@ export const DEFAULT_TEST_AREAS = [
   "ORT",
   "L10_Racks",
   "Golden_Board",
+  "3070",
+  "IC_Programming",
 ];
 
 /** Shared-stock areas: their items are used on fixtures from every test area of the project. */

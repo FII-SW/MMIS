@@ -1,5 +1,5 @@
 // Utility to get projects list from localStorage or defaults
-// This ensures all pages use the same project list
+import { IC_PROGRAMMING_LEGACY_NAME, IC_PROGRAMMING_PROJECT } from "./icProgramming";
 
 // Default projects list
 export const DEFAULT_PROJECTS = [
@@ -14,9 +14,16 @@ export const DEFAULT_PROJECTS = [
   "Xena",
   "Asahi",
   "Humu Beach",
-  "Hi-Lo",
+  "Keysight",
+  IC_PROGRAMMING_PROJECT,
   "Flying Probe",
 ];
+
+function migrateProjectName(name) {
+  if (name === "Agora") return "Asahi";
+  if (name === IC_PROGRAMMING_LEGACY_NAME) return IC_PROGRAMMING_PROJECT;
+  return name;
+}
 
 // Get projects from localStorage or use defaults
 export const getProjects = () => {
@@ -24,8 +31,7 @@ export const getProjects = () => {
     const stored = localStorage.getItem("mmis_projects");
     if (stored) {
       const parsed = JSON.parse(stored);
-      const migrated = parsed.map((p) => (p === "Agora" ? "Asahi" : p));
-      // Merge with defaults and remove duplicates
+      const migrated = parsed.map(migrateProjectName).filter(Boolean);
       const allProjects = [...new Set([...DEFAULT_PROJECTS, ...migrated])];
       return allProjects.sort();
     }
@@ -39,4 +45,3 @@ export const getProjects = () => {
 export const isCustomProject = (project) => {
   return !DEFAULT_PROJECTS.includes(project);
 };
-

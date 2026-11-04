@@ -7,6 +7,8 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { useNotifications } from "../contexts/NotificationContext";
 import { apiErrorMessage } from "../utils/apiError";
 import { usesProjectFixtures } from "../utils/testAreas";
+import { fixtureLabelForProject, projectRequiresFixture } from "../utils/inventoryRules";
+import { isIcProgrammingProject } from "../utils/icProgramming";
 
 export default function ItemRequestPage() {
   const { item_id } = useParams();
@@ -76,10 +78,10 @@ export default function ItemRequestPage() {
     }
   };
 
-  // Projects that don't require fixtures
-  const skipFixtureProjects = ["Hi-Lo", "Flying Probe", "Development"];
-  const requiresFixture = project && !skipFixtureProjects.includes(project);
+  const requiresFixture = projectRequiresFixture(project);
   const projectWideFixtures = usesProjectFixtures(test_area);
+  const equipmentLabel = fixtureLabelForProject(project);
+  const isIcProgramming = isIcProgrammingProject(project);
 
   // Load fixtures — Only for projects that require fixtures
   useEffect(() => {
@@ -87,11 +89,14 @@ export default function ItemRequestPage() {
       setFixtures([]);
       return;
     }
-    const fixtureArea = projectWideFixtures ? "" : test_area || "";
+    // IC Programming: all machines under the project (no test-area step).
+    // TOOLS/Golden_Board: every fixture in the project.
+    const fixtureArea =
+      isIcProgramming || projectWideFixtures ? "" : test_area || "";
     API.get("/fixtures/filter", { params: { project: project || "", test_area: fixtureArea } })
       .then((res) => setFixtures(res.data))
       .catch((err) => console.error("Error loading fixtures:", err));
-  }, [project, test_area, requiresFixture, projectWideFixtures]);
+  }, [project, test_area, requiresFixture, projectWideFixtures, isIcProgramming]);
 
   const maintenanceFixtureUrl = (fixtureId) => {
     const query = new URLSearchParams();
@@ -103,7 +108,7 @@ export default function ItemRequestPage() {
   const submitRequest = async () => {
     // Validation: fixture required only for projects that need it
     if (requiresFixture && !fixture) {
-      alert("Select fixture");
+      alert(isIcProgramming ? "Select a machine" : "Select fixture");
       return;
     }
     if (!quantity) {
@@ -352,9 +357,11 @@ export default function ItemRequestPage() {
                   type="text"
                   className="w-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white p-3 rounded-lg text-base transition-all pr-10 hover:border-blue-300"
                   placeholder={
-                    projectWideFixtures
-                      ? `Search & select any ${project} fixture (name or test area)...`
-                      : "Search & select fixture..."
+                    isIcProgramming
+                      ? "Search & select machine (e.g. AT3-310A2)..."
+                      : projectWideFixtures
+                        ? `Search & select any ${project} fixture (name or test area)...`
+                        : `Search & select ${equipmentLabel.toLowerCase()}...`
                   }
                   value={showFixtureDropdown ? fixtureSearch : selectedFixtureName || fixtureSearch}
                   onChange={(e) => {

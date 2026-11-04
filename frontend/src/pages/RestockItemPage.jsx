@@ -7,6 +7,7 @@ import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
+import { projectRequiresTestArea } from "../utils/inventoryRules";
 
 export default function RestockItemPage() {
   const [items, setItems] = useState([]);
@@ -39,10 +40,7 @@ export default function RestockItemPage() {
       return;
     }
 
-    const skipTestAreaProjects = ["Hi-Lo", "Flying Probe", "Development"];
-    const requiresTestArea = !skipTestAreaProjects.includes(project);
-
-    if (requiresTestArea && !test_area) {
+    if (projectRequiresTestArea(project) && !test_area) {
       setItemsLoading(false);
       return;
     }
@@ -97,10 +95,7 @@ export default function RestockItemPage() {
     return <AccessDenied feature="the Restock feature" backTo="/dashboard" />;
   }
 
-  const skipTestAreaProjects = ["Hi-Lo", "Flying Probe", "Development"];
-  const requiresTestArea = project && !skipTestAreaProjects.includes(project);
-
-  if (!project || (requiresTestArea && !test_area)) {
+  if (!project || (projectRequiresTestArea(project) && !test_area)) {
     return (
       <div className="min-h-screen bg-transparent transition-colors">
         <Header />

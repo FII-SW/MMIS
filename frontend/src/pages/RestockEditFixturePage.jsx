@@ -31,36 +31,12 @@ export default function RestockEditFixturePage() {
   const [loading, setLoading] = useState(true);
 
   // Dropdown states
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [showTestAreaDropdown, setShowTestAreaDropdown] = useState(false);
-  const [projectSearch, setProjectSearch] = useState("");
   const [testAreaSearch, setTestAreaSearch] = useState("");
-  const projectRef = useRef(null);
   const testAreaRef = useRef(null);
 
-  // Available options for dropdowns
-  const projects = [
-    "Common",
-    "Astoria",
-    "Athena",
-    "Turin",
-    "Bondi Beach",
-    "Zebra Beach",
-    "Mandolin Beach",
-    "Gulp",
-    "Xena",
-    "Asahi",
-    "Humu Beach",
-  ];
-
   const testAreas = DEFAULT_TEST_AREAS;
-
-  // Filtered options for dropdowns
-  const filteredProjects = projects.filter(project =>
-    project.toLowerCase().includes(projectSearch.toLowerCase())
-  );
-
-  const filteredTestAreas = testAreas.filter(area =>
+  const filteredTestAreas = testAreas.filter((area) =>
     area.toLowerCase().includes(testAreaSearch.toLowerCase())
   );
 
@@ -116,7 +92,6 @@ export default function RestockEditFixturePage() {
           manufacturer: fixtureData.manufacturer || "",
           production_line: fixtureData.production_line || "",
         });
-        setProjectSearch(projectName);
         setTestAreaSearch(testArea);
       })
       .catch((err) => console.error("Error loading fixture:", err));
@@ -136,9 +111,6 @@ export default function RestockEditFixturePage() {
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (projectRef.current && !projectRef.current.contains(event.target)) {
-        setShowProjectDropdown(false);
-      }
       if (testAreaRef.current && !testAreaRef.current.contains(event.target)) {
         setShowTestAreaDropdown(false);
       }
@@ -258,7 +230,6 @@ export default function RestockEditFixturePage() {
                 value={formData.project_name}
                 onChange={(e) => {
                   setFormData((prev) => ({ ...prev, project_name: e.target.value }));
-                  setProjectSearch(e.target.value);
                 }}
                 placeholder="Select Project Name"
                 required

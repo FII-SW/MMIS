@@ -19,7 +19,7 @@ export default function RestockEditItemPage() {
   const queryParams = new URLSearchParams(location.search);
   const project = queryParams.get("project");
   const test_area = queryParams.get("test_area");
-  const simpleRestockProjects = ["Development", "Hi-Lo", "Flying Probe"];
+  const simpleRestockProjects = ["Development", "IC Programming", "Hi-Lo", "Flying Probe"];
   const isSimpleRestockProject = simpleRestockProjects.includes(project || "");
 
   const [item, setItem] = useState(null);

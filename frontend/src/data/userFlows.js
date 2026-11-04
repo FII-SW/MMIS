@@ -8,6 +8,24 @@ export const FLOW_GROUPS = [
 
 export const USER_FLOWS = [
   {
+    id: "ic-programming",
+    group: "stock",
+    title: "IC Programming (machines)",
+    summary: "Shared programmer cell used by many projects — not a customer project itself.",
+    who: "editor",
+    whoLabel: "Admins and users",
+    path: "/dashboard/request",
+    outcome: "Parts are checked out against a programmer machine (AT3-310A2, AT3-310A2N, …).",
+    steps: [
+      { title: "Open Request", detail: "Choose IC Programming from the project list (formerly Hi-Lo)." },
+      { title: "Skip test area", detail: "IC Programming goes straight to the item list." },
+      { title: "Open the part", detail: "Search IC Programming stock for sockets, adapters, etc." },
+      { title: "Select the machine", detail: "Pick AT3-310A2 or AT3-310A2N (add more under Restock → New Fixtures)." },
+      { title: "Enter quantity and submit", detail: "Activity History shows which machine used the part." },
+    ],
+    note: "Customer boards may be Astoria, Bondi Beach, etc., but IC Programming stock and machines are shared. Add a 3rd/4th machine the same way as any fixture under project IC Programming.",
+  },
+  {
     id: "request",
     group: "stock",
     title: "Request an item",
@@ -18,8 +36,8 @@ export const USER_FLOWS = [
     outcome: "Stock goes down. The checkout stays under Return until you bring the parts back.",
     steps: [
       { title: "Open Request", detail: "It is in the left sidebar." },
-      { title: "Pick the project", detail: "Hi-Lo, Flying Probe, and Development skip the test area and go straight to the item list." },
-      { title: "Pick the test area", detail: "This is where the part will be used, such as FBT_Mobo, BSI_Mobo, or ICT." },
+      { title: "Pick the project", detail: "IC Programming, Flying Probe, and Development skip the test area. For IC Programming, pick the programmer machine on the item page." },
+      { title: "Pick the test area", detail: "This is where the part will be used, such as FBT_Mobo, BSI_Mobo, ICT, or 3070 (Keysight)." },
       { title: "Search and open the item", detail: "Search by name, part number, or description." },
       { title: "Choose the fixture, enter the quantity, and submit", detail: "TOOLS and Golden_Board items list every fixture in the project." },
     ],
@@ -54,7 +72,7 @@ export const USER_FLOWS = [
     steps: [
       { title: "Open Restock", detail: "Admins only. It is in the left sidebar." },
       { title: "Pick the project", detail: "Use the project the item already belongs to." },
-      { title: "Pick the test area", detail: "Hi-Lo, Flying Probe, and Development skip this step." },
+      { title: "Pick the test area", detail: "IC Programming, Flying Probe, and Development skip this step." },
       { title: "Search and open the item", detail: "This is the existing row, not Add New Stock." },
       { title: "Update the quantity, minimum, or location, then Save", detail: "Saving changes that row. It does not create a second item." },
     ],
@@ -72,7 +90,7 @@ export const USER_FLOWS = [
       { title: "Open Restock", detail: "Stay on the project page." },
       { title: "Click Add New Stock", detail: "This is the button next to the project search." },
       { title: "Click New Inventory", detail: "Choose this when the part is not in MMIS yet." },
-      { title: "Enter the project, test area, name, part number, quantity, and minimum", detail: "A picture is optional. Hi-Lo, Flying Probe, and Development do not need a test area." },
+      { title: "Enter the project, test area, name, part number, quantity, and minimum", detail: "A picture is optional. IC Programming, Flying Probe, and Development do not need a test area." },
       { title: "Save", detail: "This does not add quantity to an item that already exists. Use Restock an existing item for that." },
     ],
   },

@@ -10,8 +10,8 @@ from app.utils.inventory_rules import DEFAULT_PROJECTS, project_requires_test_ar
 
 
 class TestProjectRulesAllProjects(unittest.TestCase):
-    def test_skip_test_area_only_for_three_projects(self):
-        skip = {"Hi-Lo", "Flying Probe", "Development"}
+    def test_skip_test_area_only_for_shared_cells(self):
+        skip = {"IC Programming", "Flying Probe", "Development"}
         for project in DEFAULT_PROJECTS:
             if project in skip:
                 self.assertFalse(

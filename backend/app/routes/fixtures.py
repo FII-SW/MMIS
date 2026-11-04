@@ -7,6 +7,12 @@ from .. import crud, schemas
 from .. import models
 from ..utils.audit import changed_fields, log_action
 from ..utils.auth_deps import employee_id_from_token, require_admin, require_super_admin
+from ..utils.inventory_rules import (
+    IC_PROGRAMMING_LEGACY_NAME,
+    IC_PROGRAMMING_PROJECT,
+    is_ic_programming_project,
+    normalize_project_name,
+)
 
 router = APIRouter(prefix="/fixtures", tags=["Fixtures"])
 
@@ -31,7 +37,16 @@ def filter_fixtures(
     query = db.query(models.Fixture)
 
     if project:
-        query = query.filter(models.Fixture.project_name == project)
+        if is_ic_programming_project(project):
+            query = query.filter(
+                models.Fixture.project_name.in_(
+                    [IC_PROGRAMMING_PROJECT, IC_PROGRAMMING_LEGACY_NAME]
+                )
+            )
+        else:
+            query = query.filter(
+                models.Fixture.project_name == normalize_project_name(project)
+            )
 
     if test_area:
         query = query.filter(models.Fixture.test_area == test_area)

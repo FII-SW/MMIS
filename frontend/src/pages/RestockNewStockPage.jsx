@@ -244,7 +244,7 @@ export default function RestockNewStockPage() {
         <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow p-6 mb-8 transition-colors">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Fields marked with <span className="text-red-600 dark:text-red-400">*</span> are required.
-            Each submission creates a <strong>new inventory row</strong> for any project — Astoria, Mandolin Beach, Hi-Lo, custom projects, etc.
+            Each submission creates a <strong>new inventory row</strong> for any project — Astoria, Mandolin Beach, IC Programming, custom projects, etc.
             Similar names in the same project do not update existing stock. Use <strong>Restock → Existing item</strong> to add quantity.
           </p>
           <div className="grid grid-cols-2 gap-6 mb-6">

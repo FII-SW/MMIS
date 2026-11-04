@@ -181,6 +181,70 @@ def ensure_super_admin_columns():
         )
 
 
+def ensure_ic_programming():
+    """Rename legacy Hi-Lo → IC Programming and seed programmer machines."""
+    from .utils.inventory_rules import (
+        IC_PROGRAMMING_LEGACY_NAME,
+        IC_PROGRAMMING_MACHINES,
+        IC_PROGRAMMING_PROJECT,
+        IC_PROGRAMMING_TEST_AREA,
+    )
+
+    tables_columns = (
+        ("inventory", "project_name"),
+        ("fixtures", "project_name"),
+        ("transactions", "project_name"),
+        ("fixture_pm_records", "project_name"),
+        ("project_documents", "project_name"),
+    )
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table, column in tables_columns:
+            try:
+                cols = {c["name"] for c in inspector.get_columns(table)}
+            except Exception:
+                continue
+            if column not in cols:
+                continue
+            conn.execute(
+                text(
+                    f"UPDATE {table} SET {column} = :new "
+                    f"WHERE {column} = :old"
+                ),
+                {"new": IC_PROGRAMMING_PROJECT, "old": IC_PROGRAMMING_LEGACY_NAME},
+            )
+
+        try:
+            fixture_cols = {c["name"] for c in inspector.get_columns("fixtures")}
+        except Exception:
+            return
+        if "fixture_name" not in fixture_cols:
+            return
+
+        for machine in IC_PROGRAMMING_MACHINES:
+            exists = conn.execute(
+                text(
+                    "SELECT 1 FROM fixtures "
+                    "WHERE project_name = :project AND fixture_name = :name "
+                    "LIMIT 1"
+                ),
+                {"project": IC_PROGRAMMING_PROJECT, "name": machine},
+            ).first()
+            if exists:
+                continue
+            conn.execute(
+                text(
+                    "INSERT INTO fixtures (fixture_name, test_area, project_name) "
+                    "VALUES (:name, :area, :project)"
+                ),
+                {
+                    "name": machine,
+                    "area": IC_PROGRAMMING_TEST_AREA,
+                    "project": IC_PROGRAMMING_PROJECT,
+                },
+            )
+
+
 def run_startup_migrations():
     """Create missing tables and columns. Every uvicorn worker imports this module at the same
     time, so they take turns under a Postgres advisory lock instead of racing on CREATE/ALTER."""
@@ -192,6 +256,7 @@ def run_startup_migrations():
             ensure_fixture_descriptor_columns()
             ensure_pm_workflow_columns()
             ensure_super_admin_columns()
+            ensure_ic_programming()
         finally:
             lock_conn.execute(text("SELECT pg_advisory_unlock(:id)"), {"id": MIGRATION_LOCK_ID})
 

@@ -4,6 +4,7 @@ import API from "../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
+import { projectRequiresTestArea } from "../utils/inventoryRules";
 
 export default function RequestPage() {
   const [items, setItems] = useState([]);
@@ -23,10 +24,7 @@ export default function RequestPage() {
       return;
     }
 
-    const skipTestAreaProjects = ["Hi-Lo", "Flying Probe", "Development"];
-    const requiresTestArea = !skipTestAreaProjects.includes(project);
-
-    if (requiresTestArea && !test_area) {
+    if (projectRequiresTestArea(project) && !test_area) {
       setItems([]);
       return;
     }

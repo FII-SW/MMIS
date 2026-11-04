@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { getProjects } from "../utils/projects";
+import { projectRequiresTestArea } from "../utils/inventoryRules";
+import { normalizeProjectName } from "../utils/icProgramming";
 
 export default function RequestProjectPage() {
   const navigate = useNavigate();
@@ -28,13 +30,12 @@ export default function RequestProjectPage() {
     project.toLowerCase().includes(searchInput.toLowerCase().trim())
   );
 
-  const skipTestAreaProjects = ["Hi-Lo", "Flying Probe", "Development"];
-
   const handleProjectClick = (project) => {
-    if (skipTestAreaProjects.includes(project)) {
-      navigate(`/dashboard/request/search?project=${encodeURIComponent(project)}`);
+    const name = normalizeProjectName(project);
+    if (!projectRequiresTestArea(name)) {
+      navigate(`/dashboard/request/search?project=${encodeURIComponent(name)}`);
     } else {
-      navigate(`/dashboard/request/test-area?project=${encodeURIComponent(project)}`);
+      navigate(`/dashboard/request/test-area?project=${encodeURIComponent(name)}`);
     }
   };
 

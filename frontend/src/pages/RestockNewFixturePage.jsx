@@ -10,6 +10,11 @@ import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
 import FixtureDescriptorFields from "../components/FixtureDescriptorFields";
 import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
+import {
+  IC_PROGRAMMING_PROJECT,
+  IC_PROGRAMMING_TEST_AREA,
+  isIcProgrammingProject,
+} from "../utils/icProgramming";
 
 export default function RestockNewFixturePage() {
   const navigate = useNavigate();
@@ -17,27 +22,9 @@ export default function RestockNewFixturePage() {
   const [loading, setLoading] = useState(true);
   
   // Dropdown states
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [showTestAreaDropdown, setShowTestAreaDropdown] = useState(false);
-  const [projectSearch, setProjectSearch] = useState("");
   const [testAreaSearch, setTestAreaSearch] = useState("");
-  const projectRef = useRef(null);
   const testAreaRef = useRef(null);
-
-  // Available options for dropdowns
-  const projects = [
-    "Common",
-    "Astoria",
-    "Athena",
-    "Turin",
-    "Bondi Beach",
-    "Zebra Beach",
-    "Mandolin Beach",
-    "Gulp",
-    "Xena",
-    "Asahi",
-    "Humu Beach",
-  ];
 
   const testAreas = DEFAULT_TEST_AREAS;
 
@@ -45,7 +32,7 @@ export default function RestockNewFixturePage() {
     fixture_name: "",
     project_name: "",
     test_area: "",
-    fixture_number: "", // User enters only the number part
+    fixture_number: "", // number suffix OR full machine name for IC Programming
     asset_tag: "",
     fixture_serial_number: "",
     manufacturer: "",
@@ -53,12 +40,9 @@ export default function RestockNewFixturePage() {
   });
   const [employeeId, setEmployeeId] = useState(null);
 
-  // Filtered options for dropdowns
-  const filteredProjects = projects.filter(project =>
-    project.toLowerCase().includes(projectSearch.toLowerCase())
-  );
+  const isIcProgramming = isIcProgrammingProject(formData.project_name);
 
-  const filteredTestAreas = testAreas.filter(area =>
+  const filteredTestAreas = testAreas.filter((area) =>
     area.toLowerCase().includes(testAreaSearch.toLowerCase())
   );
 
@@ -80,9 +64,6 @@ export default function RestockNewFixturePage() {
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (projectRef.current && !projectRef.current.contains(event.target)) {
-        setShowProjectDropdown(false);
-      }
       if (testAreaRef.current && !testAreaRef.current.contains(event.target)) {
         setShowTestAreaDropdown(false);
       }
@@ -94,21 +75,22 @@ export default function RestockNewFixturePage() {
     };
   }, []);
 
-  // Sync search with selected values
-  useEffect(() => {
-    if (formData.project_name) {
-      setProjectSearch(formData.project_name);
-    }
-  }, [formData.project_name]);
-
   useEffect(() => {
     if (formData.test_area) {
       setTestAreaSearch(formData.test_area);
     }
   }, [formData.test_area]);
 
-  // Auto-generate fixture_name from project_name, test_area, and fixture_number
+  // Auto-generate fixture_name (skip for IC Programming — machine name is entered as-is)
   useEffect(() => {
+    if (isIcProgrammingProject(formData.project_name)) {
+      setFormData((prev) => ({
+        ...prev,
+        fixture_name: (prev.fixture_number || "").trim(),
+        test_area: prev.test_area || IC_PROGRAMMING_TEST_AREA,
+      }));
+      return;
+    }
     if (formData.project_name && formData.test_area && formData.fixture_number) {
       const generatedName = `${formData.project_name}_${formData.test_area}_${formData.fixture_number}`;
       setFormData((prev) => ({
@@ -143,39 +125,48 @@ export default function RestockNewFixturePage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.fixture_number) {
-      alert("Please fill in all required fields. Fixture Number is required.");
+    const icMode = isIcProgrammingProject(formData.project_name);
+    if (!formData.fixture_number.trim()) {
+      alert(
+        icMode
+          ? "Machine name is required (e.g. AT3-310B1)."
+          : "Please fill in all required fields. Fixture Number is required."
+      );
       return;
     }
     if (!formData.project_name) {
       alert("Please fill in all required fields. Project Name is required.");
       return;
     }
-    if (!formData.test_area) {
+    const testArea = icMode
+      ? formData.test_area || IC_PROGRAMMING_TEST_AREA
+      : formData.test_area;
+    if (!testArea) {
       alert("Please fill in all required fields. Test Area is required.");
       return;
     }
 
-    // Generate final fixture_name
-    const finalFixtureName = `${formData.project_name}_${formData.test_area}_${formData.fixture_number}`;
+    const finalFixtureName = icMode
+      ? formData.fixture_number.trim()
+      : `${formData.project_name}_${testArea}_${formData.fixture_number}`;
 
     try {
       await API.post("/fixtures/", {
         fixture_name: finalFixtureName,
-        project_name: formData.project_name,
-        test_area: formData.test_area,
+        project_name: icMode ? IC_PROGRAMMING_PROJECT : formData.project_name,
+        test_area: testArea,
         asset_tag: formData.asset_tag || "",
         fixture_serial_number: formData.fixture_serial_number || "",
         manufacturer: formData.manufacturer.trim() || null,
         production_line: formData.production_line.trim() || null,
-        employee_id: employeeId,  // Include employee_id for activity history
+        employee_id: employeeId,
       });
 
-      alert("New fixture added successfully!");
+      alert(icMode ? "Machine added successfully!" : "New fixture added successfully!");
       navigate("/dashboard/restock/project");
     } catch (err) {
       console.error(err);
-      alert("Failed to add new fixture");
+      alert(icMode ? "Failed to add machine" : "Failed to add new fixture");
     }
   };
 
@@ -197,13 +188,29 @@ export default function RestockNewFixturePage() {
               <ProjectSelector
                 value={formData.project_name}
                 onChange={(e) => {
-                  setFormData((prev) => ({ ...prev, project_name: e.target.value }));
-                  setProjectSearch(e.target.value);
+                  const project = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    project_name: project,
+                    test_area: isIcProgrammingProject(project)
+                      ? IC_PROGRAMMING_TEST_AREA
+                      : prev.test_area === IC_PROGRAMMING_TEST_AREA
+                        ? ""
+                        : prev.test_area,
+                  }));
+                  if (isIcProgrammingProject(project)) {
+                    setTestAreaSearch(IC_PROGRAMMING_TEST_AREA);
+                  }
                 }}
                 placeholder="Select Project Name"
                 required
                 className="w-full p-3"
               />
+              {isIcProgramming && (
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  IC Programming is the shared programmer cell. Enter the machine model as the name (AT3-310A2, …).
+                </p>
+              )}
             </div>
 
             {/* Test Area - Searchable Dropdown */}
@@ -220,9 +227,10 @@ export default function RestockNewFixturePage() {
                 }}
                 onFocus={() => setShowTestAreaDropdown(true)}
                 placeholder="Select Test Area"
-                className="w-full p-3 border dark:border-gray-600 dark:bg-gray-700 dark:text-white border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                disabled={isIcProgramming}
+                className="w-full p-3 border dark:border-gray-600 dark:bg-gray-700 dark:text-white border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-70"
               />
-              {showTestAreaDropdown && (
+              {showTestAreaDropdown && !isIcProgramming && (
                 <div className="dropdown-menu absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-auto transition-colors">
                   {filteredTestAreas.length > 0 ? (
                     filteredTestAreas.map((area) => (
@@ -245,10 +253,11 @@ export default function RestockNewFixturePage() {
               )}
             </div>
 
-            {/* Fixture Number */}
+            {/* Fixture Number / Machine name */}
             <div>
               <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">
-                Fixture Number <span className="text-red-500">*</span>
+                {isIcProgramming ? "Machine name" : "Fixture Number"}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -257,9 +266,20 @@ export default function RestockNewFixturePage() {
                 onChange={handleChange}
                 className="w-full p-3 border dark:border-gray-600 dark:bg-gray-700 dark:text-white border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 required
-                placeholder="e.g., 01 or A01"
+                placeholder={isIcProgramming ? "e.g., AT3-310B1" : "e.g., 01 or A01"}
               />
-              {formData.project_name && formData.test_area && formData.fixture_number && (
+              {isIcProgramming && formData.fixture_number.trim() ? (
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  Machine:{" "}
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    {formData.fixture_number.trim()}
+                  </span>
+                </p>
+              ) : null}
+              {!isIcProgramming &&
+                formData.project_name &&
+                formData.test_area &&
+                formData.fixture_number && (
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                   Full Fixture Name: <span className="font-semibold text-blue-600 dark:text-blue-400">
                     {formData.project_name}_{formData.test_area}_{formData.fixture_number}

@@ -5,7 +5,9 @@ import { getProjects, DEFAULT_PROJECTS } from "../utils/projects";
 import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
 
 /** Projects that skip test area selection in Request and Restock. */
-export const SKIP_TEST_AREA_PROJECTS = ["Hi-Lo", "Flying Probe", "Development"];
+export const SKIP_TEST_AREA_PROJECTS = ["IC Programming", "Hi-Lo", "Flying Probe", "Development"];
+/** Shown in help (omit legacy Hi-Lo label). */
+const SKIP_TEST_AREA_HELP = ["IC Programming", "Flying Probe", "Development"];
 
 /** @typedef {{ label: string, path: string }} HelpLink */
 /** @typedef {{ heading?: string, steps: string[] }} HelpSection */
@@ -116,7 +118,8 @@ export const HELP_ARTICLES = [
         heading: "Step 2 — Select your project",
         steps: [
           "Choose your project from the list (see all MMIS projects below).",
-          `Projects that skip test area: ${SKIP_TEST_AREA_PROJECTS.join(", ")} — these go straight to item search.`,
+          `Projects that skip test area: ${SKIP_TEST_AREA_HELP.join(", ")} — these go straight to item search.`,
+          "IC Programming is the shared programmer cell (not a customer project). It was formerly labeled Hi-Lo.",
           "All other projects require a test area in the next step.",
         ],
       },
@@ -124,7 +127,7 @@ export const HELP_ARTICLES = [
         heading: "Step 3 — Select test area (if required)",
         steps: [
           "Pick the test area where the material will be used (for example FBT_Agora, ICT_Mobo, TOOLS).",
-          "Skip this step automatically for Hi-Lo, Flying Probe, and Development.",
+          "Skip this step automatically for IC Programming, Flying Probe, and Development.",
         ],
       },
       {
@@ -132,7 +135,8 @@ export const HELP_ARTICLES = [
         steps: [
           "Search by item name, part number, or description.",
           "Click the item to open details.",
-          "Select the fixture the item is for. TOOLS and Golden_Board items list every fixture of the project (the tag shows its test area).",
+          "Select the fixture the item is for. For IC Programming, pick the machine (AT3-310A2, AT3-310A2N, …).",
+          "TOOLS and Golden_Board items list every fixture of the project (the tag shows its test area).",
           "Enter quantity and submit the request.",
           "Your checkout appears under Return when you need to bring items back.",
         ],
@@ -448,10 +452,89 @@ export const HELP_ARTICLES = [
       },
       {
         heading: "No test area required",
-        steps: [`${SKIP_TEST_AREA_PROJECTS.join(", ")}`],
+        steps: [
+          `${SKIP_TEST_AREA_HELP.join(", ")}.`,
+          "IC Programming is a shared cell used across customer projects; request against a machine, not a board project.",
+        ],
       },
     ],
-    keywords: ["project", "astoria", "athena", "turin", "asahi", "hi-lo", "list"],
+    keywords: ["project", "astoria", "athena", "turin", "asahi", "keysight", "ic programming", "hi-lo", "list"],
+  },
+  {
+    id: "keysight-3070",
+    title: "Keysight / 3070",
+    icon: "🧪",
+    category: "Workflows",
+    summary: "Keysight project with test area 3070 for stock and fixture PM.",
+    roles: ["admin", "user"],
+    sections: [
+      {
+        heading: "Request / Return",
+        steps: [
+          "Request → Keysight → 3070 → pick item and fixture → submit.",
+          "Return lists your Keysight checkouts the same as any other project.",
+        ],
+      },
+      {
+        heading: "Restock",
+        steps: [
+          "Restock → Keysight → 3070 to add or edit stock.",
+          "New Fixture under Keysight with test area 3070 (name like Keysight_3070_01).",
+        ],
+      },
+      {
+        heading: "Fixture Maintenance",
+        steps: [
+          "Fixture Maintenance → Keysight → 3070 → open the fixture for PM.",
+        ],
+      },
+    ],
+    links: [
+      { label: "Request", path: "/dashboard/request" },
+      { label: "Restock", path: "/dashboard/restock" },
+      { label: "Fixture Maintenance", path: "/dashboard/maintenance" },
+    ],
+    keywords: ["keysight", "3070", "ict", "fixture", "pm"],
+    routes: ["/dashboard/request", "/dashboard/restock", "/dashboard/maintenance"],
+  },
+  {
+    id: "ic-programming",
+    title: "IC Programming machines",
+    icon: "🔌",
+    category: "Workflows",
+    summary: "Shared IC programmer cell — pick a machine when requesting parts.",
+    roles: ["admin", "user"],
+    sections: [
+      {
+        heading: "What it is",
+        steps: [
+          "IC Programming is not a customer project (Astoria, Bondi Beach, etc.). It is the shared programming cell formerly called Hi-Lo.",
+          "Stock and machines live under IC Programming and are used by multiple projects.",
+        ],
+      },
+      {
+        heading: "Request workflow",
+        steps: [
+          "Request → IC Programming (skips test area).",
+          "Open the part, then select Machine: AT3-310A2 or AT3-310A2N.",
+          "Submit quantity. Activity History records which machine used the part.",
+        ],
+      },
+      {
+        heading: "Add a 3rd or 4th machine",
+        steps: [
+          "Restock → New Fixtures → project IC Programming.",
+          "Name the machine (for example AT3-310B1). Use test area IC_Programming if prompted.",
+          "It appears on the Machine list for the next request.",
+        ],
+      },
+    ],
+    links: [
+      { label: "Request", path: "/dashboard/request" },
+      { label: "How it works — IC Programming", path: "/dashboard/how-it-works" },
+    ],
+    keywords: ["ic programming", "hi-lo", "machine", "at3", "programmer", "socket"],
+    routes: ["/dashboard/request"],
   },
   {
     id: "low-stock-alerts",

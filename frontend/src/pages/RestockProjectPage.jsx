@@ -7,6 +7,8 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import { getProjects } from "../utils/projects";
+import { projectRequiresTestArea } from "../utils/inventoryRules";
+import { normalizeProjectName } from "../utils/icProgramming";
 
 export default function RestockProjectPage() {
   const navigate = useNavigate();
@@ -62,17 +64,12 @@ export default function RestockProjectPage() {
     project.toLowerCase().includes(searchInput.toLowerCase().trim())
   );
 
-  // Projects that skip test area selection
-  const skipTestAreaProjects = ["Hi-Lo", "Flying Probe", "Development"];
-
-  // Handle project selection - skip test area for specific projects
   const handleProjectClick = (project) => {
-    if (skipTestAreaProjects.includes(project)) {
-      // Navigate directly to items page without test_area
-      navigate(`/dashboard/restock/items?project=${encodeURIComponent(project)}`);
+    const name = normalizeProjectName(project);
+    if (!projectRequiresTestArea(name)) {
+      navigate(`/dashboard/restock/items?project=${encodeURIComponent(name)}`);
     } else {
-      // Navigate to test area selection page
-      navigate(`/dashboard/restock/test-area?project=${encodeURIComponent(project)}`);
+      navigate(`/dashboard/restock/test-area?project=${encodeURIComponent(name)}`);
     }
   };
 
