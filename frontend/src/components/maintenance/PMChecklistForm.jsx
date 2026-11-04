@@ -45,7 +45,9 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
     setLoading(true);
     setLoadError("");
     setResults({});
-    API.get(`/maintenance/checklists/${pmType}`, { params: { test_area: fixture.test_area } })
+    API.get(`/maintenance/checklists/${pmType}`, {
+      params: { test_area: fixture.test_area, project: fixture.project_name },
+    })
       .then((res) => {
         setChecklist(res.data);
         const draft = readDraft(draftKey);
@@ -86,7 +88,7 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
         }
       })
       .finally(() => setLoading(false));
-  }, [pmType, fixture.test_area, draftKey, reloadToken]);
+  }, [pmType, fixture.test_area, fixture.project_name, draftKey, reloadToken]);
 
   useEffect(() => {
     if (!checklist) return;

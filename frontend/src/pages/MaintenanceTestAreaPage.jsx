@@ -5,7 +5,7 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PMStatusLine from "../components/maintenance/PMStatusLine";
 import { FIXTURE_MAINTENANCE_TITLE, MAINTENANCE_PROJECTS_URL, fixtureListUrl } from "../components/maintenance/links";
 import { pmTypesForArea } from "../components/maintenance/pmTypes";
-import { getMaintenanceTestAreas } from "../utils/testAreas";
+import { getMaintenanceTestAreas, soleTestAreaForProject } from "../utils/testAreas";
 
 function emptyCounts() {
   return { fixtures: 0, overdue: 0, due_soon: 0, never: 0, ok: 0, paused: 0 };
@@ -22,6 +22,11 @@ export default function MaintenanceTestAreaPage() {
   useEffect(() => {
     if (!project) {
       navigate(MAINTENANCE_PROJECTS_URL, { replace: true });
+      return;
+    }
+    const soleArea = soleTestAreaForProject(project);
+    if (soleArea) {
+      navigate(fixtureListUrl(project, soleArea), { replace: true });
       return;
     }
     setLoading(true);
@@ -46,7 +51,10 @@ export default function MaintenanceTestAreaPage() {
   }, [fixtures]);
 
   const testAreas = useMemo(() => {
-    const areas = getMaintenanceTestAreas(fixtures.map((fx) => fx.test_area));
+    const areas = getMaintenanceTestAreas(
+      fixtures.map((fx) => fx.test_area),
+      project
+    );
     return [...areas].sort((a, b) => {
       const score = (area) => {
         const counts = byArea[area] || emptyCounts();
@@ -54,7 +62,7 @@ export default function MaintenanceTestAreaPage() {
       };
       return score(b) - score(a) || areas.indexOf(a) - areas.indexOf(b);
     });
-  }, [fixtures, byArea]);
+  }, [fixtures, byArea, project]);
 
   if (!project) return null;
 
@@ -73,7 +81,7 @@ export default function MaintenanceTestAreaPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {testAreas.map((area) => {
             const counts = byArea[area] || emptyCounts();
-            const hasPM = pmTypesForArea(area).length > 0;
+            const hasPM = pmTypesForArea(area, project).length > 0;
             const overdue = counts.overdue || 0;
             return (
               <div

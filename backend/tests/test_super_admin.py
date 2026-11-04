@@ -126,7 +126,8 @@ class TestMaintenanceDetails(unittest.TestCase):
         self.assertTrue(get_checklist("weekly", "BSI_Mobo")["requires_details"])
         self.assertTrue(get_checklist("biweekly", "BSI")["requires_details"])
         self.assertTrue(get_checklist("monthly", "BSI_Mobo")["requires_details"])
-        self.assertFalse(get_checklist("monthly", "ICT")["requires_details"])
+        self.assertTrue(get_checklist("monthly", "ICT", project_name="Bondi Beach")["requires_details"])
+        self.assertFalse(get_checklist("monthly", "3070", project_name="Keysight")["requires_details"])
         self.assertEqual(len(get_checklist("weekly", "BSI_Mobo")["items"]), 13)
         self.assertEqual(
             get_checklist("weekly", "BSI")["items"][0]["id"],

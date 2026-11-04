@@ -323,7 +323,7 @@ def get_pm_report(
     pairs = []
     for fixture in fixtures:
         baseline = pm_baseline(fixture, tracking_start)
-        for kind in get_pm_types(fixture.test_area):
+        for kind in get_pm_types(fixture.test_area, fixture.project_name):
             if not pm_type or kind == pm_type:
                 pairs.append((fixture, kind, baseline))
 

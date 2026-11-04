@@ -21,6 +21,7 @@ from ..utils.pm_checklists import (
     PM_DUE_SOON_DAYS,
     PM_DUPLICATE_WINDOW_HOURS,
     PM_INTERVAL_DAYS,
+    PM_EXACT_TEST_AREAS,
     PM_TEST_AREA_PREFIXES,
     PM_TYPE_LABELS,
     RESULT_VALUES,
@@ -361,7 +362,7 @@ def _fixture_pm(
     now: datetime,
     tracking_start: datetime | None = None,
 ) -> dict:
-    pm_types = get_pm_types(fixture.test_area)
+    pm_types = get_pm_types(fixture.test_area, fixture.project_name)
     baseline = pm_baseline(fixture, tracking_start)
     status = {
         pm_type: _pm_entry(
@@ -395,13 +396,14 @@ def _fixture_pm(
 def get_pm_checklist(
     pm_type: str,
     test_area: str | None = None,
+    project: str | None = None,
     db: Session = Depends(get_db),
 ):
     try:
-        checklist = get_checklist(pm_type, test_area, db)
+        checklist = get_checklist(pm_type, test_area, db, project_name=project)
     except Exception:
         # Template overlay failed — still serve the built-in checklist.
-        checklist = get_checklist(pm_type, test_area, db=None)
+        checklist = get_checklist(pm_type, test_area, db=None, project_name=project)
     if not checklist:
         raise HTTPException(
             status_code=404,
@@ -411,9 +413,13 @@ def get_pm_checklist(
 
 
 def _pm_test_area_filter():
-    return or_(
-        *[func.upper(models.Fixture.test_area).like(f"{prefix}%") for prefix in PM_TEST_AREA_PREFIXES]
-    )
+    clauses = [
+        func.upper(models.Fixture.test_area).like(f"{prefix}%")
+        for prefix in PM_TEST_AREA_PREFIXES
+    ]
+    for area in PM_EXACT_TEST_AREAS:
+        clauses.append(func.upper(models.Fixture.test_area) == area.upper())
+    return or_(*clauses)
 
 
 @router.get("/overview")
@@ -436,7 +442,7 @@ def get_pm_overview(
     now = datetime.now(timezone.utc)
     tracking_start = _pm_tracking_start(db)
     latest_map = _latest_pm_records(
-        db, [f.fixture_id for f in fixtures if get_pm_types(f.test_area)]
+        db, [f.fixture_id for f in fixtures if get_pm_types(f.test_area, f.project_name)]
     )
 
     assignees = assignee_names(db, fixtures)
@@ -469,7 +475,9 @@ def get_my_pm_fixtures(request: Request, db: Session = Depends(get_db)):
     )
     now = datetime.now(timezone.utc)
     tracking_start = _pm_tracking_start(db)
-    latest_map = _latest_pm_records(db, [f.fixture_id for f in fixtures if get_pm_types(f.test_area)])
+    latest_map = _latest_pm_records(
+        db, [f.fixture_id for f in fixtures if get_pm_types(f.test_area, f.project_name)]
+    )
     assignees = assignee_names(db, fixtures)
 
     summary = _empty_counts()
@@ -791,7 +799,9 @@ def create_pm_record(
 
     pm_type = payload.pm_type.strip().lower()
     label = PM_TYPE_LABELS.get(pm_type, pm_type)
-    checklist = get_checklist(pm_type, fixture.test_area, db)
+    checklist = get_checklist(
+        pm_type, fixture.test_area, db, project_name=fixture.project_name
+    )
     if not checklist:
         raise HTTPException(
             status_code=400,

@@ -10,14 +10,39 @@ export function pmTypeLabel(pmType) {
 }
 
 // Keep in sync with backend/app/utils/pm_checklists.py
-const PM_TYPES_BY_AREA_PREFIX = {
+const PM_TYPES_BY_FAMILY = {
   FBT: ["weekly", "biweekly"],
-  ICT: ["monthly"],
+  ICT: ["monthly"], // GL6 ICT fixtures (ICT_Mobo / ICT_Agora)
+  KEYSIGHT: ["monthly"], // Keysight i3070 system (area 3070)
   BSI: ["weekly", "biweekly", "monthly"],
 };
 
-export function pmTypesForArea(testArea) {
+/** Areas that use a checklist family without matching the family name prefix. */
+const PM_AREA_ALIASES = {
+  "3070": "KEYSIGHT",
+};
+
+/** GL6 ICT fixture PM is not used on these projects. */
+const ICT_FIXTURE_EXCLUDED_PROJECTS = new Set([
+  "IC Programming",
+  "Hi-Lo",
+  "Keysight",
+  "Flying Probe",
+]);
+
+function normalizeProject(projectName) {
+  const name = String(projectName || "").trim();
+  return name === "Hi-Lo" ? "IC Programming" : name;
+}
+
+export function pmTypesForArea(testArea, projectName) {
   const area = String(testArea || "").trim().toUpperCase();
-  const prefix = Object.keys(PM_TYPES_BY_AREA_PREFIX).find((p) => area.startsWith(p));
-  return prefix ? PM_TYPES_BY_AREA_PREFIX[prefix] : [];
+  const family =
+    PM_AREA_ALIASES[area] ||
+    Object.keys(PM_TYPES_BY_FAMILY).find((p) => area.startsWith(p));
+  if (!family) return [];
+  if (family === "ICT" && ICT_FIXTURE_EXCLUDED_PROJECTS.has(normalizeProject(projectName))) {
+    return [];
+  }
+  return PM_TYPES_BY_FAMILY[family] || [];
 }

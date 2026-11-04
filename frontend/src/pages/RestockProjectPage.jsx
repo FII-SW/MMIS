@@ -9,6 +9,7 @@ import PageLoadingState from "../components/PageLoadingState";
 import { getProjects } from "../utils/projects";
 import { projectRequiresTestArea } from "../utils/inventoryRules";
 import { normalizeProjectName } from "../utils/icProgramming";
+import { soleTestAreaForProject } from "../utils/testAreas";
 
 export default function RestockProjectPage() {
   const navigate = useNavigate();
@@ -66,6 +67,13 @@ export default function RestockProjectPage() {
 
   const handleProjectClick = (project) => {
     const name = normalizeProjectName(project);
+    const soleArea = soleTestAreaForProject(name);
+    if (soleArea) {
+      navigate(
+        `/dashboard/restock/items?project=${encodeURIComponent(name)}&test_area=${encodeURIComponent(soleArea)}`
+      );
+      return;
+    }
     if (!projectRequiresTestArea(name)) {
       navigate(`/dashboard/restock/items?project=${encodeURIComponent(name)}`);
     } else {

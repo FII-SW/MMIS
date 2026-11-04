@@ -1,14 +1,27 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
-import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
+import { soleTestAreaForProject, testAreasForProject } from "../utils/testAreas";
+import { useEffect } from "react";
 
 export default function RequestTestAreaPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
   const project = params.get("project");
-  const testAreas = DEFAULT_TEST_AREAS;
+  const testAreas = testAreasForProject(project);
+
+  const soleArea = soleTestAreaForProject(project);
+
+  useEffect(() => {
+    if (!project || !soleArea) return;
+    navigate(
+      `/dashboard/request/search?project=${encodeURIComponent(project)}&test_area=${encodeURIComponent(soleArea)}`,
+      { replace: true }
+    );
+  }, [project, soleArea, navigate]);
+
+  if (soleArea) return null;
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">

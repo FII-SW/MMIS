@@ -6,6 +6,7 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { getProjects } from "../utils/projects";
 import { projectRequiresTestArea } from "../utils/inventoryRules";
 import { normalizeProjectName } from "../utils/icProgramming";
+import { soleTestAreaForProject } from "../utils/testAreas";
 
 export default function RequestProjectPage() {
   const navigate = useNavigate();
@@ -32,6 +33,13 @@ export default function RequestProjectPage() {
 
   const handleProjectClick = (project) => {
     const name = normalizeProjectName(project);
+    const soleArea = soleTestAreaForProject(name);
+    if (soleArea) {
+      navigate(
+        `/dashboard/request/search?project=${encodeURIComponent(name)}&test_area=${encodeURIComponent(soleArea)}`
+      );
+      return;
+    }
     if (!projectRequiresTestArea(name)) {
       navigate(`/dashboard/request/search?project=${encodeURIComponent(name)}`);
     } else {

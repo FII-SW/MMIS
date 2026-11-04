@@ -338,7 +338,8 @@ export const HELP_ARTICLES = [
           "FBT test areas (FBT_Mobo, FBT_Agora): Weekly PM once every work week (Monday–Sunday), and Biweekly PM within 2 work weeks (done in WW38 → due by the end of WW40).",
           "BSI test areas (BSI_Mobo): Weekly, Biweekly, and Monthly PM. The checklist is the same for all three; only how often it is due changes.",
           "A Biweekly PM also counts as that week’s Weekly PM. A Monthly PM also counts for Weekly and Biweekly — no need to do all three on the same day.",
-          "ICT test areas (ICT_Mobo, ICT_Agora): Monthly PM once every calendar month.",
+          "ICT_Mobo / ICT_Agora (board projects): Monthly GL6 ICT Fixtures PM. Not used on IC Programming, Keysight, or Flying Probe.",
+          "Keysight / 3070: Monthly Keysight i3070 System PM (DOC-001523).",
           "Other test areas have no PM checklist yet. Quarterly PM will appear once its checklist is set up.",
         ],
       },
@@ -485,7 +486,9 @@ export const HELP_ARTICLES = [
       {
         heading: "Fixture Maintenance",
         steps: [
-          "Fixture Maintenance → Keysight → 3070 → open the fixture for PM.",
+          "Fixture Maintenance → Keysight → 3070 → open Keysight_3070_01 … _70.",
+          "Monthly PM uses the Keysight i3070 checklist (DOC-001523), not the GL6 ICT fixture list.",
+          "Parts taken from stock deduct from Keysight inventory.",
         ],
       },
     ],
@@ -494,7 +497,7 @@ export const HELP_ARTICLES = [
       { label: "Restock", path: "/dashboard/restock" },
       { label: "Fixture Maintenance", path: "/dashboard/maintenance" },
     ],
-    keywords: ["keysight", "3070", "ict", "fixture", "pm"],
+    keywords: ["keysight", "3070", "ict", "fixture", "pm", "doc-001523", "i3070"],
     routes: ["/dashboard/request", "/dashboard/restock", "/dashboard/maintenance"],
   },
   {
@@ -884,7 +887,7 @@ export const HELP_ARTICLES = [
       {
         heading: "PM checklists",
         steps: [
-          "The Checklists tab edits FBT, BSI, and ICT task lists (Weekly, Biweekly, and Monthly where each family has them).",
+          "The Checklists tab edits FBT, BSI, ICT (GL6 fixtures), and KEYSIGHT (i3070) task lists.",
           "Change the wording, add or remove a task, or reorder them, then Save checklist.",
           "The next PM someone records uses the new list. PMs already recorded keep the tasks they had at the time.",
           "A task with an open issue can't be removed until that issue is resolved.",

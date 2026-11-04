@@ -5,7 +5,7 @@ import AccessDenied from "../components/AccessDenied";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
-import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
+import { soleTestAreaForProject, testAreasForProject } from "../utils/testAreas";
 
 export default function RestockTestAreaPage() {
   const navigate = useNavigate();
@@ -14,6 +14,8 @@ export default function RestockTestAreaPage() {
   const [loading, setLoading] = useState(true);
 
   const project = params.get("project");
+  const testAreas = testAreasForProject(project);
+  const soleArea = soleTestAreaForProject(project);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -28,15 +30,21 @@ export default function RestockTestAreaPage() {
     setLoading(false);
   }, []);
 
-  if (loading) {
+  useEffect(() => {
+    if (loading || accessLevel !== "admin" || !project || !soleArea) return;
+    navigate(
+      `/dashboard/restock/items?project=${encodeURIComponent(project)}&test_area=${encodeURIComponent(soleArea)}`,
+      { replace: true }
+    );
+  }, [loading, accessLevel, project, soleArea, navigate]);
+
+  if (loading || (accessLevel === "admin" && soleArea)) {
     return <PageLoadingState title="Restock" onBack={() => navigate("/dashboard/restock")} />;
   }
 
   if (accessLevel !== "admin") {
     return <AccessDenied feature="the Restock feature" backTo="/dashboard" />;
   }
-
-  const testAreas = DEFAULT_TEST_AREAS;
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">

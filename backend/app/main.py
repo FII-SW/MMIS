@@ -181,6 +181,28 @@ def ensure_super_admin_columns():
         )
 
 
+def _seed_fixtures(conn, project: str, test_area: str, names: list[str]):
+    """Insert missing fixtures for a project/test area (idempotent)."""
+    for name in names:
+        exists = conn.execute(
+            text(
+                "SELECT 1 FROM fixtures "
+                "WHERE project_name = :project AND fixture_name = :name "
+                "LIMIT 1"
+            ),
+            {"project": project, "name": name},
+        ).first()
+        if exists:
+            continue
+        conn.execute(
+            text(
+                "INSERT INTO fixtures (fixture_name, test_area, project_name) "
+                "VALUES (:name, :area, :project)"
+            ),
+            {"name": name, "area": test_area, "project": project},
+        )
+
+
 def ensure_ic_programming():
     """Rename legacy Hi-Lo → IC Programming and seed programmer machines."""
     from .utils.inventory_rules import (
@@ -221,28 +243,37 @@ def ensure_ic_programming():
         if "fixture_name" not in fixture_cols:
             return
 
-        for machine in IC_PROGRAMMING_MACHINES:
-            exists = conn.execute(
-                text(
-                    "SELECT 1 FROM fixtures "
-                    "WHERE project_name = :project AND fixture_name = :name "
-                    "LIMIT 1"
-                ),
-                {"project": IC_PROGRAMMING_PROJECT, "name": machine},
-            ).first()
-            if exists:
-                continue
-            conn.execute(
-                text(
-                    "INSERT INTO fixtures (fixture_name, test_area, project_name) "
-                    "VALUES (:name, :area, :project)"
-                ),
-                {
-                    "name": machine,
-                    "area": IC_PROGRAMMING_TEST_AREA,
-                    "project": IC_PROGRAMMING_PROJECT,
-                },
-            )
+        _seed_fixtures(
+            conn,
+            IC_PROGRAMMING_PROJECT,
+            IC_PROGRAMMING_TEST_AREA,
+            list(IC_PROGRAMMING_MACHINES),
+        )
+
+
+def ensure_keysight_fixtures():
+    """Seed Keysight_3070_01 … Keysight_3070_70 for Monthly PM (DOC-001523)."""
+    from .utils.inventory_rules import (
+        KEYSIGHT_PROJECT,
+        KEYSIGHT_TEST_AREA,
+        keysight_fixture_names,
+    )
+
+    inspector = inspect(engine)
+    try:
+        fixture_cols = {c["name"] for c in inspector.get_columns("fixtures")}
+    except Exception:
+        return
+    if "fixture_name" not in fixture_cols:
+        return
+
+    with engine.begin() as conn:
+        _seed_fixtures(
+            conn,
+            KEYSIGHT_PROJECT,
+            KEYSIGHT_TEST_AREA,
+            keysight_fixture_names(),
+        )
 
 
 def run_startup_migrations():
@@ -257,6 +288,7 @@ def run_startup_migrations():
             ensure_pm_workflow_columns()
             ensure_super_admin_columns()
             ensure_ic_programming()
+            ensure_keysight_fixtures()
         finally:
             lock_conn.execute(text("SELECT pg_advisory_unlock(:id)"), {"id": MIGRATION_LOCK_ID})
 

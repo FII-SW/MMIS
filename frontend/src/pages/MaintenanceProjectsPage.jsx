@@ -6,6 +6,7 @@ import PMStatusLine from "../components/maintenance/PMStatusLine";
 import { FIXTURE_MAINTENANCE_TITLE, fixtureListUrl, testAreaUrl } from "../components/maintenance/links";
 import { getProjects } from "../utils/projects";
 import { projectRequiresTestArea } from "../utils/inventoryRules";
+import { soleTestAreaForProject } from "../utils/testAreas";
 
 const COUNT_FIELDS = ["fixtures", "overdue", "due_soon", "never", "ok", "paused"];
 
@@ -49,8 +50,14 @@ export default function MaintenanceProjectsPage() {
   const q = search.trim().toLowerCase();
   const filteredProjects = projects.filter((project) => project.toLowerCase().includes(q));
 
-  const openProject = (project) =>
+  const openProject = (project) => {
+    const soleArea = soleTestAreaForProject(project);
+    if (soleArea) {
+      navigate(fixtureListUrl(project, soleArea));
+      return;
+    }
     navigate(projectRequiresTestArea(project) ? testAreaUrl(project) : fixtureListUrl(project));
+  };
 
   return (
     <div className="min-h-screen bg-transparent transition-colors">

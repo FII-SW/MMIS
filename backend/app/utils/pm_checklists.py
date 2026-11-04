@@ -74,7 +74,8 @@ _FBT_BIWEEKLY = [
     ("clean_top", "Clean top of fixture"),
 ]
 
-_ICT_MONTHLY = [
+# Keysight i3070 system (project Keysight / test area 3070) — DOC-001523
+_KEYSIGHT_MONTHLY = [
     ("fans_filters", "10.1.1 Clean fans and filters"),
     ("testhead_inside", "10.1.2 Clean inside of the testhead"),
     ("air_pressure", "10.1.3 Check air pressure"),
@@ -88,9 +89,38 @@ _ICT_MONTHLY = [
     ("calibration_label", "10.1.11 Calibration label"),
 ]
 
+# GL6 ICT fixtures (ICT_Mobo / ICT_Agora) for board projects — not Keysight / IC / Flying Probe
+_ICT_FIXTURE_MONTHLY = [
+    ("cover_cleaning", "10.3.1 Cover Cleaning and not damage"),
+    ("tooling_pins", "10.3.2 Check the tooling pins that are not bent"),
+    ("fixture_gasket", "10.3.3 Check Fixture Gasket top and bottom"),
+    ("work_instruction", "10.3.4 Check that Work Instruction present"),
+    ("air_pressure_filter", "10.3.5 Check air pressure filter not leaks"),
+    ("actuation_counter", "10.3.6 Check actuation counter works properly"),
+    ("thermal_part", "10.3.7 Check thermal part no damage"),
+    ("cylinders", "10.3.8 Check cylinders not leaks"),
+    ("lubricate_pins", "10.3.9 Lubricate alignment guide pins"),
+    ("transfer_cables", "10.3.10 Check transfer cables and communications"),
+    ("push_fingers", "10.3.11 Check push fingers and not loose screws"),
+    ("switches_status", "10.3.12 Verify switches status"),
+    ("verification_test", "10.3.13 Run verification test"),
+    ("replaced_parts_report", "10.3.14 Send Reports of replaced parts"),
+    ("pc_screen", "10.3.15 Check PC Screen not damage"),
+]
+
 _ICT_NOTE = (
     "Repair, replace and make adjustments as required. List any comments below. "
     "Order and list any replacement parts needed."
+)
+
+# GL6 ICT fixture PM is for board projects only (Astoria, Bondi Beach, …).
+ICT_FIXTURE_EXCLUDED_PROJECTS = frozenset(
+    {
+        "IC Programming",
+        "Hi-Lo",
+        "Keysight",
+        "Flying Probe",
+    }
 )
 
 # Same task list for BSI weekly, biweekly, and monthly (schedule differs; tasks do not).
@@ -218,12 +248,23 @@ _CHECKLISTS = {
     },
     "ICT": {
         "monthly": {
+            "title": "GL6 ICT Fixtures PM - Monthly PM",
+            "description": "ICT FIXTURE",
+            "summary": "GL6 ICT fixtures monthly preventive maintenance.",
+            "reference": None,
+            "note": _ICT_NOTE,
+            "details": True,
+            "sections": [("Monthly PM", _ICT_FIXTURE_MONTHLY)],
+        },
+    },
+    "KEYSIGHT": {
+        "monthly": {
             "title": "Keysight i3070 System PM - Monthly PM",
-            "description": "IN CIRCUIT TEST SYSTEM",
+            "description": "In-circuit test system monthly preventive maintenance.",
             "summary": "In-circuit test system monthly preventive maintenance.",
             "reference": "Follow the instructions in the document: DOC-001523",
             "note": _ICT_NOTE,
-            "sections": [("Monthly PM", _ICT_MONTHLY)],
+            "sections": [("Monthly PM", _KEYSIGHT_MONTHLY)],
         },
     },
     "BSI": {
@@ -234,15 +275,44 @@ _CHECKLISTS = {
 }
 
 
-PM_TEST_AREA_PREFIXES = tuple(_CHECKLISTS)
+# SQL / overview filters: area name starts with these (KEYSIGHT uses exact area 3070).
+PM_TEST_AREA_PREFIXES = ("FBT", "ICT", "BSI")
+
+# Test areas that use a checklist family without matching the family name prefix.
+_TEST_AREA_FAMILY_ALIASES = {
+    "3070": "KEYSIGHT",
+}
+PM_EXACT_TEST_AREAS = tuple(_TEST_AREA_FAMILY_ALIASES.keys())
+
+
+def _normalize_project(project_name: str | None) -> str:
+    name = str(project_name or "").strip()
+    if name == "Hi-Lo":
+        return "IC Programming"
+    return name
 
 
 def _family(test_area: str | None) -> str | None:
     area = (test_area or "").strip().upper()
-    for family in _CHECKLISTS:
+    if not area:
+        return None
+    alias = _TEST_AREA_FAMILY_ALIASES.get(area)
+    if alias:
+        return alias
+    for family in PM_TEST_AREA_PREFIXES:
         if area.startswith(family):
             return family
     return None
+
+
+def _project_allows_family(family: str | None, project_name: str | None) -> bool:
+    """ICT fixture PM is not used on IC Programming, Keysight, or Flying Probe."""
+    if family != "ICT":
+        return True
+    if project_name is None:
+        # Call sites without a project (admin preview) still see the GL6 list.
+        return True
+    return _normalize_project(project_name) not in ICT_FIXTURE_EXCLUDED_PROJECTS
 
 
 def is_fbt_test_area(test_area: str | None) -> bool:
@@ -250,7 +320,12 @@ def is_fbt_test_area(test_area: str | None) -> bool:
 
 
 def is_ict_test_area(test_area: str | None) -> bool:
+    """ICT_Mobo / ICT_Agora fixture areas (not Keysight 3070)."""
     return _family(test_area) == "ICT"
+
+
+def is_keysight_test_area(test_area: str | None) -> bool:
+    return _family(test_area) == "KEYSIGHT"
 
 
 def is_bsi_test_area(test_area: str | None) -> bool:
@@ -262,10 +337,10 @@ def configured_pm_types() -> set[str]:
     return {pm_type for config in _CHECKLISTS.values() for pm_type in config}
 
 
-def get_pm_types(test_area: str | None) -> list[str]:
-    """PM types configured for a test area, in PM_TYPES order."""
+def get_pm_types(test_area: str | None, project_name: str | None = None) -> list[str]:
+    """PM types configured for a test area (and project, for ICT fixtures)."""
     family = _family(test_area)
-    if not family:
+    if not family or not _project_allows_family(family, project_name):
         return []
     return [pm_type for pm_type in PM_TYPES if pm_type in _CHECKLISTS[family]]
 
@@ -402,11 +477,18 @@ def _apply_saved(config: dict, saved: dict) -> dict:
     return config
 
 
-def get_checklist(pm_type: str, test_area: str | None, db=None) -> dict | None:
-    """Return the checklist for a PM type and test area, or None when not configured."""
+def get_checklist(
+    pm_type: str,
+    test_area: str | None,
+    db=None,
+    project_name: str | None = None,
+) -> dict | None:
+    """Return the checklist for a PM type, test area, and project — or None when not configured."""
     pm_type = (pm_type or "").strip().lower()
     family = _family(test_area)
-    config = _CHECKLISTS.get(family, {}).get(pm_type) if family else None
+    if not family or not _project_allows_family(family, project_name):
+        return None
+    config = _CHECKLISTS.get(family, {}).get(pm_type)
     if not config:
         return None
     saved = _saved_body(db, family, pm_type)

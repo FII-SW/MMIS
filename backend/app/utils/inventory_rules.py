@@ -8,6 +8,18 @@ IC_PROGRAMMING_MACHINES = (
     "AT3-310A2N",
 )
 
+KEYSIGHT_PROJECT = "Keysight"
+KEYSIGHT_TEST_AREA = "3070"
+KEYSIGHT_FIXTURE_COUNT = 70
+
+
+def keysight_fixture_names():
+    """Keysight_3070_01 … Keysight_3070_70."""
+    return [
+        f"{KEYSIGHT_PROJECT}_{KEYSIGHT_TEST_AREA}_{i:02d}"
+        for i in range(1, KEYSIGHT_FIXTURE_COUNT + 1)
+    ]
+
 SKIP_TEST_AREA_PROJECTS = frozenset(
     {IC_PROGRAMMING_PROJECT, IC_PROGRAMMING_LEGACY_NAME, "Flying Probe", "Development"}
 )
