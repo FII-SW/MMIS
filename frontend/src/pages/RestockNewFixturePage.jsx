@@ -9,7 +9,7 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
 import FixtureDescriptorFields from "../components/FixtureDescriptorFields";
-import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
+import { testAreasForProject } from "../utils/testAreas";
 import {
   IC_PROGRAMMING_PROJECT,
   IC_PROGRAMMING_TEST_AREA,
@@ -26,8 +26,6 @@ export default function RestockNewFixturePage() {
   const [testAreaSearch, setTestAreaSearch] = useState("");
   const testAreaRef = useRef(null);
 
-  const testAreas = DEFAULT_TEST_AREAS;
-
   const [formData, setFormData] = useState({
     fixture_name: "",
     project_name: "",
@@ -41,6 +39,7 @@ export default function RestockNewFixturePage() {
   const [employeeId, setEmployeeId] = useState(null);
 
   const isIcProgramming = isIcProgrammingProject(formData.project_name);
+  const testAreas = testAreasForProject(formData.project_name);
 
   const filteredTestAreas = testAreas.filter((area) =>
     area.toLowerCase().includes(testAreaSearch.toLowerCase())

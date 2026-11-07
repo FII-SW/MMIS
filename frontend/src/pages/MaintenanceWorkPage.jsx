@@ -21,6 +21,12 @@ import {
   activePMCount,
 } from "../components/maintenance/pmStatus";
 import { PM_TYPE_LABELS } from "../components/maintenance/pmTypes";
+import { soleTestAreaForProject } from "../utils/testAreas";
+import {
+  findFixtureSequenceGaps,
+  padSequenceNumber,
+  sequenceSearchToken,
+} from "../utils/fixtureSequence";
 
 const PAGE_SIZES = [25, 50, 100];
 const PM_TYPE_ORDER = Object.keys(PM_TYPE_LABELS);
@@ -193,6 +199,19 @@ export default function MaintenanceWorkPage() {
     return PM_TYPE_ORDER.filter((type) => present.has(type));
   }, [fixtures]);
 
+  const sequenceGaps = useMemo(() => {
+    if (allMode || !project || !testArea) return { gaps: [], width: 2 };
+    return findFixtureSequenceGaps(fixtures, project, testArea);
+  }, [fixtures, project, testArea, allMode]);
+
+  const searchMissingNumber = (n) => {
+    setSearch(sequenceSearchToken(n, sequenceGaps.width));
+    setStateFilter("all");
+    setLineFilter("all");
+    setSortKey("name");
+    setSortDir("asc");
+  };
+
   useEffect(() => {
     setPage(1);
   }, [search, stateFilter, lineFilter, sortKey, sortDir, pageSize]);
@@ -230,11 +249,14 @@ export default function MaintenanceWorkPage() {
   const handleBack = () => {
     if (allMode) {
       navigate(MAINTENANCE_DASHBOARD_URL);
-    } else if (testArea) {
-      navigate(testAreaUrl(project));
-    } else {
-      navigate(MAINTENANCE_PROJECTS_URL);
+      return;
     }
+    // Keysight skips the test-area picker — Back goes to projects.
+    if (testArea && !soleTestAreaForProject(project)) {
+      navigate(testAreaUrl(project));
+      return;
+    }
+    navigate(MAINTENANCE_PROJECTS_URL);
   };
 
   if (loading) {
@@ -304,7 +326,7 @@ export default function MaintenanceWorkPage() {
                 </span>
                 <input
                   type="text"
-                  placeholder="Search fixture, asset, serial, line, or manufacturer…"
+                  placeholder="Search name, # (e.g. _03), asset, serial, line…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-9 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900"
@@ -390,6 +412,61 @@ export default function MaintenanceWorkPage() {
           </div>
         )}
 
+        {sequenceGaps.gaps.length > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                  {sequenceGaps.gaps.length} number
+                  {sequenceGaps.gaps.length === 1 ? "" : "s"} missing in sequence
+                </p>
+                <p className="text-xs text-amber-800/80 dark:text-amber-200/80">
+                  Between {padSequenceNumber(sequenceGaps.min, sequenceGaps.width)} and{" "}
+                  {padSequenceNumber(sequenceGaps.max, sequenceGaps.width)}. Click a number to search —
+                  if nothing matches, it is not in MMIS yet.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSortKey("name");
+                  setSortDir("asc");
+                  setStateFilter("all");
+                }}
+                className="shrink-0 text-xs font-semibold text-amber-900 underline hover:no-underline dark:text-amber-200"
+              >
+                Sort by fixture name
+              </button>
+            </div>
+            <div className="mt-2 flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+              {sequenceGaps.gaps.slice(0, 40).map((n) => {
+                const token = sequenceSearchToken(n, sequenceGaps.width);
+                const active = search.trim() === token;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => searchMissingNumber(n)}
+                    className={`rounded-md px-2 py-1 font-mono text-xs font-semibold transition ${
+                      active
+                        ? "bg-amber-700 text-white"
+                        : "bg-white text-amber-900 hover:bg-amber-100 dark:bg-gray-900 dark:text-amber-100 dark:hover:bg-gray-800"
+                    }`}
+                    title={`Search for ${token}`}
+                  >
+                    {padSequenceNumber(n, sequenceGaps.width)}
+                  </button>
+                );
+              })}
+              {sequenceGaps.gaps.length > 40 && (
+                <span className="self-center text-xs text-amber-800 dark:text-amber-200">
+                  +{sequenceGaps.gaps.length - 40} more
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {savedMessage && (
           <p className="text-center text-sm font-medium text-green-700 dark:text-green-400">{savedMessage}</p>
         )}
@@ -406,12 +483,18 @@ export default function MaintenanceWorkPage() {
           <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow p-8 text-center max-w-lg mx-auto">
             <div className="text-4xl mb-3">🔧</div>
             <p className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
-              {fixtures.length === 0 ? "No fixtures found" : "No matching fixtures"}
+              {fixtures.length === 0
+                ? "No fixtures found"
+                : search.startsWith("_")
+                  ? `No fixture matching ${search}`
+                  : "No matching fixtures"}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {fixtures.length === 0
                 ? `There are no fixtures registered for ${locationLabel}.`
-                : "Try a different search term or status filter."}
+                : search.startsWith("_")
+                  ? "This number is not registered in MMIS for this project and test area. Add it under Restock → New Fixture if it exists on the floor."
+                  : "Try a different search term or status filter."}
             </p>
             {fixtures.length > 0 && filtersActive && (
               <button

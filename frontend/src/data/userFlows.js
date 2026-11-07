@@ -3,7 +3,7 @@
 export const FLOW_GROUPS = [
   { id: "stock", label: "Stock", hint: "Request, return, restock, transfer" },
   { id: "fixtures", label: "Fixtures", hint: "PM, edits, overdue, issues" },
-  { id: "lookup", label: "Look up", hint: "Activity, reports, alerts, documents" },
+  { id: "lookup", label: "Look up", hint: "Activity, reports, alerts, documents, servers" },
 ];
 
 export const USER_FLOWS = [
@@ -286,5 +286,22 @@ export const USER_FLOWS = [
       { title: "Preview or download the file", detail: "ZIP files are stored as documents and are not unpacked." },
       { title: "Admins can upload", detail: "PDF, Excel, PowerPoint, Word, CSV, text, and pictures up to 10 MB. ZIP files up to 200 MB." },
     ],
+  },
+  {
+    id: "servers",
+    group: "lookup",
+    title: "Record FBT servers",
+    summary: "Track server model, serial, IP, ZPE, network/Arista switches, and UPS by project.",
+    who: "everyone",
+    whoLabel: "Everyone (admins edit)",
+    path: "/dashboard/servers",
+    outcome: "Each FBT line has a list of servers. You can download the inventory as CSV.",
+    steps: [
+      { title: "Open Servers", detail: "It is in the left sidebar — separate from Fixture Maintenance and stock." },
+      { title: "Pick the project, then FBT_Mobo or FBT_Agora", detail: "Servers are only recorded for those two FBT areas." },
+      { title: "Add or edit a server", detail: "Admins enter model, serial, IP, ZPE, network switch, Arista, UPS, and notes." },
+      { title: "Download CSV when you need Excel", detail: "Use Browse & download CSV, or Download CSV on a project list. Filter by project and test area first." },
+    ],
+    note: "Keysight uses test area 3070 for ICT PM, not Servers. Board projects do not show 3070 or IC_Programming on Request/Restock/Maintenance pickers.",
   },
 ];

@@ -8,15 +8,13 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
 import { getProjects } from "../utils/projects";
-import { getTestAreas } from "../utils/testAreas";
+import { testAreasForProject } from "../utils/testAreas";
 import { projectRequiresTestArea } from "../utils/inventoryRules";
 
 export default function RestockNewStockPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const project = params.get("project");
-
-  const testAreas = getTestAreas();
 
   const itemTypes = [
     "part",
@@ -46,6 +44,8 @@ export default function RestockNewStockPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+
+  const testAreas = testAreasForProject(formData.project_name || project);
 
   const fieldClass = (key) =>
     `w-full p-2 border rounded transition-colors dark:bg-gray-700 dark:text-white ${

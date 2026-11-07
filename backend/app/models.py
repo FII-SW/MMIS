@@ -247,6 +247,26 @@ class AppSetting(Base):
     updated_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
 
 
+class Server(Base):
+    """FBT rack/server assets (FBT_Mobo / FBT_Agora), tracked per project."""
+    __tablename__ = "servers"
+
+    server_id = Column(Integer, primary_key=True, index=True)
+    project_name = Column(String(100), nullable=False, index=True)
+    test_area = Column(String(20), nullable=False, index=True)  # FBT_Mobo | FBT_Agora
+    server_model = Column(String(100), nullable=False)
+    serial_number = Column(String(100), nullable=True)
+    server_ip = Column(String(50), nullable=True)
+    zpe_switch = Column(String(100), nullable=True)
+    network_switch = Column(String(100), nullable=True)
+    arista_switch = Column(String(100), nullable=True)
+    ups = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)
+
+
 class ProjectDocument(Base):
     __tablename__ = "project_documents"
 

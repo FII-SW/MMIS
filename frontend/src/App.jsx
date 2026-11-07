@@ -38,6 +38,10 @@ import MaintenanceFixtureDetailPage from "./pages/MaintenanceFixtureDetailPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
+import ServersProjectPage from "./pages/ServersProjectPage";
+import ServersTestAreaPage from "./pages/ServersTestAreaPage";
+import ServersListPage from "./pages/ServersListPage";
+import ServersInventoryPage from "./pages/ServersInventoryPage";
 import Layout from "./components/Layout";
 
 const EDITORS = ["admin", "user"];
@@ -74,6 +78,10 @@ export default function App() {
         <Route path="/dashboard/reports/preventive-maintenance" element={withLayout(EVERYONE, <PMReportPage />)} />
         <Route path="/dashboard/activity" element={withLayout(EVERYONE, <ActivityPage />)} />
         <Route path="/dashboard/documents" element={withLayout(EVERYONE, <DocumentsPage />)} />
+        <Route path="/dashboard/servers" element={withLayout(EVERYONE, <ServersProjectPage />)} />
+        <Route path="/dashboard/servers/inventory" element={withLayout(EVERYONE, <ServersInventoryPage />)} />
+        <Route path="/dashboard/servers/test-area" element={withLayout(EVERYONE, <ServersTestAreaPage />)} />
+        <Route path="/dashboard/servers/list" element={withLayout(EVERYONE, <ServersListPage />)} />
         <Route path="/dashboard/how-it-works" element={withLayout(EVERYONE, <HowItWorksPage />)} />
         <Route path="/dashboard/maintenance" element={withLayout(EVERYONE, <MaintenanceProjectsPage />)} />
         <Route path="/dashboard/maintenance/dashboard" element={withLayout(EVERYONE, <MaintenancePage />)} />

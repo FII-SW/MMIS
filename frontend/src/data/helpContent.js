@@ -462,6 +462,50 @@ export const HELP_ARTICLES = [
     keywords: ["project", "astoria", "athena", "turin", "asahi", "keysight", "ic programming", "hi-lo", "list"],
   },
   {
+    id: "servers-inventory",
+    title: "Servers (FBT)",
+    icon: "🖥️",
+    category: "Workflows",
+    summary: "Record FBT servers by project — model, serial, IP, ZPE, network/Arista switches, and UPS.",
+    roles: ["admin", "user", "viewer"],
+    sections: [
+      {
+        heading: "Where to find it",
+        steps: [
+          "Open Servers in the left sidebar (separate from Fixture Maintenance and stock Inventory).",
+          "Pick a project, then FBT_Mobo or FBT_Agora only.",
+        ],
+      },
+      {
+        heading: "What to record",
+        steps: [
+          "Server model, serial number, and server IP.",
+          "ZPE switch, network switch, Arista switch, and UPS.",
+          "Optional notes (rack, cables, etc.).",
+        ],
+      },
+      {
+        heading: "Who can edit",
+        steps: [
+          "Everyone can view. Admins can add, edit, and delete servers.",
+        ],
+      },
+      {
+        heading: "Download CSV",
+        steps: [
+          "Servers → Browse & download CSV, or open a project list and click Download CSV.",
+          "Filter by project and/or FBT test area (FBT_Mobo / FBT_Agora), then download the filtered rows for Excel.",
+        ],
+      },
+    ],
+    links: [
+      { label: "Open Servers", path: "/dashboard/servers" },
+      { label: "Browse & download CSV", path: "/dashboard/servers/inventory" },
+    ],
+    keywords: ["server", "fbt", "ip", "zpe", "arista", "ups", "switch", "serial", "csv", "export"],
+    routes: ["/dashboard/servers"],
+  },
+  {
     id: "keysight-3070",
     title: "Keysight / 3070",
     icon: "🧪",

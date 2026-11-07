@@ -8,7 +8,7 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import { apiErrorMessage } from "../utils/apiError";
 import { getProjects } from "../utils/projects";
-import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
+import { testAreasForProject } from "../utils/testAreas";
 
 export default function RestockEditItemPage() {
   const { item_id } = useParams();
@@ -49,6 +49,7 @@ export default function RestockEditItemPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [projects, setProjects] = useState(getProjects());
+  const testAreas = testAreasForProject(formData.project_name || project);
 
   // Reload projects when component mounts or when projects are updated
   useEffect(() => {
@@ -413,7 +414,7 @@ export default function RestockEditItemPage() {
                         className="w-full p-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded transition-colors"
                       >
                         <option value="">Select Test Area</option>
-                        {DEFAULT_TEST_AREAS.map((area) => (
+                        {testAreas.map((area) => (
                           <option key={area} value={area}>
                             {area}
                           </option>

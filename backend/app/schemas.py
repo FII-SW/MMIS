@@ -182,3 +182,105 @@ class ProjectDocumentOut(BaseModel):
 
 class ProjectDocumentPinUpdate(BaseModel):
     is_pinned: bool
+
+
+# ===== Servers (FBT rack assets) =====
+SERVER_TEST_AREAS = ("FBT_Mobo", "FBT_Agora")
+
+
+class ServerBase(BaseModel):
+    project_name: str = Field(..., min_length=1, max_length=100)
+    test_area: str = Field(..., min_length=1, max_length=20)
+    server_model: str = Field(..., min_length=1, max_length=100)
+    serial_number: Optional[str] = Field(default=None, max_length=100)
+    server_ip: Optional[str] = Field(default=None, max_length=50)
+    zpe_switch: Optional[str] = Field(default=None, max_length=100)
+    network_switch: Optional[str] = Field(default=None, max_length=100)
+    arista_switch: Optional[str] = Field(default=None, max_length=100)
+    ups: Optional[str] = Field(default=None, max_length=100)
+    notes: Optional[str] = None
+
+    @validator("test_area")
+    def validate_test_area(cls, value):
+        area = (value or "").strip()
+        if area not in SERVER_TEST_AREAS:
+            raise ValueError(f"test_area must be one of {', '.join(SERVER_TEST_AREAS)}")
+        return area
+
+    @validator("project_name", "server_model")
+    def strip_required(cls, value):
+        text = (value or "").strip()
+        if not text:
+            raise ValueError("This field is required")
+        return text
+
+    @validator(
+        "serial_number",
+        "server_ip",
+        "zpe_switch",
+        "network_switch",
+        "arista_switch",
+        "ups",
+        "notes",
+        pre=True,
+        always=True,
+    )
+    def blank_to_none(cls, value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+
+class ServerCreate(ServerBase):
+    pass
+
+
+class ServerUpdate(BaseModel):
+    project_name: Optional[str] = Field(default=None, max_length=100)
+    test_area: Optional[str] = Field(default=None, max_length=20)
+    server_model: Optional[str] = Field(default=None, max_length=100)
+    serial_number: Optional[str] = Field(default=None, max_length=100)
+    server_ip: Optional[str] = Field(default=None, max_length=50)
+    zpe_switch: Optional[str] = Field(default=None, max_length=100)
+    network_switch: Optional[str] = Field(default=None, max_length=100)
+    arista_switch: Optional[str] = Field(default=None, max_length=100)
+    ups: Optional[str] = Field(default=None, max_length=100)
+    notes: Optional[str] = None
+
+    @validator("test_area")
+    def validate_test_area(cls, value):
+        if value is None:
+            return value
+        area = value.strip()
+        if area not in SERVER_TEST_AREAS:
+            raise ValueError(f"test_area must be one of {', '.join(SERVER_TEST_AREAS)}")
+        return area
+
+    @validator(
+        "project_name",
+        "server_model",
+        "serial_number",
+        "server_ip",
+        "zpe_switch",
+        "network_switch",
+        "arista_switch",
+        "ups",
+        "notes",
+        pre=True,
+    )
+    def strip_optional(cls, value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+
+class ServerOut(ServerBase):
+    server_id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    updated_by_employee_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True

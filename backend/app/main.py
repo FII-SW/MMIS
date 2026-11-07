@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import ProgrammingError
 from .database import Base, engine
-from .routes import admin, checklist_admin, notifications, employees, inventory, transactions, reports, alerts, activity, fixtures, documents, maintenance, pm_workflow, pm_dashboard, pm_report
+from .routes import admin, checklist_admin, notifications, employees, inventory, transactions, reports, alerts, activity, fixtures, documents, maintenance, pm_workflow, pm_dashboard, pm_report, servers
 from . import auth
 from .utils.scheduler import start_scheduler, stop_scheduler
 import os
@@ -155,6 +155,53 @@ def ensure_pm_workflow_columns():
         )
 
 
+def ensure_employee_access_level_allows_viewer():
+    """Signup creates Viewer accounts; older DBs only allowed user/admin in a CHECK constraint."""
+    with engine.begin() as conn:
+        try:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT con.conname, pg_get_constraintdef(con.oid) AS def
+                    FROM pg_constraint con
+                    JOIN pg_class rel ON rel.oid = con.conrelid
+                    JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+                    WHERE nsp.nspname = current_schema()
+                      AND rel.relname = 'employees'
+                      AND con.contype = 'c'
+                      AND pg_get_constraintdef(con.oid) ILIKE '%employee_access_level%'
+                    """
+                )
+            ).fetchall()
+        except Exception:
+            return
+
+        # Already allows viewer — leave alone.
+        if any(row[1] and "viewer" in row[1].lower() for row in rows):
+            return
+
+        for name, _def in rows:
+            if not name:
+                continue
+            conn.execute(text(f'ALTER TABLE employees DROP CONSTRAINT IF EXISTS "{name}"'))
+
+        # Accept viewer / user / admin / superadmin (and common legacy spellings).
+        conn.execute(
+            text(
+                """
+                ALTER TABLE employees
+                ADD CONSTRAINT employees_employee_access_level_check
+                CHECK (
+                    employee_access_level IS NULL
+                    OR lower(
+                        replace(replace(replace(employee_access_level, '_', ''), '-', ''), ' ', '')
+                    ) IN ('viewer', 'user', 'admin', 'superadmin')
+                )
+                """
+            )
+        )
+
+
 def ensure_super_admin_columns():
     """Backward-compatible migration for account deactivation and PM assignments."""
     _add_missing_columns(
@@ -179,6 +226,7 @@ def ensure_super_admin_columns():
                 "ON fixtures (pm_assigned_employee_id)"
             )
         )
+    ensure_employee_access_level_allows_viewer()
 
 
 def _seed_fixtures(conn, project: str, test_area: str, names: list[str]):
@@ -342,6 +390,7 @@ app.include_router(pm_report.router)
 app.include_router(admin.router)
 app.include_router(checklist_admin.router)
 app.include_router(notifications.router)
+app.include_router(servers.router)
 
 @app.get("/")
 def root():

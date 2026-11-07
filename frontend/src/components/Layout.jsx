@@ -64,6 +64,7 @@ export default function Layout({ children }) {
       { path: "/dashboard/reports", label: "Reports" },
       { path: "/dashboard/activity", label: "Activity History" },
       { path: "/dashboard/documents", label: "Documents" },
+      { path: "/dashboard/servers", label: "Servers" },
       {
         path: "/dashboard/maintenance",
         label: "Fixture Maintenance",

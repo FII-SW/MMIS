@@ -8,6 +8,7 @@ import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import { projectRequiresTestArea } from "../utils/inventoryRules";
+import { soleTestAreaForProject } from "../utils/testAreas";
 
 export default function RestockItemPage() {
   const [items, setItems] = useState([]);
@@ -78,11 +79,12 @@ export default function RestockItemPage() {
   }, [items, searchInput]);
 
   const handleBack = () => {
-    if (test_area) {
+    // Keysight skips the test-area picker — Back goes to projects.
+    if (test_area && !soleTestAreaForProject(project)) {
       navigate(`/dashboard/restock/test-area?project=${encodeURIComponent(project)}`);
-    } else {
-      navigate("/dashboard/restock/project");
+      return;
     }
+    navigate("/dashboard/restock/project");
   };
 
   if (loading) {

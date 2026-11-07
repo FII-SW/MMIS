@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import { projectRequiresTestArea } from "../utils/inventoryRules";
+import { soleTestAreaForProject } from "../utils/testAreas";
 
 export default function RequestPage() {
   const [items, setItems] = useState([]);
@@ -66,11 +67,14 @@ export default function RequestPage() {
       if (project) query.set("project", project);
       if (test_area) query.set("test_area", test_area);
       navigate(`/dashboard/maintenance/fixture/${presetFixtureId}?${query.toString()}`);
-    } else if (test_area) {
-      navigate(`/dashboard/request/test-area?project=${encodeURIComponent(project)}`);
-    } else {
-      navigate("/dashboard/request");
+      return;
     }
+    // Keysight (and any single-area project) skips the test-area picker — go to projects.
+    if (test_area && !soleTestAreaForProject(project)) {
+      navigate(`/dashboard/request/test-area?project=${encodeURIComponent(project)}`);
+      return;
+    }
+    navigate("/dashboard/request");
   };
 
   const handleSelect = (item) => {

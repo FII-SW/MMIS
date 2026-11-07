@@ -9,7 +9,7 @@ import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
 import FixtureDescriptorFields from "../components/FixtureDescriptorFields";
 import { apiErrorMessage } from "../utils/apiError";
-import { DEFAULT_TEST_AREAS } from "../utils/testAreas";
+import { testAreasForProject } from "../utils/testAreas";
 
 export default function RestockEditFixturePage() {
   const { fixture_id } = useParams();
@@ -35,7 +35,7 @@ export default function RestockEditFixturePage() {
   const [testAreaSearch, setTestAreaSearch] = useState("");
   const testAreaRef = useRef(null);
 
-  const testAreas = DEFAULT_TEST_AREAS;
+  const testAreas = testAreasForProject(formData.project_name);
   const filteredTestAreas = testAreas.filter((area) =>
     area.toLowerCase().includes(testAreaSearch.toLowerCase())
   );
