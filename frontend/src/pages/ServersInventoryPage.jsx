@@ -36,7 +36,7 @@ export default function ServersInventoryPage() {
       .then((res) => setServers(res.data || []))
       .catch((err) => {
         setServers([]);
-        setError(apiErrorMessage(err, "Could not load server inventory."));
+        setError(apiErrorMessage(err, "Could not load inventory."));
       })
       .finally(() => setLoading(false));
   }, [projectFilter, areaFilter]);
@@ -58,16 +58,8 @@ export default function ServersInventoryPage() {
     return servers.filter((s) => serverSearchBlob(s).includes(q));
   }, [servers, search]);
 
-  const scopeLabel = [
-    projectFilter || "All projects",
-    areaFilter ? serverAreaLabel(areaFilter) : "All FBT areas",
-  ].join(" · ");
-
   const handleDownload = () => {
-    if (!filtered.length) {
-      alert("No servers to download for the current filters.");
-      return;
-    }
+    if (!filtered.length) return;
     downloadServersCsv(filtered, {
       project: projectFilter || undefined,
       testArea: areaFilter || undefined,
@@ -79,149 +71,128 @@ export default function ServersInventoryPage() {
       <PageHeaderWithBack title={SERVERS_TITLE} onBack={() => navigate(SERVERS_BASE)} />
 
       <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-base font-bold text-slate-800 dark:text-gray-100">
-              Server inventory
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-gray-400">
-              Filter by project and test area, then download CSV for Excel.
-            </p>
-          </div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <select
+            value={projectFilter}
+            onChange={(e) => setFilter("project", e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          >
+            <option value="">All projects</option>
+            {projects.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={areaFilter}
+            onChange={(e) => setFilter("test_area", e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          >
+            <option value="">All areas</option>
+            {SERVER_TEST_AREAS.map((area) => (
+              <option key={area} value={area}>
+                {serverAreaLabel(area)}
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search…"
+            className="w-40 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white sm:w-52"
+          />
+
+          <span className="ml-auto text-xs text-slate-400">
+            {loading ? "…" : filtered.length}
+            {(projectFilter || areaFilter || search) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setParams({}, { replace: true });
+                  setSearch("");
+                }}
+                className="ml-2 font-semibold text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Clear
+              </button>
+            )}
+          </span>
+
           <button
             type="button"
             onClick={handleDownload}
             disabled={loading || filtered.length === 0}
-            className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-40"
           >
-            Download CSV ({filtered.length})
+            Download CSV
           </button>
         </div>
 
-        <div className="mb-4 grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:grid-cols-3">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-gray-300">
-            Project
-            <select
-              value={projectFilter}
-              onChange={(e) => setFilter("project", e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm font-normal dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-            >
-              <option value="">All projects</option>
-              {projects.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-xs font-semibold text-slate-600 dark:text-gray-300">
-            Test area
-            <select
-              value={areaFilter}
-              onChange={(e) => setFilter("test_area", e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm font-normal dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-            >
-              <option value="">All (FBT_Mobo &amp; FBT_Agora)</option>
-              {SERVER_TEST_AREAS.map((area) => (
-                <option key={area} value={area}>
-                  {serverAreaLabel(area)} ({area})
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-xs font-semibold text-slate-600 dark:text-gray-300">
-            Search
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Model, serial, IP, switch…"
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm font-normal dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-            />
-          </label>
-        </div>
-
-        <p className="mb-2 text-xs text-slate-500 dark:text-gray-400">
-          Showing <span className="font-semibold text-slate-700 dark:text-gray-200">{filtered.length}</span>
-          {filtered.length !== servers.length ? ` of ${servers.length}` : ""} · {scopeLabel}
-          {(projectFilter || areaFilter || search) && (
-            <button
-              type="button"
-              onClick={() => {
-                setParams({}, { replace: true });
-                setSearch("");
-              }}
-              className="ml-2 font-semibold text-blue-600 hover:underline dark:text-blue-400"
-            >
-              Clear filters
-            </button>
-          )}
-        </p>
-
         {error && (
-          <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          <p className="mb-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </p>
         )}
 
         {loading ? (
-          <p className="py-12 text-center text-sm text-slate-500">Loading servers…</p>
+          <p className="py-12 text-center text-sm text-slate-400">Loading…</p>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 py-14 text-center dark:border-gray-600">
-            <p className="font-semibold text-slate-700 dark:text-gray-200">No servers match</p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
-              Change filters or add servers from a project → FBT area.
-            </p>
+          <div className="rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400 dark:border-gray-600">
+            No servers
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-800">
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-400">
+                <thead className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-500">
                   <tr>
-                    <th className="px-3 py-2.5 font-semibold">Project</th>
-                    <th className="px-3 py-2.5 font-semibold">Area</th>
-                    <th className="px-3 py-2.5 font-semibold">Model</th>
-                    <th className="px-3 py-2.5 font-semibold">Serial</th>
-                    <th className="px-3 py-2.5 font-semibold">IP</th>
-                    <th className="hidden px-3 py-2.5 font-semibold md:table-cell">ZPE</th>
-                    <th className="hidden px-3 py-2.5 font-semibold lg:table-cell">Network</th>
-                    <th className="hidden px-3 py-2.5 font-semibold lg:table-cell">Arista</th>
-                    <th className="hidden px-3 py-2.5 font-semibold xl:table-cell">UPS</th>
-                    <th className="px-3 py-2.5 font-semibold"> </th>
+                    <th className="px-3 py-2">Project</th>
+                    <th className="px-3 py-2">Area</th>
+                    <th className="px-3 py-2">Model</th>
+                    <th className="px-3 py-2">Line</th>
+                    <th className="px-3 py-2">Serial</th>
+                    <th className="px-3 py-2">IP</th>
+                    <th className="hidden px-3 py-2 md:table-cell">MAC</th>
+                    <th className="hidden px-3 py-2 lg:table-cell">OS</th>
+                    <th className="hidden px-3 py-2 xl:table-cell">UPS</th>
+                    <th className="px-3 py-2" />
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((row) => (
                     <tr
                       key={row.server_id}
-                      className="border-b border-slate-100 last:border-0 dark:border-gray-700/70"
+                      className="border-b border-slate-50 last:border-0 dark:border-gray-700/60"
                     >
-                      <td className="px-3 py-2 text-xs font-medium text-slate-700 dark:text-gray-200">
+                      <td className="px-3 py-2 text-xs text-slate-600 dark:text-gray-300">
                         {row.project_name}
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-600 dark:text-gray-300">
+                      <td className="px-3 py-2 text-xs text-slate-500 dark:text-gray-400">
                         {serverAreaLabel(row.test_area)}
                       </td>
-                      <td className="px-3 py-2 font-semibold text-slate-900 dark:text-white">
+                      <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">
                         {row.server_model}
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs text-slate-600 dark:text-gray-300">
+                      <td className="px-3 py-2 text-xs text-slate-500 dark:text-gray-400">
+                        {row.line || "—"}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs text-slate-500 dark:text-gray-400">
                         {row.serial_number || "—"}
                       </td>
                       <td className="px-3 py-2 font-mono text-xs text-blue-700 dark:text-blue-300">
                         {row.server_ip || "—"}
                       </td>
-                      <td className="hidden px-3 py-2 text-xs text-slate-600 dark:text-gray-300 md:table-cell">
-                        {row.zpe_switch || "—"}
+                      <td className="hidden px-3 py-2 font-mono text-xs text-slate-500 dark:text-gray-400 md:table-cell">
+                        {row.mac_address || "—"}
                       </td>
-                      <td className="hidden px-3 py-2 text-xs text-slate-600 dark:text-gray-300 lg:table-cell">
-                        {row.network_switch || "—"}
+                      <td className="hidden px-3 py-2 text-xs text-slate-500 dark:text-gray-400 lg:table-cell">
+                        {[row.os_type, row.os_version].filter(Boolean).join(" ") || "—"}
                       </td>
-                      <td className="hidden px-3 py-2 text-xs text-slate-600 dark:text-gray-300 lg:table-cell">
-                        {row.arista_switch || "—"}
-                      </td>
-                      <td className="hidden px-3 py-2 text-xs text-slate-600 dark:text-gray-300 xl:table-cell">
+                      <td className="hidden px-3 py-2 text-xs text-slate-500 dark:text-gray-400 xl:table-cell">
                         {row.ups || "—"}
                       </td>
                       <td className="px-3 py-2 text-right">

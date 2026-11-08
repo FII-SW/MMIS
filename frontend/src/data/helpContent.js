@@ -285,8 +285,8 @@ export const HELP_ARTICLES = [
           "Open Fixture Maintenance → PM Dashboard in the sidebar.",
           "Filter by search, project, test area, PM type, and From → To date & time.",
           "PM activity shows what happened in the selected dates: PMs completed, passed, failed tasks, issues found, and users who completed PMs.",
-          "“Up next” lists the PMs that are overdue or due soon.",
-          "Click a row in “By project & test area” or “Up next” to jump to those fixtures.",
+          "Click a row in “By project & test area” to open those fixtures.",
+          "Use the To do tab for overdue and due-soon PMs.",
           "Use the Completed tab to list past PMs, or turn on “Only PMs I did” to see your own.",
         ],
         links: [{ label: "Open PM Dashboard", path: "/dashboard/maintenance/dashboard" }],
@@ -466,7 +466,7 @@ export const HELP_ARTICLES = [
     title: "Servers (FBT)",
     icon: "🖥️",
     category: "Workflows",
-    summary: "Record FBT servers by project — model, serial, IP, ZPE, network/Arista switches, and UPS.",
+    summary: "Record FBT servers by project — model, serial, line, MAC, OS, IP, switches, and UPS.",
     roles: ["admin", "user", "viewer"],
     sections: [
       {
@@ -479,7 +479,8 @@ export const HELP_ARTICLES = [
       {
         heading: "What to record",
         steps: [
-          "Server model, serial number, and server IP.",
+          "Server model, serial number, and line.",
+          "Server IP, MAC address, OS type, and OS version.",
           "ZPE switch, network switch, Arista switch, and UPS.",
           "Optional notes (rack, cables, etc.).",
         ],
@@ -502,7 +503,7 @@ export const HELP_ARTICLES = [
       { label: "Open Servers", path: "/dashboard/servers" },
       { label: "Browse & download CSV", path: "/dashboard/servers/inventory" },
     ],
-    keywords: ["server", "fbt", "ip", "zpe", "arista", "ups", "switch", "serial", "csv", "export"],
+    keywords: ["server", "fbt", "ip", "mac", "os", "line", "zpe", "arista", "ups", "switch", "serial", "csv", "export"],
     routes: ["/dashboard/servers"],
   },
   {

@@ -193,6 +193,10 @@ class ServerBase(BaseModel):
     test_area: str = Field(..., min_length=1, max_length=20)
     server_model: str = Field(..., min_length=1, max_length=100)
     serial_number: Optional[str] = Field(default=None, max_length=100)
+    mac_address: Optional[str] = Field(default=None, max_length=50)
+    os_type: Optional[str] = Field(default=None, max_length=50)
+    os_version: Optional[str] = Field(default=None, max_length=50)
+    line: Optional[str] = Field(default=None, max_length=50)
     server_ip: Optional[str] = Field(default=None, max_length=50)
     zpe_switch: Optional[str] = Field(default=None, max_length=100)
     network_switch: Optional[str] = Field(default=None, max_length=100)
@@ -216,6 +220,10 @@ class ServerBase(BaseModel):
 
     @validator(
         "serial_number",
+        "mac_address",
+        "os_type",
+        "os_version",
+        "line",
         "server_ip",
         "zpe_switch",
         "network_switch",
@@ -241,6 +249,10 @@ class ServerUpdate(BaseModel):
     test_area: Optional[str] = Field(default=None, max_length=20)
     server_model: Optional[str] = Field(default=None, max_length=100)
     serial_number: Optional[str] = Field(default=None, max_length=100)
+    mac_address: Optional[str] = Field(default=None, max_length=50)
+    os_type: Optional[str] = Field(default=None, max_length=50)
+    os_version: Optional[str] = Field(default=None, max_length=50)
+    line: Optional[str] = Field(default=None, max_length=50)
     server_ip: Optional[str] = Field(default=None, max_length=50)
     zpe_switch: Optional[str] = Field(default=None, max_length=100)
     network_switch: Optional[str] = Field(default=None, max_length=100)
@@ -261,6 +273,10 @@ class ServerUpdate(BaseModel):
         "project_name",
         "server_model",
         "serial_number",
+        "mac_address",
+        "os_type",
+        "os_version",
+        "line",
         "server_ip",
         "zpe_switch",
         "network_switch",

@@ -324,6 +324,19 @@ def ensure_keysight_fixtures():
         )
 
 
+def ensure_servers_columns():
+    """Additive columns for FBT server inventory (existing tables keep rows)."""
+    _add_missing_columns(
+        "servers",
+        {
+            "mac_address": "VARCHAR(50)",
+            "os_type": "VARCHAR(50)",
+            "os_version": "VARCHAR(50)",
+            "line": "VARCHAR(50)",
+        },
+    )
+
+
 def run_startup_migrations():
     """Create missing tables and columns. Every uvicorn worker imports this module at the same
     time, so they take turns under a Postgres advisory lock instead of racing on CREATE/ALTER."""
@@ -337,6 +350,7 @@ def run_startup_migrations():
             ensure_super_admin_columns()
             ensure_ic_programming()
             ensure_keysight_fixtures()
+            ensure_servers_columns()
         finally:
             lock_conn.execute(text("SELECT pg_advisory_unlock(:id)"), {"id": MIGRATION_LOCK_ID})
 

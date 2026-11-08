@@ -8,7 +8,7 @@ import PMStatusBadge from "./PMStatusBadge";
 import { formatRange, fromLocalInput, presetRange, rangeToParams, toLocalInput } from "./dateRanges";
 import { formatDateTime } from "./formatDate";
 import { MAINTENANCE_PROJECTS_URL, fixtureDetailUrl, fixtureListUrl } from "./links";
-import { PM_STATE_META, activePMCount, describeDue } from "./pmStatus";
+import { PM_STATE_META, activePMCount } from "./pmStatus";
 import { PM_TYPE_LABELS, pmTypeLabel } from "./pmTypes";
 import useStickyState from "./useStickyState";
 
@@ -103,7 +103,7 @@ function useDebounced(value, delay) {
   return debounced;
 }
 
-export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
+export default function MaintenanceDashboardTab({ onOpenTab }) {
   const navigate = useNavigate();
   const viewOnly = isViewerUser();
   const [saved, setSaved] = useStickyState("mmis:pm-dashboard:filters", DEFAULT_FILTERS);
@@ -366,41 +366,6 @@ export default function MaintenanceDashboardTab({ onOpenTodo, onOpenTab }) {
                           {counts.completed} done{counts.failed ? ` · ${counts.failed} failed` : ""}
                         </span>
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
-
-            <Panel
-              title="Up next"
-              subtitle={status ? `${status.attention_total} overdue or due soon` : null}
-              action={status?.attention_total ? <LinkButton onClick={() => onOpenTodo()}>View all</LinkButton> : null}
-            >
-              {!status ? (
-                <EmptyNote>Loading…</EmptyNote>
-              ) : status.attention.length === 0 ? (
-                <EmptyNote>Nothing overdue or due soon. 🎉</EmptyNote>
-              ) : (
-                <ul className="max-h-80 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700">
-                  {status.attention.map((item) => (
-                    <li key={`${item.fixture_id}-${item.pm_type}`}>
-                      <button
-                        type="button"
-                        onClick={() => navigate(fixtureDetailUrl(item, { tab: item.pm_type }))}
-                        className="flex w-full items-center justify-between gap-2 px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-                            {item.fixture_name}
-                          </span>
-                          <span className="block truncate text-[11px] text-gray-500 dark:text-gray-400">
-                            {pmTypeLabel(item.pm_type)} · {item.project_name} · {item.test_area}
-                            {item.production_line ? ` · ${item.production_line}` : ""}
-                          </span>
-                        </span>
-                        <PMStatusBadge state={item.entry.state} label={describeDue(item.entry)} className="shrink-0" />
-                      </button>
                     </li>
                   ))}
                 </ul>

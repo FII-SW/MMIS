@@ -299,7 +299,7 @@ export const USER_FLOWS = [
     steps: [
       { title: "Open Servers", detail: "It is in the left sidebar — separate from Fixture Maintenance and stock." },
       { title: "Pick the project, then FBT_Mobo or FBT_Agora", detail: "Servers are only recorded for those two FBT areas." },
-      { title: "Add or edit a server", detail: "Admins enter model, serial, IP, ZPE, network switch, Arista, UPS, and notes." },
+      { title: "Add or edit a server", detail: "Admins enter model, serial, line, MAC, OS type/version, IP, ZPE, network switch, Arista, UPS, and notes." },
       { title: "Download CSV when you need Excel", detail: "Use Browse & download CSV, or Download CSV on a project list. Filter by project and test area first." },
     ],
     note: "Keysight uses test area 3070 for ICT PM, not Servers. Board projects do not show 3070 or IC_Programming on Request/Restock/Maintenance pickers.",

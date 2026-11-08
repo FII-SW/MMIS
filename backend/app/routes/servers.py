@@ -26,7 +26,7 @@ def list_servers(
     request: Request,
     project: str | None = Query(None),
     test_area: str | None = Query(None),
-    q: str | None = Query(None, description="Search model, serial, IP, switches, UPS"),
+    q: str | None = Query(None, description="Search model, serial, MAC, OS, line, IP, switches, UPS"),
     db: Session = Depends(get_db),
 ):
     get_current_user(request)
@@ -41,6 +41,10 @@ def list_servers(
             or_(
                 models.Server.server_model.ilike(like),
                 models.Server.serial_number.ilike(like),
+                models.Server.mac_address.ilike(like),
+                models.Server.os_type.ilike(like),
+                models.Server.os_version.ilike(like),
+                models.Server.line.ilike(like),
                 models.Server.server_ip.ilike(like),
                 models.Server.zpe_switch.ilike(like),
                 models.Server.network_switch.ilike(like),

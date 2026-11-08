@@ -145,7 +145,7 @@ export default function MaintenancePage() {
           </TabButton>
         </div>
 
-        {tab === "dashboard" && <MaintenanceDashboardTab onOpenTodo={openTodo} onOpenTab={openTab} />}
+        {tab === "dashboard" && <MaintenanceDashboardTab onOpenTab={openTab} />}
         {tab === "mine" && (
           <MyPMsTab
             data={mine.data}

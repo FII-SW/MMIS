@@ -6,11 +6,6 @@ export const SERVER_AREA_LABELS = {
   FBT_Agora: "FBT Agora",
 };
 
-export const SERVER_AREA_HINTS = {
-  FBT_Mobo: "Motherboard FBT line servers",
-  FBT_Agora: "Agora FBT line servers",
-};
-
 export function serverAreaLabel(area) {
   return SERVER_AREA_LABELS[area] || area;
 }
@@ -43,6 +38,10 @@ export const SERVER_CSV_HEADERS = [
   "Test Area",
   "Server Model",
   "Serial Number",
+  "MAC Address",
+  "OS Type",
+  "OS Version",
+  "Line",
   "Server IP",
   "ZPE Switch",
   "Network Switch",
@@ -71,6 +70,10 @@ export function downloadServersCsv(servers, { project, testArea } = {}) {
     s.test_area,
     s.server_model,
     s.serial_number,
+    s.mac_address,
+    s.os_type,
+    s.os_version,
+    s.line,
     s.server_ip,
     s.zpe_switch,
     s.network_switch,
@@ -98,6 +101,10 @@ export function downloadServersCsv(servers, { project, testArea } = {}) {
 export const EMPTY_SERVER_FORM = {
   server_model: "",
   serial_number: "",
+  mac_address: "",
+  os_type: "",
+  os_version: "",
+  line: "",
   server_ip: "",
   zpe_switch: "",
   network_switch: "",
@@ -106,33 +113,40 @@ export const EMPTY_SERVER_FORM = {
   notes: "",
 };
 
-/** Form sections for a clearer add/edit panel. */
+/** Form sections for add/edit panel. */
 export const SERVER_FORM_SECTIONS = [
   {
     id: "identity",
     title: "Server",
-    hint: "What is on the rack",
     fields: [
-      { key: "server_model", label: "Model", required: true, placeholder: "e.g. Dell PowerEdge R760" },
-      { key: "serial_number", label: "Serial number", placeholder: "Service tag / SN" },
+      { key: "server_model", label: "Model", required: true, placeholder: "Model" },
+      { key: "serial_number", label: "Serial", placeholder: "Serial" },
+      { key: "line", label: "Line", placeholder: "Line" },
     ],
   },
   {
     id: "network",
     title: "Network",
-    hint: "IP and switches",
     fields: [
-      { key: "server_ip", label: "Server IP", placeholder: "e.g. 10.1.2.30" },
-      { key: "zpe_switch", label: "ZPE switch", placeholder: "ZPE name or port" },
+      { key: "server_ip", label: "IP", placeholder: "IP" },
+      { key: "mac_address", label: "MAC", placeholder: "MAC" },
+      { key: "zpe_switch", label: "ZPE", placeholder: "ZPE" },
       { key: "network_switch", label: "Network switch", placeholder: "Network switch" },
-      { key: "arista_switch", label: "Arista switch", placeholder: "Arista switch" },
+      { key: "arista_switch", label: "Arista", placeholder: "Arista" },
+    ],
+  },
+  {
+    id: "os",
+    title: "OS",
+    fields: [
+      { key: "os_type", label: "OS type", placeholder: "OS type" },
+      { key: "os_version", label: "OS version", placeholder: "OS version" },
     ],
   },
   {
     id: "power",
     title: "Power",
-    hint: "UPS / circuit",
-    fields: [{ key: "ups", label: "UPS", placeholder: "UPS name or circuit" }],
+    fields: [{ key: "ups", label: "UPS", placeholder: "UPS" }],
   },
 ];
 
@@ -140,6 +154,10 @@ export function serverSearchBlob(server) {
   return [
     server.server_model,
     server.serial_number,
+    server.mac_address,
+    server.os_type,
+    server.os_version,
+    server.line,
     server.server_ip,
     server.zpe_switch,
     server.network_switch,
@@ -155,6 +173,10 @@ export function serverSearchBlob(server) {
 export function serverMissingFields(server) {
   const missing = [];
   if (!server.serial_number) missing.push("Serial");
+  if (!server.mac_address) missing.push("MAC");
+  if (!server.os_type) missing.push("OS type");
+  if (!server.os_version) missing.push("OS version");
+  if (!server.line) missing.push("Line");
   if (!server.server_ip) missing.push("IP");
   if (!server.zpe_switch) missing.push("ZPE");
   if (!server.network_switch) missing.push("Network");

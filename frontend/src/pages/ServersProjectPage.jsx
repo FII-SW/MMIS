@@ -57,44 +57,32 @@ export default function ServersProjectPage() {
       <PageHeaderWithBack title={SERVERS_TITLE} onBack={() => navigate("/dashboard")} />
 
       <div className="mx-auto max-w-5xl px-4 pb-8 sm:px-6">
-        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white px-4 py-3 dark:border-blue-900/40 dark:from-blue-950/30 dark:to-gray-900 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">
-              FBT server inventory by project
-            </p>
-            <p className="mt-0.5 text-xs text-slate-600 dark:text-gray-400">
-              Track model, serial, IP, ZPE, network switch, Arista, and UPS for{" "}
-              <span className="font-medium">FBT_Mobo</span> and <span className="font-medium">FBT_Agora</span>.
-              {!loadingCounts && (
-                <span className="ml-1 text-blue-700 dark:text-blue-300">
-                  · {totalServers} server{totalServers === 1 ? "" : "s"} recorded
-                </span>
-              )}
-            </p>
-          </div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <input
+            type="search"
+            placeholder="Search projects…"
+            aria-label="Search projects"
+            autoFocus
+            className="min-w-[12rem] flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {!loadingCounts && (
+            <span className="text-xs text-slate-400">{totalServers} servers</span>
+          )}
           <button
             type="button"
             onClick={() => navigate(SERVERS_INVENTORY_URL)}
-            className="shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white"
           >
-            Browse &amp; download CSV
+            CSV inventory
           </button>
         </div>
 
-        <input
-          type="search"
-          placeholder="Search projects…"
-          aria-label="Search projects"
-          autoFocus
-          className="mb-4 w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.length === 0 ? (
-            <div className="col-span-full rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-              No projects match &quot;{search}&quot;
+            <div className="col-span-full rounded-xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400 dark:border-gray-600">
+              No projects
             </div>
           ) : (
             filtered.map((project) => {
@@ -104,27 +92,23 @@ export default function ServersProjectPage() {
                   type="button"
                   key={project}
                   onClick={() => navigate(serversTestAreaUrl(project))}
-                  className={`flex min-h-[4.25rem] flex-col items-center justify-center gap-0.5 rounded-xl border bg-white px-3 py-3 text-center shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:shadow dark:bg-gray-800 dark:hover:border-blue-700 dark:hover:bg-gray-700 ${
+                  className={`flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-xl border bg-white px-3 py-2.5 text-center transition hover:border-blue-300 hover:bg-blue-50/60 dark:bg-gray-800 dark:hover:border-blue-700 dark:hover:bg-gray-700 ${
                     n > 0
                       ? "border-blue-200 dark:border-blue-900/50"
-                      : "border-gray-200 dark:border-gray-700"
+                      : "border-slate-200 dark:border-gray-700"
                   }`}
                 >
-                  <span className="line-clamp-2 text-sm font-semibold leading-snug text-gray-800 dark:text-gray-100">
+                  <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-800 dark:text-gray-100">
                     {project}
                   </span>
                   <span
                     className={`text-[11px] ${
                       n > 0
                         ? "font-medium text-blue-600 dark:text-blue-400"
-                        : "text-gray-400 dark:text-gray-500"
+                        : "text-slate-400 dark:text-gray-500"
                     }`}
                   >
-                    {loadingCounts
-                      ? "…"
-                      : n > 0
-                        ? `${n} server${n === 1 ? "" : "s"}`
-                        : "No servers yet"}
+                    {loadingCounts ? "…" : n || "—"}
                   </span>
                 </button>
               );

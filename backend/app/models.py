@@ -256,6 +256,10 @@ class Server(Base):
     test_area = Column(String(20), nullable=False, index=True)  # FBT_Mobo | FBT_Agora
     server_model = Column(String(100), nullable=False)
     serial_number = Column(String(100), nullable=True)
+    mac_address = Column(String(50), nullable=True)
+    os_type = Column(String(50), nullable=True)
+    os_version = Column(String(50), nullable=True)
+    line = Column(String(50), nullable=True)
     server_ip = Column(String(50), nullable=True)
     zpe_switch = Column(String(100), nullable=True)
     network_switch = Column(String(100), nullable=True)

@@ -18,38 +18,33 @@ import {
   serversTestAreaUrl,
 } from "../utils/servers";
 
-function CopyButton({ value, label = "Copy" }) {
+function CopyButton({ value }) {
   const [copied, setCopied] = useState(false);
   if (!value) return null;
   return (
     <button
       type="button"
-      title={`Copy ${label}`}
+      title={copied ? "Copied" : "Copy"}
       onClick={(e) => {
         e.stopPropagation();
         navigator.clipboard?.writeText(value).then(() => {
           setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
+          setTimeout(() => setCopied(false), 1000);
         });
       }}
-      className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-gray-700"
+      className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-gray-700 dark:hover:text-blue-300"
     >
-      {copied ? "Copied" : label}
+      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        {copied ? (
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        ) : (
+          <>
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15V5a2 2 0 012-2h10" />
+          </>
+        )}
+      </svg>
     </button>
-  );
-}
-
-function StatChip({ label, value, tone = "slate" }) {
-  const tones = {
-    slate: "bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-200",
-    blue: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
-    amber: "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
-  };
-  return (
-    <div className={`rounded-xl px-3 py-2 ${tones[tone]}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{label}</p>
-      <p className="text-lg font-bold leading-tight">{value}</p>
-    </div>
   );
 }
 
@@ -99,15 +94,15 @@ export default function ServersListPage() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(""), 2500);
+    const t = setTimeout(() => setToast(""), 2000);
     return () => clearTimeout(t);
   }, [toast]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return servers
-      .filter((s) => (!q || serverSearchBlob(s).includes(q)))
-      .filter((s) => (!incompleteOnly || serverMissingFields(s).length > 0))
+      .filter((s) => !q || serverSearchBlob(s).includes(q))
+      .filter((s) => !incompleteOnly || serverMissingFields(s).length > 0)
       .sort((a, b) =>
         String(a.server_model || "").localeCompare(String(b.server_model || ""), undefined, {
           numeric: true,
@@ -115,11 +110,10 @@ export default function ServersListPage() {
       );
   }, [servers, search, incompleteOnly]);
 
-  const stats = useMemo(() => {
-    const withIp = servers.filter((s) => s.server_ip).length;
-    const incomplete = servers.filter((s) => serverMissingFields(s).length > 0).length;
-    return { total: servers.length, withIp, incomplete };
-  }, [servers]);
+  const incompleteCount = useMemo(
+    () => servers.filter((s) => serverMissingFields(s).length > 0).length,
+    [servers]
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -134,6 +128,10 @@ export default function ServersListPage() {
     setForm({
       server_model: row.server_model || "",
       serial_number: row.serial_number || "",
+      mac_address: row.mac_address || "",
+      os_type: row.os_type || "",
+      os_version: row.os_version || "",
+      line: row.line || "",
       server_ip: row.server_ip || "",
       zpe_switch: row.zpe_switch || "",
       network_switch: row.network_switch || "",
@@ -167,7 +165,7 @@ export default function ServersListPage() {
 
   const save = async () => {
     if (!form.server_model.trim()) {
-      setFormError("Server model is required.");
+      setFormError("Model is required.");
       return;
     }
     setSaving(true);
@@ -182,29 +180,29 @@ export default function ServersListPage() {
     try {
       if (editing) {
         await API.put(`/servers/${editing.server_id}`, body);
-        setToast("Server updated");
+        setToast("Updated");
       } else {
         await API.post("/servers/", body);
-        setToast("Server added");
+        setToast("Added");
       }
       setPanelOpen(false);
       setEditing(null);
       load();
     } catch (err) {
-      setFormError(apiErrorMessage(err, "Could not save server."));
+      setFormError(apiErrorMessage(err, "Could not save."));
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async (row) => {
-    if (!window.confirm(`Delete "${row.server_model}"?\n\nThis cannot be undone.`)) return;
+    if (!window.confirm(`Delete ${row.server_model}?`)) return;
     try {
       await API.delete(`/servers/${row.server_id}`);
-      setToast("Server deleted");
+      setToast("Deleted");
       load();
     } catch (err) {
-      alert(apiErrorMessage(err, "Could not delete server."));
+      alert(apiErrorMessage(err, "Could not delete."));
     }
   };
 
@@ -218,207 +216,186 @@ export default function ServersListPage() {
       />
 
       <div className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
-        {/* Context + actions */}
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-              <span className="text-blue-600 dark:text-blue-400">{project}</span>
-              <span className="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
-              <span>{serverAreaLabel(testArea)}</span>
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {serverAreaLabel(testArea)} · {testArea}
-              {canEdit ? " · Click a row to edit" : " · View only"}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search model, serial, IP, switch…"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white sm:w-64"
-            />
-            <div className="inline-flex rounded-xl border border-gray-200 bg-white p-0.5 dark:border-gray-600 dark:bg-gray-800">
-              {[
-                { id: "table", label: "Table" },
-                { id: "cards", label: "Cards" },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setView(opt.id)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                    view === opt.id
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
-              <input
-                type="checkbox"
-                checked={incompleteOnly}
-                onChange={(e) => setIncompleteOnly(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600"
-              />
-              Incomplete only
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                if (!filtered.length) {
-                  alert("No servers to download.");
-                  return;
-                }
-                downloadServersCsv(filtered, { project, testArea });
-              }}
-              disabled={loading || filtered.length === 0}
-              className="rounded-xl border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-500 dark:bg-gray-800 dark:text-emerald-300 dark:hover:bg-gray-700"
-            >
-              Download CSV
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                navigate(serversInventoryUrl({ project, testArea }))
-              }
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-            >
-              All inventory
-            </button>
-            {canEdit && (
-              <button
-                type="button"
-                onClick={openCreate}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-              >
-                + Add server
-              </button>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <h2 className="mr-auto text-sm font-semibold text-slate-800 dark:text-gray-100">
+            <span className="text-blue-600 dark:text-blue-400">{project}</span>
+            <span className="mx-1.5 text-slate-300 dark:text-slate-600">/</span>
+            {serverAreaLabel(testArea)}
+            {!loading && (
+              <span className="ml-2 font-normal text-slate-400">
+                {servers.length}
+                {incompleteCount > 0 ? ` · ${incompleteCount} incomplete` : ""}
+              </span>
             )}
-          </div>
-        </div>
+          </h2>
 
-        {/* Stats */}
-        <div className="mb-4 grid grid-cols-3 gap-2 sm:max-w-md">
-          <StatChip label="Total" value={loading ? "…" : stats.total} tone="blue" />
-          <StatChip label="With IP" value={loading ? "…" : stats.withIp} />
-          <StatChip
-            label="Incomplete"
-            value={loading ? "…" : stats.incomplete}
-            tone={stats.incomplete ? "amber" : "slate"}
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search…"
+            className="w-40 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white sm:w-52"
           />
+
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 dark:border-gray-600 dark:bg-gray-800">
+            {["table", "cards"].map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setView(id)}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${
+                  view === id
+                    ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
+                    : "text-slate-500 hover:text-slate-800 dark:text-gray-400"
+                }`}
+              >
+                {id}
+              </button>
+            ))}
+          </div>
+
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-gray-400">
+            <input
+              type="checkbox"
+              checked={incompleteOnly}
+              onChange={(e) => setIncompleteOnly(e.target.checked)}
+              className="rounded border-slate-300 text-blue-600"
+            />
+            Incomplete
+          </label>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (!filtered.length) return;
+              downloadServersCsv(filtered, { project, testArea });
+            }}
+            disabled={loading || filtered.length === 0}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+          >
+            CSV
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate(serversInventoryUrl({ project, testArea }))}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+          >
+            All
+          </button>
+
+          {canEdit && (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              + Add
+            </button>
+          )}
         </div>
 
         {toast && (
-          <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+          <div className="mb-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
             {toast}
           </div>
         )}
 
         {error && (
-          <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          <p className="mb-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </p>
         )}
 
-        {!loading && filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-gray-600 dark:bg-gray-800/60">
-            <p className="text-lg font-semibold text-slate-800 dark:text-gray-100">
-              {search || incompleteOnly ? "No matches" : "No servers yet"}
-            </p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-gray-400">
-              {search || incompleteOnly
-                ? "Try clearing search or the Incomplete filter."
-                : canEdit
-                  ? "Add the first server for this project and FBT line — model, serial, IP, and switches."
-                  : "Ask an admin to record servers here."}
+        {loading ? (
+          <p className="py-16 text-center text-sm text-slate-400">Loading…</p>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 py-14 text-center dark:border-gray-600">
+            <p className="text-sm font-medium text-slate-600 dark:text-gray-300">
+              {search || incompleteOnly ? "No matches" : "No servers"}
             </p>
             {canEdit && !search && !incompleteOnly && (
               <button
                 type="button"
                 onClick={openCreate}
-                className="mt-5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
-                + Add first server
+                + Add server
               </button>
             )}
           </div>
         ) : view === "table" ? (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-800">
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-400">
+                <thead className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-500">
                   <tr>
-                    <th className="px-3 py-2.5 font-semibold">Model</th>
-                    <th className="px-3 py-2.5 font-semibold">Serial</th>
-                    <th className="px-3 py-2.5 font-semibold">IP</th>
-                    <th className="hidden px-3 py-2.5 font-semibold md:table-cell">ZPE</th>
-                    <th className="hidden px-3 py-2.5 font-semibold lg:table-cell">Network</th>
-                    <th className="hidden px-3 py-2.5 font-semibold lg:table-cell">Arista</th>
-                    <th className="hidden px-3 py-2.5 font-semibold xl:table-cell">UPS</th>
-                    <th className="px-3 py-2.5 font-semibold">Gaps</th>
-                    {canEdit && <th className="px-3 py-2.5 font-semibold"> </th>}
+                    <th className="px-3 py-2">Model</th>
+                    <th className="px-3 py-2">Line</th>
+                    <th className="px-3 py-2">Serial</th>
+                    <th className="px-3 py-2">IP</th>
+                    <th className="hidden px-3 py-2 md:table-cell">MAC</th>
+                    <th className="hidden px-3 py-2 lg:table-cell">OS</th>
+                    <th className="hidden px-3 py-2 xl:table-cell">ZPE</th>
+                    <th className="hidden px-3 py-2 xl:table-cell">UPS</th>
+                    <th className="w-8 px-3 py-2" />
+                    {canEdit && <th className="w-16 px-3 py-2" />}
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((row) => {
-                    const missing = serverMissingFields(row);
+                    const missing = serverMissingFields(row).length;
                     return (
                       <tr
                         key={row.server_id}
                         onClick={() => openEdit(row)}
-                        className={`border-b border-slate-100 last:border-0 dark:border-gray-700/80 ${
-                          canEdit ? "cursor-pointer hover:bg-blue-50/70 dark:hover:bg-gray-700/40" : ""
+                        className={`border-b border-slate-50 last:border-0 dark:border-gray-700/60 ${
+                          canEdit ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/30" : ""
                         }`}
                       >
-                        <td className="px-3 py-2.5 font-semibold text-slate-900 dark:text-white">
+                        <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">
                           {row.server_model}
                         </td>
-                        <td className="px-3 py-2.5 font-mono text-xs text-slate-600 dark:text-gray-300">
+                        <td className="px-3 py-2 text-xs text-slate-500 dark:text-gray-400">
+                          {row.line || "—"}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-slate-500 dark:text-gray-400">
                           {row.serial_number || "—"}
                         </td>
-                        <td className="px-3 py-2.5">
+                        <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
                             <span className="font-mono text-xs text-blue-700 dark:text-blue-300">
                               {row.server_ip || "—"}
                             </span>
-                            <CopyButton value={row.server_ip} label="IP" />
+                            <CopyButton value={row.server_ip} />
                           </div>
                         </td>
-                        <td className="hidden px-3 py-2.5 text-xs text-slate-600 dark:text-gray-300 md:table-cell">
+                        <td className="hidden px-3 py-2 font-mono text-xs text-slate-500 dark:text-gray-400 md:table-cell">
+                          {row.mac_address || "—"}
+                        </td>
+                        <td className="hidden px-3 py-2 text-xs text-slate-500 dark:text-gray-400 lg:table-cell">
+                          {[row.os_type, row.os_version].filter(Boolean).join(" ") || "—"}
+                        </td>
+                        <td className="hidden px-3 py-2 text-xs text-slate-500 dark:text-gray-400 xl:table-cell">
                           {row.zpe_switch || "—"}
                         </td>
-                        <td className="hidden px-3 py-2.5 text-xs text-slate-600 dark:text-gray-300 lg:table-cell">
-                          {row.network_switch || "—"}
-                        </td>
-                        <td className="hidden px-3 py-2.5 text-xs text-slate-600 dark:text-gray-300 lg:table-cell">
-                          {row.arista_switch || "—"}
-                        </td>
-                        <td className="hidden px-3 py-2.5 text-xs text-slate-600 dark:text-gray-300 xl:table-cell">
+                        <td className="hidden px-3 py-2 text-xs text-slate-500 dark:text-gray-400 xl:table-cell">
                           {row.ups || "—"}
                         </td>
-                        <td className="px-3 py-2.5">
-                          {missing.length === 0 ? (
-                            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                              Complete
-                            </span>
-                          ) : (
-                            <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300">
-                              {missing.slice(0, 2).join(", ")}
-                              {missing.length > 2 ? ` +${missing.length - 2}` : ""}
-                            </span>
+                        <td className="px-3 py-2">
+                          {missing > 0 && (
+                            <span
+                              title={`${missing} incomplete`}
+                              className="inline-block h-2 w-2 rounded-full bg-amber-400"
+                            />
                           )}
                         </td>
                         {canEdit && (
-                          <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={() => remove(row)}
-                              className="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                              className="text-xs font-medium text-red-500 hover:text-red-700"
                             >
                               Delete
                             </button>
@@ -432,27 +409,30 @@ export default function ServersListPage() {
             </div>
           </div>
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((row) => {
-              const missing = serverMissingFields(row);
+              const missing = serverMissingFields(row).length;
               return (
                 <li
                   key={row.server_id}
                   onClick={() => openEdit(row)}
-                  className={`flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 ${
-                    canEdit ? "cursor-pointer" : ""
+                  className={`rounded-xl border border-slate-200 bg-white p-3.5 dark:border-gray-700 dark:bg-gray-800 ${
+                    canEdit ? "cursor-pointer hover:border-blue-300 dark:hover:border-blue-700" : ""
                   }`}
                 >
-                  <div className="mb-3 flex items-start justify-between gap-2">
+                  <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h2 className="truncate text-base font-bold text-slate-900 dark:text-white">
+                      <p className="truncate font-semibold text-slate-900 dark:text-white">
                         {row.server_model}
-                      </h2>
+                      </p>
                       <div className="mt-0.5 flex items-center gap-1">
-                        <p className="font-mono text-xs text-blue-600 dark:text-blue-400">
-                          {row.server_ip || "No IP"}
-                        </p>
-                        <CopyButton value={row.server_ip} label="Copy IP" />
+                        <span className="font-mono text-xs text-blue-600 dark:text-blue-400">
+                          {row.server_ip || "—"}
+                        </span>
+                        <CopyButton value={row.server_ip} />
+                        {missing > 0 && (
+                          <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
+                        )}
                       </div>
                     </div>
                     {canEdit && (
@@ -462,40 +442,27 @@ export default function ServersListPage() {
                           e.stopPropagation();
                           remove(row);
                         }}
-                        className="rounded-md px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700"
+                        className="text-xs font-medium text-red-500 hover:text-red-700"
                       >
                         Delete
                       </button>
                     )}
                   </div>
-                  <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                     {[
+                      ["Line", row.line],
                       ["Serial", row.serial_number],
+                      ["MAC", row.mac_address],
+                      ["OS", [row.os_type, row.os_version].filter(Boolean).join(" ")],
                       ["ZPE", row.zpe_switch],
-                      ["Network", row.network_switch],
-                      ["Arista", row.arista_switch],
                       ["UPS", row.ups],
                     ].map(([label, value]) => (
                       <div key={label} className="min-w-0">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          {label}
-                        </dt>
-                        <dd className="truncate font-medium text-slate-800 dark:text-gray-100">
-                          {value || "—"}
-                        </dd>
+                        <dt className="text-[10px] uppercase tracking-wide text-slate-400">{label}</dt>
+                        <dd className="truncate text-slate-700 dark:text-gray-200">{value || "—"}</dd>
                       </div>
                     ))}
                   </dl>
-                  {missing.length > 0 && (
-                    <p className="mt-3 border-t border-slate-100 pt-2 text-[11px] text-amber-700 dark:border-gray-700 dark:text-amber-300">
-                      Missing: {missing.join(", ")}
-                    </p>
-                  )}
-                  {row.notes && (
-                    <p className="mt-2 line-clamp-2 text-xs text-slate-500 dark:text-gray-400">
-                      {row.notes}
-                    </p>
-                  )}
                 </li>
               );
             })}
@@ -504,40 +471,46 @@ export default function ServersListPage() {
       </div>
 
       {panelOpen && (
-        <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/45 backdrop-blur-[1px]">
+        <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/40">
           <button type="button" className="flex-1 cursor-default" aria-label="Close" onClick={closePanel} />
-          <aside className="flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-gray-700">
+          <aside className="flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-gray-800">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                   {editing ? "Edit server" : "Add server"}
                 </h2>
-                <p className="text-[11px] text-slate-500 dark:text-gray-400">
-                  {project} · {serverAreaLabel(testArea)} · Esc to close
+                <p className="text-[11px] text-slate-400">
+                  {project} · {serverAreaLabel(testArea)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={closePanel}
-                className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-gray-800"
+                className="rounded-md px-2 py-1 text-xs text-slate-400 hover:bg-slate-100 dark:hover:bg-gray-800"
               >
-                Close
+                ✕
               </button>
             </div>
 
-            <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
               {SERVER_FORM_SECTIONS.map((section) => (
                 <section key={section.id}>
-                  <div className="mb-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                      {section.title}
-                    </h3>
-                    <p className="text-[11px] text-slate-400 dark:text-gray-500">{section.hint}</p>
-                  </div>
-                  <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/50">
+                  <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    {section.title}
+                  </h3>
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                     {section.fields.map((field) => (
-                      <label key={field.key} className="block">
-                        <span className="mb-1 block text-xs font-semibold text-slate-700 dark:text-gray-300">
+                      <label
+                        key={field.key}
+                        className={
+                          section.fields.length === 1 ||
+                          field.key === "network_switch" ||
+                          field.key === "server_model"
+                            ? "sm:col-span-2"
+                            : ""
+                        }
+                      >
+                        <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-gray-300">
                           {field.label}
                           {field.required ? <span className="text-red-500"> *</span> : null}
                         </span>
@@ -555,7 +528,7 @@ export default function ServersListPage() {
                             }
                           }}
                           placeholder={field.placeholder}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                         />
                       </label>
                     ))}
@@ -564,31 +537,31 @@ export default function ServersListPage() {
               ))}
 
               <section>
-                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                   Notes
                 </h3>
                 <textarea
                   value={form.notes}
                   onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                  rows={3}
-                  placeholder="Rack U, cables, spare info…"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  rows={2}
+                  placeholder="Notes"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 />
               </section>
 
               {formError && (
-                <p className="whitespace-pre-wrap rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
                   {formError}
                 </p>
               )}
             </div>
 
-            <div className="flex gap-2 border-t border-slate-200 px-4 py-3 dark:border-gray-700">
+            <div className="flex gap-2 border-t border-slate-100 px-4 py-3 dark:border-gray-800">
               <button
                 type="button"
                 onClick={closePanel}
                 disabled={saving}
-                className="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 Cancel
               </button>
@@ -596,9 +569,9 @@ export default function ServersListPage() {
                 type="button"
                 onClick={save}
                 disabled={saving}
-                className="flex-1 rounded-xl bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
               >
-                {saving ? "Saving…" : editing ? "Save changes" : "Add server"}
+                {saving ? "Saving…" : editing ? "Save" : "Add"}
               </button>
             </div>
           </aside>
