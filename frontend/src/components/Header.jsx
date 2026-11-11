@@ -6,6 +6,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useIsInsideLayout } from "../contexts/LayoutContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import PMReminderChip from "./maintenance/PMReminderChip";
+import { openCommandPalette } from "./CommandPalette";
 
 const NOTIFICATION_ICONS = {
   pm_assignment: "📋",
@@ -156,6 +157,21 @@ export default function Header({ showMMIS = true, brandLogo = false }) {
       )}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <PMReminderChip />
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          title="Command palette (Ctrl+K)"
+          aria-label="Open command palette"
+          className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 sm:inline-flex dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:bg-gray-600"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
+          </svg>
+          <span>Search</span>
+          <kbd className="rounded border border-slate-200 bg-white px-1 py-0.5 font-mono text-[10px] text-slate-400 dark:border-gray-500 dark:bg-gray-800">
+            Ctrl+K
+          </kbd>
+        </button>
         {/* Transfer notifications — left of theme toggle */}
         <div className="relative" ref={notificationRef}>
           <button

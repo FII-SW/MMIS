@@ -136,6 +136,9 @@ export default function RestockEditItemPage() {
     return <PageLoadingState title="Restock" onBack={handleBack} message="Loading item..." />;
   }
 
+  const canSetQuantity = isSuperAdminUser();
+  const quantityEditable = isEditMode && canSetQuantity;
+
   // Helper function to get full image URL
   const getImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
@@ -210,9 +213,16 @@ export default function RestockEditItemPage() {
     }
   };
 
-  // Save only attribute changes (no quantity required)
+  // Save attribute changes; Super Admin may also set on-hand quantity
   const handleSaveChanges = async () => {
     try {
+      let currentQty = parseInt(formData.item_current_quantity, 10);
+      if (Number.isNaN(currentQty)) currentQty = 0;
+      if (canSetQuantity && currentQty < 0) {
+        alert("Current quantity must be 0 or greater.");
+        return;
+      }
+
       const updateData = {
         item_name: formData.item_name,
         item_part_number: formData.item_part_number || null,
@@ -226,16 +236,23 @@ export default function RestockEditItemPage() {
         item_life_cycle: parseInt(formData.item_life_cycle) || 0,
         item_unit_price: formData.item_unit_price || null,
         item_image_url: formData.item_image_url || null,
-        item_current_quantity: parseInt(formData.item_current_quantity) || 0,
+        // Backend only applies this for Super Admin; other admins' value is ignored.
+        item_current_quantity: canSetQuantity
+          ? currentQty
+          : parseInt(item.item_current_quantity, 10) || 0,
       };
 
       await API.put(`/inventory/${item_id}`, updateData);
       alert("Item details updated successfully!");
       setIsEditMode(false);
 
-      // Refresh item data
       const res = await API.get(`/inventory/${item_id}`);
-      setItem(res.data);
+      const itemData = res.data;
+      setItem(itemData);
+      setFormData((prev) => ({
+        ...prev,
+        item_current_quantity: itemData.item_current_quantity ?? "",
+      }));
     } catch (err) {
       console.error(err);
       alert("Failed to update item: " + apiErrorMessage(err, err.message));
@@ -265,6 +282,12 @@ export default function RestockEditItemPage() {
         employee_id: employeeId,
       });
 
+      try {
+        const { celebrate } = await import("../utils/celebrate");
+        celebrate({ intensity: 1 });
+      } catch {
+        /* ignore */
+      }
       alert("Item restocked successfully!");
       let backUrl = `/dashboard/restock/items?project=${encodeURIComponent(project || "")}`;
       if (test_area) {
@@ -324,9 +347,21 @@ export default function RestockEditItemPage() {
               </div>
               <div>
                 <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Current Quantity</label>
-                <div className="p-3 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-300">
-                  {formData.item_current_quantity}
-                </div>
+                {canSetQuantity ? (
+                  <input
+                    type="number"
+                    name="item_current_quantity"
+                    value={formData.item_current_quantity}
+                    onChange={handleChange}
+                    min="0"
+                    step="1"
+                    className="w-full p-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded transition-colors"
+                  />
+                ) : (
+                  <div className="p-3 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-300">
+                    {formData.item_current_quantity}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300">Adding Quantity</label>
@@ -539,8 +574,15 @@ export default function RestockEditItemPage() {
                       type="number"
                       name="item_current_quantity"
                       value={formData.item_current_quantity}
-                      readOnly
-                      className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-300 transition-colors"
+                      onChange={handleChange}
+                      readOnly={!quantityEditable}
+                      min="0"
+                      step="1"
+                      className={`w-full p-2 border dark:border-gray-600 rounded transition-colors ${
+                        quantityEditable
+                          ? "bg-white dark:bg-gray-700 dark:text-white"
+                          : "bg-gray-100 dark:bg-gray-700 dark:text-gray-300"
+                      }`}
                     />
                   </div>
                   <div>
@@ -694,8 +736,7 @@ export default function RestockEditItemPage() {
             Back
           </button>
 
-          {/* Save Changes - only visible in edit mode, no quantity required */}
-          {isEditMode && (
+          {(isEditMode || (canSetQuantity && isSimpleRestockProject)) && (
             <button
               className="px-8 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 shadow transition-colors font-medium"
               onClick={handleSaveChanges}

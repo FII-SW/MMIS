@@ -5,6 +5,7 @@ from ..database import get_db
 from ..utils.audit import changed_fields, log_action
 from ..utils.auth_deps import get_current_user, require_admin, require_editor, require_super_admin, employee_id_from_token
 from ..utils.inventory_rules import project_requires_test_area
+from ..utils.roles import is_super_admin
 import os
 import shutil
 import uuid
@@ -167,14 +168,14 @@ def add_inventory(data: dict, request: Request, db: Session = Depends(get_db)):
 
 @router.put("/{item_id}")
 def update_inventory(item_id: int, item: schemas.InventoryBase, request: Request, db: Session = Depends(get_db)):
-    """Update an existing inventory item by ID (admin only)."""
+    """Update an existing inventory item by ID (admin only).
+    Super Admin may also set on-hand quantity; other admins still use Restock to add stock."""
     admin = require_admin(request)
     db_item = db.query(models.Inventory).filter(models.Inventory.item_id == item_id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    # Update all fields except quantity (quantity is handled by restock endpoint)
-    # item_image_url is only set via dedicated upload endpoints
+    # Update all fields except quantity / image (image via upload endpoints; quantity below)
     update_data = item.dict(exclude={"item_current_quantity", "item_image_url"})
     changes = changed_fields(db_item, {k: v for k, v in update_data.items() if v is not None})
     if changes:
@@ -186,6 +187,26 @@ def update_inventory(item_id: int, item: schemas.InventoryBase, request: Request
     for key, value in update_data.items():
         if value is not None:
             setattr(db_item, key, value)
+
+    if is_super_admin(admin.get("role")) and item.item_current_quantity is not None:
+        try:
+            new_qty = int(item.item_current_quantity)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Current quantity must be a valid number")
+        if new_qty < 0:
+            raise HTTPException(status_code=400, detail="Current quantity must be 0 or greater")
+        old_qty = int(db_item.item_current_quantity or 0)
+        if new_qty != old_qty:
+            db_item.item_current_quantity = new_qty
+            log_action(
+                db,
+                admin,
+                "quantity.set",
+                "item",
+                item_id,
+                f"Set quantity for {db_item.item_name} ({db_item.project_name}): {old_qty} → {new_qty}",
+                {"old_quantity": old_qty, "new_quantity": new_qty},
+            )
     
     db.commit()
     db.refresh(db_item)

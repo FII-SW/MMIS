@@ -197,6 +197,12 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
         res = await API.post(url, { ...payload, confirm_duplicate: true });
       }
       resetForm();
+      try {
+        const { celebrate } = await import("../../utils/celebrate");
+        celebrate({ intensity: hasFailure ? 0.55 : 1 });
+      } catch {
+        /* ignore */
+      }
       onSaved?.(res.data);
     } catch (err) {
       setSubmitError(err?.response?.data?.detail || "Failed to save PM record.");

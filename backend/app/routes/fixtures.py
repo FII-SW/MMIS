@@ -90,6 +90,7 @@ def bulk_update_fixture_descriptors(
         raise HTTPException(status_code=404, detail=f"Fixtures not found: {missing[:10]}")
 
     changed = {}
+    fields_touched = set()
     for item in data.updates:
         fixture = fixtures_by_id[item.fixture_id]
         values = {
@@ -99,16 +100,40 @@ def bulk_update_fixture_descriptors(
         changes = changed_fields(fixture, values)
         if changes:
             changed[fixture.fixture_name] = changes
+            fields_touched.update(changes.keys())
         for key, value in values.items():
             setattr(fixture, key, value)
 
     if changed:
+        # Keep audit payload small — full per-fixture diffs blow up on large bulk saves.
+        sample_names = list(changed.keys())[:25]
         log_action(
-            db, admin, "update", "fixture", None,
+            db,
+            admin,
+            "update",
+            "fixture",
+            None,
             f"Bulk edited fixture info on {len(changed)} fixture(s)",
-            {"fixtures": changed},
+            {
+                "count": len(changed),
+                "fields": sorted(fields_touched),
+                "sample": sample_names,
+            },
         )
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        message = str(exc.orig if getattr(exc, "orig", None) else exc)
+        if "manufacturer" in message or "production_line" in message:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Fixtures table is missing manufacturer/production_line columns. "
+                    "Restart mmis-backend so startup migrations can add them."
+                ),
+            ) from None
+        raise HTTPException(status_code=500, detail=f"Could not save fixture info: {message}") from None
     return {"updated": len(data.updates)}
 
 

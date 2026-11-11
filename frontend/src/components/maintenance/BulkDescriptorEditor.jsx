@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import API from "../../api";
 import { useFixtureDescriptorOptions } from "../FixtureDescriptorFields";
+import { apiErrorMessage } from "../../utils/apiError";
 
 const INPUT_CLASS =
   "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white";
 
 const EMPTY_DRAFT = { asset_tag: "", fixture_serial_number: "", manufacturer: "", production_line: "" };
+/** Keep each request small so proxies / workers don't time out on large fixture lists. */
+const SAVE_CHUNK_SIZE = 40;
 
 function clean(value) {
   return (value || "").trim();
@@ -30,6 +33,7 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
   const [applyManufacturer, setApplyManufacturer] = useState("");
   const [applyLine, setApplyLine] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState("");
   const [error, setError] = useState("");
 
   const draftFor = (fx) => drafts[fx.fixture_id] || EMPTY_DRAFT;
@@ -96,6 +100,7 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
     if (changed.length === 0) return;
     setSaving(true);
     setError("");
+    setSaveProgress("");
     const updates = changed.map((fx) => {
       const draft = drafts[fx.fixture_id];
       return {
@@ -107,12 +112,19 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
       };
     });
     try {
-      await API.patch("/fixtures/bulk-descriptors", { updates });
+      const total = updates.length;
+      for (let i = 0; i < updates.length; i += SAVE_CHUNK_SIZE) {
+        const chunk = updates.slice(i, i + SAVE_CHUNK_SIZE);
+        const done = Math.min(i + chunk.length, total);
+        setSaveProgress(`Saving ${done} of ${total}…`);
+        await API.patch("/fixtures/bulk-descriptors", { updates: chunk });
+      }
       onSaved(updates);
     } catch (err) {
-      setError(err?.response?.data?.detail || "Failed to save changes.");
+      setError(apiErrorMessage(err, "Failed to save changes."));
     } finally {
       setSaving(false);
+      setSaveProgress("");
     }
   };
 
@@ -152,7 +164,9 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
               disabled={saving || changed.length === 0}
               className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50"
             >
-              {saving ? "Saving…" : `Save ${changed.length} change${changed.length === 1 ? "" : "s"}`}
+              {saving
+                ? saveProgress || "Saving…"
+                : `Save ${changed.length} change${changed.length === 1 ? "" : "s"}`}
             </button>
           </div>
         </div>

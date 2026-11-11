@@ -59,17 +59,13 @@ def ensure_project_documents_columns():
 
 def ensure_fixture_descriptor_columns():
     """Backward-compatible migration for fixture manufacturer / production line."""
-    inspector = inspect(engine)
-    try:
-        columns = {col["name"] for col in inspector.get_columns("fixtures")}
-    except Exception:
-        return
-
-    with engine.begin() as conn:
-        if "manufacturer" not in columns:
-            conn.execute(text("ALTER TABLE fixtures ADD COLUMN manufacturer VARCHAR(100)"))
-        if "production_line" not in columns:
-            conn.execute(text("ALTER TABLE fixtures ADD COLUMN production_line VARCHAR(50)"))
+    _add_missing_columns(
+        "fixtures",
+        {
+            "manufacturer": "VARCHAR(100)",
+            "production_line": "VARCHAR(50)",
+        },
+    )
 
 
 def _add_missing_columns(table: str, definitions: dict[str, str]):

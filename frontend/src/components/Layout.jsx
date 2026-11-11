@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Header from "./Header";
 import HelpAssistant from "./HelpAssistant";
+import CommandPalette from "./CommandPalette";
 import { LayoutProvider } from "../contexts/LayoutContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import PMAssignmentBanner from "./maintenance/PMAssignmentBanner";
@@ -219,6 +220,7 @@ export default function Layout({ children }) {
         </div>
       </div>
       <HelpAssistant />
+      <CommandPalette />
     </LayoutProvider>
   );
 }
