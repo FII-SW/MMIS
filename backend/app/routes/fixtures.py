@@ -67,13 +67,24 @@ def fixture_descriptor_options(db: Session = Depends(get_db)):
     }
 
 
+# Older DBs may have these as NOT NULL — never write SQL NULL into them.
+_DESCRIPTOR_EMPTY_STRING = frozenset({"asset_tag", "fixture_serial_number"})
+
+
+def _normalize_descriptor_value(key: str, value) -> str | None:
+    text = "" if value is None else str(value).strip()
+    if text:
+        return text
+    return "" if key in _DESCRIPTOR_EMPTY_STRING else None
+
+
 @router.patch("/bulk-descriptors")
 def bulk_update_fixture_descriptors(
     data: schemas.FixtureDescriptorsBulkUpdate,
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """Admin: set asset tag, serial, manufacturer and production line for many fixtures."""
+    """Admin: patch only the descriptor fields sent per fixture (partial column updates)."""
     admin = require_admin(request)
     if not data.updates:
         return {"updated": 0}
@@ -94,9 +105,11 @@ def bulk_update_fixture_descriptors(
     for item in data.updates:
         fixture = fixtures_by_id[item.fixture_id]
         values = {
-            key: (value or "").strip() or None
+            key: _normalize_descriptor_value(key, value)
             for key, value in item.dict(exclude_unset=True, exclude={"fixture_id"}).items()
         }
+        if not values:
+            continue
         changes = changed_fields(fixture, values)
         if changes:
             changed[fixture.fixture_name] = changes
@@ -150,7 +163,10 @@ def update_fixture_descriptors(
     if not db_fixture:
         raise HTTPException(status_code=404, detail="Fixture not found")
 
-    values = {key: (value or "").strip() or None for key, value in data.dict(exclude_unset=True).items()}
+    values = {
+        key: _normalize_descriptor_value(key, value)
+        for key, value in data.dict(exclude_unset=True).items()
+    }
     changes = changed_fields(db_fixture, values)
     if changes:
         log_action(

@@ -29,7 +29,7 @@ export function AnimatedNumber({ value, duration = 900, className = "" }) {
   return <span className={className}>{display.toLocaleString()}</span>;
 }
 
-/** SVG ring gauge (0–100). */
+/** SVG ring gauge (0–100). Use tone="onDark" on the Floor ops hero. */
 export function HealthRing({
   value,
   size = 112,
@@ -38,16 +38,25 @@ export function HealthRing({
   track = "rgba(148,163,184,0.25)",
   label,
   sublabel,
+  tone = "onDark",
 }) {
   const pct = Math.max(0, Math.min(100, Number(value) || 0));
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (pct / 100) * c;
+  const onDark = tone === "onDark";
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track} strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={onDark ? "rgba(255,255,255,0.18)" : track}
+          strokeWidth={stroke}
+        />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -62,10 +71,28 @@ export function HealthRing({
           style={{ ["--ring-len"]: c, ["--ring-offset"]: offset }}
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-xl font-black tabular-nums text-slate-800 dark:text-white">{Math.round(pct)}%</span>
-        {label && <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>}
-        {sublabel && <span className="text-[10px] text-slate-400">{sublabel}</span>}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
+        <span
+          className={`text-2xl font-black tabular-nums leading-none ${
+            onDark ? "text-white drop-shadow" : "text-slate-800 dark:text-white"
+          }`}
+        >
+          {Math.round(pct)}%
+        </span>
+        {label && (
+          <span
+            className={`mt-1 text-[10px] font-bold uppercase tracking-wide ${
+              onDark ? "text-white/80" : "text-slate-500"
+            }`}
+          >
+            {label}
+          </span>
+        )}
+        {sublabel && (
+          <span className={`text-[10px] font-medium ${onDark ? "text-cyan-100/80" : "text-slate-400"}`}>
+            {sublabel}
+          </span>
+        )}
       </div>
     </div>
   );

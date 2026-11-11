@@ -101,16 +101,20 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
     setSaving(true);
     setError("");
     setSaveProgress("");
+    // Only send columns that actually changed — empty Asset Tag must not wipe as SQL NULL.
+    const FIELD_KEYS = ["asset_tag", "fixture_serial_number", "manufacturer", "production_line"];
     const updates = changed.map((fx) => {
       const draft = drafts[fx.fixture_id];
-      return {
-        fixture_id: fx.fixture_id,
-        asset_tag: clean(draft.asset_tag) || null,
-        fixture_serial_number: clean(draft.fixture_serial_number) || null,
-        manufacturer: clean(draft.manufacturer) || null,
-        production_line: clean(draft.production_line) || null,
-      };
-    });
+      const patch = { fixture_id: fx.fixture_id };
+      FIELD_KEYS.forEach((key) => {
+        const next = clean(draft[key]);
+        const prev = clean(fx[key]);
+        if (next !== prev) {
+          patch[key] = next || null;
+        }
+      });
+      return patch;
+    }).filter((row) => Object.keys(row).length > 1);
     try {
       const total = updates.length;
       for (let i = 0; i < updates.length; i += SAVE_CHUNK_SIZE) {
@@ -146,8 +150,7 @@ export default function BulkDescriptorEditor({ fixtures, onClose, onSaved }) {
           <div>
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Edit fixture info</p>
             <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Type each fixture&apos;s asset tag, serial, line and manufacturer. Select several to apply the same line or
-              manufacturer to all of them. Clearing a box and saving removes that value.
+              Only changed columns are saved. Select rows to apply the same line or manufacturer.
             </p>
           </div>
           <div className="flex gap-2">
