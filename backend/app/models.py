@@ -127,6 +127,11 @@ class FixturePMRecord(Base):
     activation_counter = Column(BigInteger, nullable=True)
     commodity_replacement = Column(Text, nullable=True)  # condition and location, or "None"
     downtime_minutes = Column(Integer, nullable=True)
+    # Board validation after PM — required before release back to production
+    board_serial_number = Column(String(100), nullable=True)
+    board_gpn = Column(String(100), nullable=True)
+    board_test_status = Column(String(20), nullable=True)  # pass | fail
+    board_test_screenshot_url = Column(String(500), nullable=True)
     project_name = Column(String(100))
     test_area = Column(String(20))
     performed_by_employee_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True)

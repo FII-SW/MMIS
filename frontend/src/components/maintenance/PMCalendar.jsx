@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { plantDayKey } from "../../utils/datetime";
 import { PM_STATE_META } from "./pmStatus";
 import { pmTypeLabel } from "./pmTypes";
 
@@ -7,7 +8,7 @@ const MAX_PER_DAY = 3;
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function dayKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return plantDayKey(date) || "";
 }
 
 function startOfWeek(date) {
@@ -45,6 +46,7 @@ export default function PMCalendar({ tasks, onOpen }) {
       return d;
     });
     const lastKey = dayKey(gridDays[gridDays.length - 1]);
+    const todayPlant = dayKey(new Date());
     const grouped = {};
     const overdueTasks = [];
     let laterCount = 0;
@@ -53,14 +55,15 @@ export default function PMCalendar({ tasks, onOpen }) {
         overdueTasks.push(task);
         return;
       }
-      const key = dayKey(new Date(task.entry.next_due_at));
+      // Plant TZ: end-of-day Chicago due stamps must not land on the next local calendar day.
+      const key = dayKey(task.entry.next_due_at);
       if (key > lastKey) {
         laterCount += 1;
         return;
       }
       (grouped[key] ||= []).push(task);
     });
-    return { overdue: overdueTasks, byDay: grouped, later: laterCount, days: gridDays, todayKey: dayKey(today) };
+    return { overdue: overdueTasks, byDay: grouped, later: laterCount, days: gridDays, todayKey: todayPlant };
   }, [tasks]);
 
   const expandedTasks = expandedDay ? byDay[expandedDay] || [] : [];

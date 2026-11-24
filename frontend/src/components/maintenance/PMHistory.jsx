@@ -9,7 +9,9 @@ import {
   COMMODITY_QUESTION,
   DOWNTIME_QUESTION,
   MAINTENANCE_TYPE_LABELS,
+  boardValidationRows,
   detailRows,
+  hasBoardValidation,
   hasDetails,
 } from "./pmDetails";
 
@@ -149,6 +151,32 @@ function RecordDetails({ record, fixture, session, onChanged, onDownload, downlo
             <div key={label} className={label === COMMODITY_QUESTION ? "md:col-span-2" : ""}>
               <dt className="text-xs font-semibold text-gray-500 dark:text-gray-400">{label}</dt>
               <dd className="whitespace-pre-wrap text-gray-800 dark:text-gray-200">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {hasBoardValidation(record) && mode !== "edit" && (
+        <dl className="mb-3 grid grid-cols-1 gap-x-4 gap-y-2 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-sm dark:border-emerald-900/40 dark:bg-emerald-950/20 md:grid-cols-2">
+          <div className="md:col-span-2 text-[11px] font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+            Board validation
+          </div>
+          {boardValidationRows(record).map(([label, value]) => (
+            <div key={label} className={label.includes("screenshot") ? "md:col-span-2" : ""}>
+              <dt className="text-xs font-semibold text-gray-500 dark:text-gray-400">{label}</dt>
+              <dd className="text-gray-800 dark:text-gray-200">
+                {label.includes("screenshot") && value && value !== "—" ? (
+                  <a
+                    href={`${import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8000")}${value}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    View screenshot
+                  </a>
+                ) : (
+                  value
+                )}
+              </dd>
             </div>
           ))}
         </dl>

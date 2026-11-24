@@ -34,7 +34,7 @@ from .maintenance import (
     pm_baseline,
 )
 
-# A quarterly PM done at the start of a quarter is still valid until the end of the next one.
+# Quarterly PMs roll ~3 months from the last performed date.
 TREND_HISTORY_DAYS = 200
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance workflow"])

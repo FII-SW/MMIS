@@ -7,9 +7,17 @@ import PMPartsPicker from "./PMPartsPicker";
 import { COMMODITY_QUESTION, DOWNTIME_QUESTION, NO_COMMODITY, formatMinutes } from "./pmDetails";
 
 const EMPTY_DETAILS = { maintenanceType: "", activationCounter: "", commodityChoice: "", commodityText: "", downtime: "" };
+const EMPTY_BOARD = { serial: "", gpn: "", status: "", screenshotUrl: "" };
 const WHOLE_NUMBER = /^\d+$/;
 const INPUT_CLASS =
   "w-full rounded-md border border-gray-300 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white";
+
+function mediaUrl(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8000");
+  return `${apiBase}${path}`;
+}
 
 const RESULT_OPTIONS = [
   { value: "passed", label: "Passed", active: "bg-green-600 text-white border-green-600" },
@@ -35,6 +43,8 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
   const [partsReplaced, setPartsReplaced] = useState("");
   const [stockParts, setStockParts] = useState([]);
   const [details, setDetails] = useState(EMPTY_DETAILS);
+  const [board, setBoard] = useState(EMPTY_BOARD);
+  const [boardUploading, setBoardUploading] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -62,10 +72,13 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
           setStockParts(Array.isArray(draft.stockParts) ? draft.stockParts : []);
           const restoredDetails = { ...EMPTY_DETAILS, ...(draft.details || {}) };
           setDetails(restoredDetails);
+          const restoredBoard = { ...EMPTY_BOARD, ...(draft.board || {}) };
+          setBoard(restoredBoard);
           setDraftRestored(
             Object.keys(restored).length > 0 ||
               Boolean(draft.notes || draft.partsReplaced || draft.stockParts?.length) ||
-              Object.values(restoredDetails).some(Boolean)
+              Object.values(restoredDetails).some(Boolean) ||
+              Object.values(restoredBoard).some(Boolean)
           );
         }
       })
@@ -97,15 +110,20 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
       notes.trim() ||
       partsReplaced.trim() ||
       stockParts.length > 0 ||
-      Object.values(details).some(Boolean);
+      Object.values(details).some(Boolean) ||
+      Object.values(board).some(Boolean);
     if (hasContent) {
-      localStorage.setItem(draftKey, JSON.stringify({ results, notes, partsReplaced, stockParts, details }));
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ results, notes, partsReplaced, stockParts, details, board })
+      );
     } else {
       localStorage.removeItem(draftKey);
     }
-  }, [checklist, draftKey, results, notes, partsReplaced, stockParts, details]);
+  }, [checklist, draftKey, results, notes, partsReplaced, stockParts, details, board]);
 
   const setDetail = (field, value) => setDetails((prev) => ({ ...prev, [field]: value }));
+  const setBoardField = (field, value) => setBoard((prev) => ({ ...prev, [field]: value }));
 
   const resetForm = () => {
     setResults({});
@@ -113,6 +131,7 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
     setPartsReplaced("");
     setStockParts([]);
     setDetails(EMPTY_DETAILS);
+    setBoard(EMPTY_BOARD);
     setDraftRestored(false);
     setSubmitError("");
     localStorage.removeItem(draftKey);
@@ -147,9 +166,36 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
     return "";
   };
 
+  const boardError = () => {
+    if (!board.serial.trim()) return "Enter the board serial number.";
+    if (!board.gpn.trim()) return "Enter the GPN number.";
+    if (!board.status) return "Select board Pass or Fail.";
+    if (board.status !== "pass") return "Board test must Pass before release back to production.";
+    if (!board.screenshotUrl) return "Upload a screenshot of the pass record.";
+    return "";
+  };
+
   const markAllPassed = () => {
     if (!checklist) return;
     setResults(Object.fromEntries(checklist.items.map((item) => [item.id, "passed"])));
+  };
+
+  const handleBoardScreenshot = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setBoardUploading(true);
+    setSubmitError("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await API.post("/maintenance/board-test-screenshot", body);
+      setBoardField("screenshotUrl", res.data.image_url);
+    } catch (err) {
+      setSubmitError(apiErrorMessage(err, "Could not upload screenshot."));
+    } finally {
+      setBoardUploading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -169,6 +215,11 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
       setSubmitError("Notes are required when any task failed.");
       return;
     }
+    const missingBoard = boardError();
+    if (missingBoard) {
+      setSubmitError(missingBoard);
+      return;
+    }
 
     const payload = {
       pm_type: pmType,
@@ -176,6 +227,10 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
       notes: notes.trim() || null,
       parts_replaced: partsReplaced.trim() || null,
       parts: stockParts,
+      board_serial_number: board.serial.trim(),
+      board_gpn: board.gpn.trim(),
+      board_test_status: board.status,
+      board_test_screenshot_url: board.screenshotUrl,
       ...(requiresDetails && {
         maintenance_type: details.maintenanceType,
         activation_counter: Number(details.activationCounter.trim()),
@@ -458,12 +513,114 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
 
       <PMPartsPicker fixture={fixture} parts={stockParts} onChange={setStockParts} />
 
+      <div className="overflow-hidden rounded-lg border border-emerald-200 dark:border-emerald-900/50">
+        <div className="bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+          Board validation · required before release to production
+        </div>
+        <div className="grid grid-cols-1 gap-3 p-3 md:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Serial number <span className="text-red-500">*</span>
+            </span>
+            <input
+              type="text"
+              value={board.serial}
+              onChange={(e) => setBoardField("serial", e.target.value)}
+              placeholder="Board serial number"
+              maxLength={100}
+              className={INPUT_CLASS}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              GPN number <span className="text-red-500">*</span>
+            </span>
+            <input
+              type="text"
+              value={board.gpn}
+              onChange={(e) => setBoardField("gpn", e.target.value)}
+              placeholder="GPN number"
+              maxLength={100}
+              className={INPUT_CLASS}
+            />
+          </label>
+          <div className="md:col-span-2">
+            <span className="mb-1 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Pass / Fail status <span className="text-red-500">*</span>
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {[
+                { value: "pass", label: "Pass", active: "bg-green-600 text-white border-green-600" },
+                { value: "fail", label: "Fail", active: "bg-red-600 text-white border-red-600" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setBoardField("status", opt.value)}
+                  className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    board.status === opt.value
+                      ? opt.active
+                      : "border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {board.status === "fail" && (
+              <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+                Board must Pass before this fixture can be released back to production.
+              </p>
+            )}
+          </div>
+          <div className="md:col-span-2">
+            <span className="mb-1 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Screenshot of the pass record <span className="text-red-500">*</span>
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
+              onChange={handleBoardScreenshot}
+              disabled={boardUploading || submitting}
+              className="w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-700 dark:text-gray-300"
+            />
+            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+              JPG, PNG, GIF, or WebP · max 8 MB
+              {boardUploading ? " · Uploading…" : ""}
+            </p>
+            {board.screenshotUrl && (
+              <div className="mt-2 flex flex-wrap items-start gap-3">
+                <a
+                  href={mediaUrl(board.screenshotUrl)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block overflow-hidden rounded-lg border border-gray-200 dark:border-gray-600"
+                >
+                  <img
+                    src={mediaUrl(board.screenshotUrl)}
+                    alt="Board pass record"
+                    className="h-28 w-auto max-w-full object-contain bg-gray-50 dark:bg-gray-900"
+                  />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setBoardField("screenshotUrl", "")}
+                  className="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {submitError && <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>}
 
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || boardUploading}
           className="rounded-lg bg-green-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-green-700 disabled:opacity-60 dark:bg-green-700 dark:hover:bg-green-600"
         >
           {submitting ? "Saving…" : `Submit ${checklist.label}`}

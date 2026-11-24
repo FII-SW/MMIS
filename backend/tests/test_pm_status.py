@@ -40,9 +40,10 @@ class TestPMEntry(unittest.TestCase):
         self.assertEqual(overdue["days_until_due"], -4)
 
     def test_monthly_states(self):
-        self.assertEqual(_pm_entry("monthly", _latest(10), NOW)["state"], "ok")
-        self.assertEqual(_pm_entry("monthly", _latest(27), NOW)["state"], "due_soon")  # August -> due Sep 30
-        self.assertEqual(_pm_entry("monthly", _latest(60), NOW)["state"], "overdue")  # July -> August missed
+        # Rolling +1 calendar month from last performed (not end of next month).
+        self.assertEqual(_pm_entry("monthly", _latest(10), NOW)["state"], "ok")  # Sep 14 → due Oct 14
+        self.assertEqual(_pm_entry("monthly", _latest(27), NOW)["state"], "due_soon")  # Aug 28 → due Sep 28
+        self.assertEqual(_pm_entry("monthly", _latest(60), NOW)["state"], "overdue")  # Jul 26 → due Aug 26
 
     def test_naive_datetime_treated_as_utc(self):
         record = SimpleNamespace(performed_at=(NOW - timedelta(days=1)).replace(tzinfo=None), overall_result="passed")

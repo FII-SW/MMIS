@@ -3,9 +3,12 @@ import json
 import math
 import os
 import re
+import shutil
+import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
@@ -29,10 +32,19 @@ from ..utils.pm_checklists import (
     get_pm_types,
 )
 from ..utils.app_settings import get_setting
-from ..utils.pm_schedule import pm_due_at
+from ..utils.pm_schedule import PLANT_TZ, pm_due_at
 from ..utils.remarks import clean_remarks
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance"])
+
+BOARD_TEST_STATUSES = ("pass", "fail")
+BOARD_SCREENSHOT_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+MAX_BOARD_SCREENSHOT_BYTES = 8 * 1024 * 1024
+
+
+def _board_screenshots_dir() -> Path:
+    backend_dir = Path(__file__).resolve().parents[2]
+    return backend_dir / "uploads" / "board_test_screenshots"
 
 # Lower rank = more urgent; a fixture's overall state is its most urgent PM type.
 # "never" = no PM recorded yet and the first one is not due yet.
@@ -63,6 +75,11 @@ class PMRecordCreate(BaseModel):
     activation_counter: int | None = None
     commodity_replacement: str | None = Field(default=None, max_length=2000)
     downtime_minutes: int | None = None
+    # Board validation before release to production
+    board_serial_number: str | None = Field(default=None, max_length=100)
+    board_gpn: str | None = Field(default=None, max_length=100)
+    board_test_status: str | None = Field(default=None, max_length=20)
+    board_test_screenshot_url: str | None = Field(default=None, max_length=500)
 
 
 DETAIL_FIELDS = {
@@ -174,6 +191,10 @@ def _serialize_record(record: models.FixturePMRecord, employee_name: str | None)
         "activation_counter": record.activation_counter,
         "commodity_replacement": record.commodity_replacement,
         "downtime_minutes": record.downtime_minutes,
+        "board_serial_number": getattr(record, "board_serial_number", None),
+        "board_gpn": getattr(record, "board_gpn", None),
+        "board_test_status": getattr(record, "board_test_status", None),
+        "board_test_screenshot_url": getattr(record, "board_test_screenshot_url", None),
         "project_name": record.project_name,
         "test_area": record.test_area,
         "performed_by_employee_id": record.performed_by_employee_id,
@@ -282,14 +303,15 @@ def pm_baseline(fixture, tracking_start: datetime | None) -> datetime | None:
 
 
 def _due_state(pm_type: str, next_due: datetime, now: datetime) -> tuple[str, int]:
-    seconds_left = (next_due - now).total_seconds()
-    if seconds_left < 0:
+    # Plant calendar days so end-of-day UTC timestamps do not add an extra day.
+    days = (next_due.astimezone(PLANT_TZ).date() - now.astimezone(PLANT_TZ).date()).days
+    if days < 0:
         state = "overdue"
-    elif seconds_left <= PM_DUE_SOON_DAYS[pm_type] * 86400:
+    elif days <= PM_DUE_SOON_DAYS[pm_type]:
         state = "due_soon"
     else:
         state = "ok"
-    return state, math.floor(seconds_left / 86400)
+    return state, days
 
 
 def _pm_entry(
@@ -786,6 +808,41 @@ def get_pm_status(fixture_id: int, db: Session = Depends(get_db)):
     }
 
 
+@router.post("/board-test-screenshot")
+async def upload_board_test_screenshot(
+    request: Request,
+    file: UploadFile = File(...),
+):
+    """Upload a screenshot of the board pass record (editors)."""
+    require_editor(request)
+    upload_dir = _board_screenshots_dir()
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    file_extension = Path(file.filename or "").suffix.lower()
+    if file_extension not in BOARD_SCREENSHOT_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {', '.join(sorted(BOARD_SCREENSHOT_EXTENSIONS))}",
+        )
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > MAX_BOARD_SCREENSHOT_BYTES:
+        raise HTTPException(status_code=400, detail="Screenshot must be 8 MB or smaller")
+
+    safe_filename = f"{uuid.uuid4().hex}{file_extension}"
+    file_path = upload_dir / safe_filename
+    try:
+        with open(file_path, "wb") as buffer:
+            buffer.write(data)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save screenshot: {exc}") from None
+
+    image_url = f"/uploads/board_test_screenshots/{safe_filename}"
+    return {"image_url": image_url, "filename": safe_filename}
+
+
 @router.post("/fixtures/{fixture_id}/pm-records", status_code=201)
 def create_pm_record(
     fixture_id: int,
@@ -832,6 +889,34 @@ def create_pm_record(
         missing = [label for field, label in DETAIL_FIELDS.items() if details[field] is None]
         if missing:
             raise HTTPException(status_code=400, detail=f"Please fill in: {', '.join(missing)}")
+
+    board_serial = (payload.board_serial_number or "").strip() or None
+    board_gpn = (payload.board_gpn or "").strip() or None
+    board_status = (payload.board_test_status or "").strip().lower() or None
+    board_shot = (payload.board_test_screenshot_url or "").strip() or None
+    if board_status is not None and board_status not in BOARD_TEST_STATUSES:
+        raise HTTPException(status_code=400, detail="Board test status must be Pass or Fail")
+    if board_shot and not board_shot.startswith("/uploads/board_test_screenshots/"):
+        raise HTTPException(status_code=400, detail="Invalid board test screenshot")
+    board_missing = []
+    if not board_serial:
+        board_missing.append("Board serial number")
+    if not board_gpn:
+        board_missing.append("GPN number")
+    if not board_status:
+        board_missing.append("Board Pass/Fail status")
+    if not board_shot:
+        board_missing.append("Screenshot of the pass record")
+    if board_missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Board validation required before release: {', '.join(board_missing)}",
+        )
+    if board_status != "pass":
+        raise HTTPException(
+            status_code=400,
+            detail="Board test must Pass before the fixture can be released back to production.",
+        )
 
     if not payload.confirm_duplicate:
         window_start = datetime.now(timezone.utc) - timedelta(hours=PM_DUPLICATE_WINDOW_HOURS)
@@ -904,6 +989,10 @@ def create_pm_record(
         project_name=fixture.project_name,
         test_area=fixture.test_area,
         performed_by_employee_id=employee_id,
+        board_serial_number=board_serial,
+        board_gpn=board_gpn,
+        board_test_status=board_status,
+        board_test_screenshot_url=board_shot,
         **details,
     )
     db.add(record)

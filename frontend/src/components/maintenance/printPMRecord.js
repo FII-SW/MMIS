@@ -1,6 +1,6 @@
 import { formatDateTime } from "./formatDate";
 import { pmTypeLabel } from "./pmTypes";
-import { detailRows } from "./pmDetails";
+import { boardValidationRows, detailRows } from "./pmDetails";
 
 const RESULT_TEXT = { passed: "PASSED", failed: "FAILED", na: "N/A" };
 
@@ -24,7 +24,7 @@ export function printPMRecord(record, fixture) {
         </tr>`
     )
     .join("");
-  const details = detailRows(record);
+  const details = [...detailRows(record), ...boardValidationRows(record)];
   const detailsTable = details.length
     ? `<table class="details">${details
         .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)

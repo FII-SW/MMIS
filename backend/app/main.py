@@ -134,6 +134,10 @@ def ensure_pm_workflow_columns():
             "activation_counter": "BIGINT",
             "commodity_replacement": "TEXT",
             "downtime_minutes": "INTEGER",
+            "board_serial_number": "VARCHAR(100)",
+            "board_gpn": "VARCHAR(100)",
+            "board_test_status": "VARCHAR(20)",
+            "board_test_screenshot_url": "VARCHAR(500)",
         },
     )
     _add_missing_columns(
@@ -358,6 +362,7 @@ run_startup_migrations()
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 uploads_dir = os.path.join(backend_dir, "uploads", "item_images")
 os.makedirs(uploads_dir, exist_ok=True)
+os.makedirs(os.path.join(backend_dir, "uploads", "board_test_screenshots"), exist_ok=True)
 documents_upload_dir = os.path.join(backend_dir, "uploads", "project_documents")
 os.makedirs(documents_upload_dir, exist_ok=True)
 

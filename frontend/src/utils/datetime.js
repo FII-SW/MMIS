@@ -15,6 +15,14 @@ function partsMap(date, options) {
   return Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
 }
 
+/** YYYY-MM-DD in plant (Chicago) time — use for calendar grouping so UTC midnight does not shift the due day. */
+export function plantDayKey(value) {
+  const date = asDate(value);
+  if (!date) return null;
+  const parts = partsMap(date, { year: "numeric", month: "2-digit", day: "2-digit" });
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 /** Date only in Chicago, e.g. "Oct 28, 2026". */
 export function formatDate(value) {
   const date = asDate(value);

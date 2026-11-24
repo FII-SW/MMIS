@@ -1,10 +1,15 @@
-"""Calendar PM schedule: PMs are due per plant work week / month / quarter, not N days after the last one.
+"""PM due dates.
 
-Weekly    - once every ISO work week (Monday-Sunday).
-Biweekly  - within two work weeks: done in WW38 -> due by the end of WW40.
-Monthly   - once every calendar month.
-Quarterly - once every calendar quarter.
+Weekly / biweekly — calendar work weeks (Mon–Sun):
+  Done in a work week → next due by the end of the following work-week period.
+
+Monthly / quarterly — rolling from the last performed date (not end of next month/quarter):
+  Done on the 5th → next monthly due end of day on the 5th next month (~30 days).
+  Completing early no longer pushes the next due almost two months out.
+
+Never-done / resume baseline — due by the end of the period that contains the baseline.
 """
+import calendar
 import os
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -44,6 +49,14 @@ def _add_units(day: date, unit: str, count: int) -> date:
     return date(day.year + years, month_index + 1, 1)
 
 
+def _add_calendar_months(day: date, months: int) -> date:
+    """Same day-of-month N months later (clamped to last day of shorter months)."""
+    years, month_index = divmod(day.month - 1 + months, 12)
+    year = day.year + years
+    month = month_index + 1
+    return date(year, month, min(day.day, calendar.monthrange(year, month)[1]))
+
+
 def _end_of(day: date, tz) -> datetime:
     """Last second before local midnight starting `day`, in UTC."""
     midnight = datetime(day.year, day.month, day.day, tzinfo=tz)
@@ -58,7 +71,7 @@ def pm_due_at(
 ) -> datetime | None:
     """
     Due date for a PM type.
-    last: latest (covering) PM record. The next one is due by the end of the following period.
+    last: latest (covering) PM record.
     baseline: tracking start / resume date. With no record, the first PM is due by the end of
     the period containing it; after a resume it also pushes the due date to that period.
     """
@@ -66,8 +79,17 @@ def pm_due_at(
     unit, count = PM_SCHEDULE[pm_type]
     candidates = []
     if last is not None:
-        start = _unit_start(last.astimezone(tz).date(), unit)
-        candidates.append(_add_units(start, unit, count + 1))
+        local_last = last.astimezone(tz).date()
+        if unit == "week":
+            # End of the work-week period that follows the one containing `last`.
+            start = _unit_start(local_last, unit)
+            candidates.append(_add_units(start, unit, count + 1))
+        else:
+            # Monthly / quarterly: one period after the performed date (same day-of-month).
+            # Using end-of-next-month made early completions look ~60 days out.
+            months = count * (3 if unit == "quarter" else 1)
+            anniversary = _add_calendar_months(local_last, months)
+            candidates.append(anniversary + timedelta(days=1))
     if baseline is not None:
         start = _unit_start(baseline.astimezone(tz).date(), unit)
         candidates.append(_add_units(start, unit, count))
