@@ -1,7 +1,15 @@
-export const PM_STATES = ["overdue", "due_soon", "never", "ok", "paused"];
-export const PM_STATE_RANK = { overdue: 0, due_soon: 1, never: 2, ok: 3, paused: 4 };
+export const PM_STATES = ["overdue", "due_soon", "never", "ok", "paused", "on_hold", "development"];
+export const PM_STATE_RANK = {
+  overdue: 0,
+  due_soon: 1,
+  never: 2,
+  ok: 3,
+  paused: 4,
+  on_hold: 5,
+  development: 6,
+};
 
-/** Fixtures whose PM counts toward compliance (paused ones are out of service). */
+/** Fixtures whose PM counts toward compliance (out-of-service / non-production left out). */
 export function activePMCount(counts) {
   return ["overdue", "due_soon", "never", "ok"].reduce((sum, state) => sum + (counts?.[state] || 0), 0);
 }
@@ -37,6 +45,18 @@ export const PM_STATE_META = {
     dot: "bg-slate-500",
     tile: "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200",
   },
+  on_hold: {
+    label: "On Hold",
+    badge: "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200",
+    dot: "bg-amber-500",
+    tile: "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
+  },
+  development: {
+    label: "Development",
+    badge: "bg-violet-100 text-violet-900 dark:bg-violet-900/40 dark:text-violet-200",
+    dot: "bg-violet-500",
+    tile: "border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200",
+  },
 };
 
 function plural(n, word) {
@@ -45,6 +65,8 @@ function plural(n, word) {
 
 export function describeDue(entry) {
   if (entry?.state === "paused") return "PM paused";
+  if (entry?.state === "on_hold") return "On Hold";
+  if (entry?.state === "development") return "Development";
   if (!entry || entry.days_until_due == null) return "Never done";
   const days = entry.days_until_due;
   if (days < 0) return `Overdue by ${plural(-days, "day")}`;

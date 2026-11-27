@@ -32,6 +32,12 @@ from ..utils.pm_checklists import (
     get_pm_types,
 )
 from ..utils.app_settings import get_setting
+from ..utils.fixture_lifecycle import (
+    LIFECYCLE_PRODUCTION,
+    hold_label,
+    lifecycle_label,
+    pm_suppress_state,
+)
 from ..utils.pm_schedule import PLANT_TZ, pm_due_at
 from ..utils.remarks import clean_remarks
 
@@ -48,8 +54,16 @@ def _board_screenshots_dir() -> Path:
 
 # Lower rank = more urgent; a fixture's overall state is its most urgent PM type.
 # "never" = no PM recorded yet and the first one is not due yet.
-# "paused" = fixture out of service; never counted as overdue.
-STATE_RANK = {"overdue": 0, "due_soon": 1, "never": 2, "ok": 3, "paused": 4}
+# paused / on_hold / development = not counted as overdue.
+STATE_RANK = {
+    "overdue": 0,
+    "due_soon": 1,
+    "never": 2,
+    "ok": 3,
+    "paused": 4,
+    "on_hold": 5,
+    "development": 6,
+}
 MAX_PARTS_PER_PM = 20
 
 
@@ -158,6 +172,10 @@ def _serialize_fixture(fixture: models.Fixture, assignees: dict[int, str] | None
         "fixture_serial_number": fixture.fixture_serial_number,
         "manufacturer": fixture.manufacturer,
         "production_line": fixture.production_line,
+        "lifecycle_status": getattr(fixture, "lifecycle_status", None) or LIFECYCLE_PRODUCTION,
+        "lifecycle_label": lifecycle_label(getattr(fixture, "lifecycle_status", None)),
+        "hold_reason": getattr(fixture, "hold_reason", None),
+        "hold_label": hold_label(getattr(fixture, "hold_reason", None)),
         "pm_paused": bool(getattr(fixture, "pm_paused", False)),
         "pm_pause_reason": getattr(fixture, "pm_pause_reason", None),
         "pm_paused_at": getattr(fixture, "pm_paused_at", None),
@@ -395,13 +413,14 @@ def _fixture_pm(
         )
         for pm_type in pm_types
     }
-    if pm_types and getattr(fixture, "pm_paused", False):
+    suppress = pm_suppress_state(fixture) if pm_types else None
+    if suppress:
         for entry in status.values():
-            entry["state"] = "paused"
+            entry["state"] = suppress
         return {
             "pm_types": pm_types,
             "status": status,
-            "state": "paused",
+            "state": suppress,
             "days_until_due": None,
         }
     worst = min(status.values(), key=lambda e: STATE_RANK[e["state"]], default=None)
@@ -910,7 +929,10 @@ def create_pm_record(
     if board_missing:
         raise HTTPException(
             status_code=400,
-            detail=f"Board validation required before release: {', '.join(board_missing)}",
+            detail=(
+                f"Board validation required before release: {', '.join(board_missing)}. "
+                "If those fields are missing on this page, press Ctrl+F5 (Mac: Cmd+Shift+R) to reload MMIS, then fill Board validation and submit again."
+            ),
         )
     if board_status != "pass":
         raise HTTPException(

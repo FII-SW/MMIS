@@ -7,6 +7,13 @@ from .. import crud, schemas
 from .. import models
 from ..utils.audit import changed_fields, log_action
 from ..utils.auth_deps import employee_id_from_token, require_admin, require_super_admin
+from ..utils.fixture_lifecycle import (
+    LIFECYCLE_ON_HOLD,
+    LIFECYCLE_PRODUCTION,
+    apply_lifecycle_fields,
+    normalize_hold_reason,
+    normalize_lifecycle_status,
+)
 from ..utils.inventory_rules import (
     IC_PROGRAMMING_LEGACY_NAME,
     IC_PROGRAMMING_PROJECT,
@@ -78,6 +85,33 @@ def _normalize_descriptor_value(key: str, value) -> str | None:
     return "" if key in _DESCRIPTOR_EMPTY_STRING else None
 
 
+def _prepare_descriptor_values(fixture: models.Fixture, raw: dict) -> dict:
+    """Normalize descriptor patch, including lifecycle + hold reason rules."""
+    values = {
+        key: _normalize_descriptor_value(key, value)
+        for key, value in raw.items()
+        if key not in ("lifecycle_status", "hold_reason")
+    }
+    if "lifecycle_status" not in raw and "hold_reason" not in raw:
+        return values
+    try:
+        current_status = getattr(fixture, "lifecycle_status", None) or LIFECYCLE_PRODUCTION
+        status = (
+            normalize_lifecycle_status(raw["lifecycle_status"])
+            if "lifecycle_status" in raw
+            else normalize_lifecycle_status(current_status)
+        )
+        values["lifecycle_status"] = status
+        if status == LIFECYCLE_ON_HOLD:
+            reason_raw = raw["hold_reason"] if "hold_reason" in raw else getattr(fixture, "hold_reason", None)
+            values["hold_reason"] = normalize_hold_reason(reason_raw, required=True)
+        else:
+            values["hold_reason"] = None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    return values
+
+
 @router.patch("/bulk-descriptors")
 def bulk_update_fixture_descriptors(
     data: schemas.FixtureDescriptorsBulkUpdate,
@@ -104,10 +138,9 @@ def bulk_update_fixture_descriptors(
     fields_touched = set()
     for item in data.updates:
         fixture = fixtures_by_id[item.fixture_id]
-        values = {
-            key: _normalize_descriptor_value(key, value)
-            for key, value in item.dict(exclude_unset=True, exclude={"fixture_id"}).items()
-        }
+        values = _prepare_descriptor_values(
+            fixture, item.dict(exclude_unset=True, exclude={"fixture_id"})
+        )
         if not values:
             continue
         changes = changed_fields(fixture, values)
@@ -163,10 +196,7 @@ def update_fixture_descriptors(
     if not db_fixture:
         raise HTTPException(status_code=404, detail="Fixture not found")
 
-    values = {
-        key: _normalize_descriptor_value(key, value)
-        for key, value in data.dict(exclude_unset=True).items()
-    }
+    values = _prepare_descriptor_values(db_fixture, data.dict(exclude_unset=True))
     changes = changed_fields(db_fixture, values)
     if changes:
         log_action(
@@ -204,8 +234,24 @@ def update_fixture(fixture_id: int, fixture: schemas.FixtureBase, request: Reque
     for key, value in update_data.items():
         if key in ("manufacturer", "production_line", "asset_tag", "fixture_serial_number"):
             values[key] = (value or "").strip() or None
+        elif key in ("lifecycle_status", "hold_reason"):
+            continue
         else:
             values[key] = value if value is not None else ""
+    if "lifecycle_status" in update_data or "hold_reason" in update_data:
+        try:
+            values.update(
+                apply_lifecycle_fields(
+                    {
+                        "lifecycle_status": update_data.get(
+                            "lifecycle_status", getattr(db_fixture, "lifecycle_status", None)
+                        ),
+                        "hold_reason": update_data.get("hold_reason", getattr(db_fixture, "hold_reason", None)),
+                    }
+                )
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
     changes = changed_fields(db_fixture, values)
     if changes:
         log_action(
@@ -231,6 +277,16 @@ def add_fixture(data: dict, request: Request, db: Session = Depends(get_db)):
     fixture_data = {k: (v if v is not None else "") for k, v in data.items() if k != "employee_id"}
     for key in ("manufacturer", "production_line", "asset_tag", "fixture_serial_number"):
         fixture_data[key] = str(fixture_data.get(key) or "").strip() or None
+    try:
+        status = normalize_lifecycle_status(fixture_data.get("lifecycle_status") or LIFECYCLE_PRODUCTION)
+        fixture_data["lifecycle_status"] = status
+        fixture_data["hold_reason"] = (
+            normalize_hold_reason(fixture_data.get("hold_reason"), required=True)
+            if status == LIFECYCLE_ON_HOLD
+            else None
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
     fx = schemas.FixtureBase(**fixture_data)
     
     # Create the fixture

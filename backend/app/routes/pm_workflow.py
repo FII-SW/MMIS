@@ -17,6 +17,7 @@ from ..utils.notifications import MY_PMS_LINK, fixture_list, notify
 from ..utils.auth_deps import employee_id_from_token, require_admin, require_editor, require_super_admin
 from ..utils.roles import ROLE_LABELS, can_edit, is_admin, normalize_role
 from ..utils.pm_checklists import PM_COVERS, get_pm_types
+from ..utils.fixture_lifecycle import pm_active_sql_filter
 from ..utils.pm_schedule import pm_due_at
 from .maintenance import (
     DETAIL_FIELDS,
@@ -641,7 +642,7 @@ def get_compliance_trend(
     week_ends = [now - timedelta(weeks=i) for i in range(weeks - 1, -1, -1)]
     pm_type = (pm_type or "").strip().lower() or None
 
-    query = db.query(models.Fixture).filter(_pm_test_area_filter(), models.Fixture.pm_paused.is_(False))
+    query = db.query(models.Fixture).filter(_pm_test_area_filter(), pm_active_sql_filter(models.Fixture))
     if project:
         query = query.filter(models.Fixture.project_name == project)
     if test_area:

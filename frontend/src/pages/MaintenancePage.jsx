@@ -23,8 +23,8 @@ function TabButton({ active, onClick, children, badge, badgeTone = "bg-red-600 t
       onClick={onClick}
       className={`inline-flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
         active
-          ? "bg-blue-600 text-white shadow-md dark:bg-blue-700"
-          : "text-gray-700 hover:bg-blue-50 hover:text-blue-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-blue-300"
+          ? "bg-teal-700 text-white dark:bg-teal-600"
+          : "text-slate-700 hover:bg-teal-50 hover:text-teal-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-teal-200"
       }`}
     >
       {children}
@@ -104,10 +104,10 @@ export default function MaintenancePage() {
 
         <div
           role="tablist"
-          className="flex gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+          className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200/80 bg-white/90 p-1.5 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80"
         >
           <TabButton active={tab === "dashboard"} onClick={() => openTab("dashboard")}>
-            📊 Dashboard
+            Ops board
           </TabButton>
           {!viewOnly && (
             <TabButton
@@ -116,7 +116,7 @@ export default function MaintenancePage() {
               badge={myCount}
               badgeTone={mySummary?.overdue ? "bg-red-600 text-white" : "bg-yellow-400 text-yellow-950"}
             >
-              👤 My PMs
+              My PMs
             </TabButton>
           )}
           <TabButton
@@ -125,7 +125,7 @@ export default function MaintenancePage() {
             badge={todoCount}
             badgeTone={reminders?.overdue ? "bg-red-600 text-white" : "bg-yellow-400 text-yellow-950"}
           >
-            📝 To do
+            To do
           </TabButton>
           <TabButton
             active={tab === "issues"}
@@ -133,7 +133,7 @@ export default function MaintenancePage() {
             badge={openIssues}
             badgeTone="bg-orange-500 text-white"
           >
-            ⚠ Issues
+            Issues
           </TabButton>
           <TabButton
             active={tab === "completed"}
@@ -141,7 +141,7 @@ export default function MaintenancePage() {
             badge={summary?.completed_last_7_days}
             badgeTone="bg-green-600 text-white"
           >
-            ✅ Completed
+            Completed
           </TabButton>
         </div>
 

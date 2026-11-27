@@ -1,3 +1,9 @@
+import {
+  holdReasonLabel,
+  isOnHold,
+  lifecycleBadgeClass,
+  lifecycleLabel,
+} from "../../utils/fixtureLifecycle";
 import PMStatusBadge from "./PMStatusBadge";
 import { formatDate } from "./formatDate";
 import { PM_STATE_META, describeDue } from "./pmStatus";
@@ -9,6 +15,8 @@ const ACCENT_BORDER = {
   due_soon: "border-l-yellow-500",
   ok: "border-l-green-500",
   paused: "border-l-slate-400",
+  on_hold: "border-l-amber-500",
+  development: "border-l-violet-500",
 };
 
 function SortHeader({ label, column, sortKey, sortDir, onSort, className = "" }) {
@@ -127,7 +135,21 @@ export default function FixturePMTable({
                     )}
                   </td>
                   <td className="px-3 py-2.5 align-top">
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{fx.fixture_name}</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">{fx.fixture_name}</span>
+                      {fx.lifecycle_status && fx.lifecycle_status !== "production" && (
+                        <span
+                          className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${lifecycleBadgeClass(
+                            fx.lifecycle_status
+                          )}`}
+                        >
+                          {lifecycleLabel(fx.lifecycle_status)}
+                          {isOnHold(fx.lifecycle_status) && fx.hold_reason
+                            ? ` · ${holdReasonLabel(fx.hold_reason)}`
+                            : ""}
+                        </span>
+                      )}
+                    </div>
                     {showLocation && (
                       <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
                         {fx.project_name} · {fx.test_area}
@@ -202,6 +224,18 @@ export default function FixturePMTable({
                   )}
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1">
+                  {fx.lifecycle_status && fx.lifecycle_status !== "production" && (
+                    <span
+                      className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${lifecycleBadgeClass(
+                        fx.lifecycle_status
+                      )}`}
+                    >
+                      {lifecycleLabel(fx.lifecycle_status)}
+                      {isOnHold(fx.lifecycle_status) && fx.hold_reason
+                        ? ` · ${holdReasonLabel(fx.hold_reason)}`
+                        : ""}
+                    </span>
+                  )}
                   {fx.production_line && <Tag tone="blue">{fx.production_line}</Tag>}
                   {fx.manufacturer && <Tag>{fx.manufacturer}</Tag>}
                 </div>

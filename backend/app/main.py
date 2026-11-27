@@ -58,12 +58,14 @@ def ensure_project_documents_columns():
 
 
 def ensure_fixture_descriptor_columns():
-    """Backward-compatible migration for fixture manufacturer / production line."""
+    """Backward-compatible migration for fixture manufacturer / production line / lifecycle."""
     _add_missing_columns(
         "fixtures",
         {
             "manufacturer": "VARCHAR(100)",
             "production_line": "VARCHAR(50)",
+            "lifecycle_status": "VARCHAR(20) NOT NULL DEFAULT 'production'",
+            "hold_reason": "VARCHAR(20)",
         },
     )
 

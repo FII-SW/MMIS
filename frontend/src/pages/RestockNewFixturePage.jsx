@@ -9,6 +9,8 @@ import PageHeaderWithBack from "../components/PageHeaderWithBack";
 import PageLoadingState from "../components/PageLoadingState";
 import ProjectSelector from "../components/ProjectSelector";
 import FixtureDescriptorFields from "../components/FixtureDescriptorFields";
+import FixtureLifecycleFields from "../components/maintenance/FixtureLifecycleFields";
+import { isOnHold } from "../utils/fixtureLifecycle";
 import { testAreasForProject } from "../utils/testAreas";
 import {
   IC_PROGRAMMING_PROJECT,
@@ -35,6 +37,8 @@ export default function RestockNewFixturePage() {
     fixture_serial_number: "",
     manufacturer: "",
     production_line: "",
+    lifecycle_status: "production",
+    hold_reason: "",
   });
   const [employeeId, setEmployeeId] = useState(null);
 
@@ -144,6 +148,10 @@ export default function RestockNewFixturePage() {
       alert("Please fill in all required fields. Test Area is required.");
       return;
     }
+    if (isOnHold(formData.lifecycle_status) && !formData.hold_reason) {
+      alert("On Hold fixtures need a hold location: Warehouse, PM, or N/A.");
+      return;
+    }
 
     const finalFixtureName = icMode
       ? formData.fixture_number.trim()
@@ -158,6 +166,8 @@ export default function RestockNewFixturePage() {
         fixture_serial_number: formData.fixture_serial_number || "",
         manufacturer: formData.manufacturer.trim() || null,
         production_line: formData.production_line.trim() || null,
+        lifecycle_status: formData.lifecycle_status || "production",
+        hold_reason: isOnHold(formData.lifecycle_status) ? formData.hold_reason : null,
         employee_id: employeeId,
       });
 
@@ -315,6 +325,24 @@ export default function RestockNewFixturePage() {
                 className="w-full p-3 border dark:border-gray-600 dark:bg-gray-700 dark:text-white border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="Enter fixture serial number (optional)"
               />
+            </div>
+
+            <div>
+              <label className="mb-2 block font-semibold text-gray-700 dark:text-gray-300">
+                Status
+              </label>
+              <FixtureLifecycleFields
+                lifecycleStatus={formData.lifecycle_status}
+                holdReason={formData.hold_reason}
+                onChange={(field, value) => setFormData((prev) => ({ ...prev, [field]: value }))}
+                labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+              />
+              {(isOnHold(formData.lifecycle_status) || formData.lifecycle_status === "development") && (
+                <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">
+                  {isOnHold(formData.lifecycle_status) ? "On Hold" : "Development"} fixtures are not counted as PM
+                  overdue.
+                </p>
+              )}
             </div>
 
             <FixtureDescriptorFields

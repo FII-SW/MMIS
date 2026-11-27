@@ -1,7 +1,14 @@
 import { useState } from "react";
 import API from "../../api";
 import { isAdminUser } from "../../utils/auth";
+import {
+  holdReasonLabel,
+  isOnHold,
+  lifecycleBadgeClass,
+  lifecycleLabel,
+} from "../../utils/fixtureLifecycle";
 import FixtureDescriptorFields from "../FixtureDescriptorFields";
+import FixtureLifecycleFields from "./FixtureLifecycleFields";
 
 function Field({ label, value, highlight = false }) {
   return (
@@ -28,6 +35,8 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
     production_line: "",
     asset_tag: "",
     fixture_serial_number: "",
+    lifecycle_status: "production",
+    hold_reason: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -38,12 +47,18 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
       production_line: fixture.production_line || "",
       asset_tag: fixture.asset_tag || "",
       fixture_serial_number: fixture.fixture_serial_number || "",
+      lifecycle_status: fixture.lifecycle_status || "production",
+      hold_reason: fixture.hold_reason || "",
     });
     setError("");
     setEditing(true);
   };
 
   const save = async () => {
+    if (isOnHold(draft.lifecycle_status) && !draft.hold_reason) {
+      setError("Select a hold location: Warehouse, PM, or N/A.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -52,6 +67,8 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
         production_line: draft.production_line.trim() || null,
         asset_tag: draft.asset_tag.trim() || null,
         fixture_serial_number: draft.fixture_serial_number.trim() || null,
+        lifecycle_status: draft.lifecycle_status || "production",
+        hold_reason: isOnHold(draft.lifecycle_status) ? draft.hold_reason : null,
       });
       onUpdated?.(res.data);
       setEditing(false);
@@ -62,11 +79,13 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
     }
   };
 
+  const status = fixture.lifecycle_status || "production";
+
   return (
     <div className="space-y-5">
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Production</p>
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Status &amp; production</p>
           {isAdmin && !editing && (
             <button
               type="button"
@@ -79,7 +98,12 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
         </div>
 
         {editing ? (
-          <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-800 dark:bg-blue-900/10">
+          <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-800 dark:bg-blue-900/10">
+            <FixtureLifecycleFields
+              lifecycleStatus={draft.lifecycle_status}
+              holdReason={draft.hold_reason}
+              onChange={(field, value) => setDraft((prev) => ({ ...prev, [field]: value }))}
+            />
             <FixtureDescriptorFields
               layout="grid"
               manufacturer={draft.manufacturer}
@@ -91,6 +115,24 @@ export default function FixtureDetailsPanel({ fixture, onUpdated }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Status
+              </p>
+              <span
+                className={`inline-flex items-center rounded-md border px-2.5 py-1 text-sm font-semibold ${lifecycleBadgeClass(status)}`}
+              >
+                {lifecycleLabel(status)}
+                {isOnHold(status) && fixture.hold_reason
+                  ? ` · ${holdReasonLabel(fixture.hold_reason)}`
+                  : ""}
+              </span>
+              {(isOnHold(status) || status === "development") && (
+                <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                  {isOnHold(status) ? "On Hold" : "Development"} fixtures are not shown as PM overdue.
+                </p>
+              )}
+            </div>
             <Field label="Manufacturer" value={fixture.manufacturer} highlight />
             <Field label="Production Line" value={fixture.production_line} highlight />
           </div>

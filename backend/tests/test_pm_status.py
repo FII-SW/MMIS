@@ -117,6 +117,29 @@ class TestFixturePM(unittest.TestCase):
         self.assertEqual({e["state"] for e in pm["status"].values()}, {"paused"})
         self.assertIsNone(pm["days_until_due"])
 
+    def test_on_hold_fixture_is_never_overdue(self):
+        fixture = SimpleNamespace(
+            fixture_id=17,
+            test_area="FBT_Mobo",
+            pm_paused=False,
+            lifecycle_status="on_hold",
+            hold_reason="warehouse",
+        )
+        pm = _fixture_pm(fixture, {(17, "weekly"): _latest(30)}, NOW)
+        self.assertEqual(pm["state"], "on_hold")
+        self.assertIsNone(pm["days_until_due"])
+
+    def test_development_fixture_is_never_overdue(self):
+        fixture = SimpleNamespace(
+            fixture_id=18,
+            test_area="FBT_Mobo",
+            pm_paused=False,
+            lifecycle_status="development",
+        )
+        pm = _fixture_pm(fixture, {(18, "weekly"): _latest(30)}, NOW)
+        self.assertEqual(pm["state"], "development")
+        self.assertIsNone(pm["days_until_due"])
+
     def test_resume_is_due_by_end_of_resume_month(self):
         fixture = SimpleNamespace(
             fixture_id=8,

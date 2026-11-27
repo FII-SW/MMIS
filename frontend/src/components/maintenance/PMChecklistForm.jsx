@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import API from "../../api";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatDateTime } from "./formatDate";
@@ -48,8 +48,14 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
   const [draftRestored, setDraftRestored] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const boardSectionRef = useRef(null);
 
   const [reloadToken, setReloadToken] = useState(0);
+
+  const showBoardError = (message) => {
+    setSubmitError(message);
+    boardSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -217,7 +223,7 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
     }
     const missingBoard = boardError();
     if (missingBoard) {
-      setSubmitError(missingBoard);
+      showBoardError(missingBoard);
       return;
     }
 
@@ -260,7 +266,12 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
       }
       onSaved?.(res.data);
     } catch (err) {
-      setSubmitError(err?.response?.data?.detail || "Failed to save PM record.");
+      const detail = err?.response?.data?.detail || "Failed to save PM record.";
+      if (typeof detail === "string" && /board validation/i.test(detail)) {
+        showBoardError(detail);
+      } else {
+        setSubmitError(detail);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -513,7 +524,11 @@ export default function PMChecklistForm({ fixture, pmType, lastEntry, onSaved })
 
       <PMPartsPicker fixture={fixture} parts={stockParts} onChange={setStockParts} />
 
-      <div className="overflow-hidden rounded-lg border border-emerald-200 dark:border-emerald-900/50">
+      <div
+        ref={boardSectionRef}
+        id="pm-board-validation"
+        className="overflow-hidden rounded-lg border-2 border-emerald-400 dark:border-emerald-600"
+      >
         <div className="bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
           Board validation · required before release to production
         </div>

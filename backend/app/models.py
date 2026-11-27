@@ -37,6 +37,10 @@ class Fixture(Base):
     fixture_serial_number = Column(String(50), nullable=True)
     manufacturer = Column(String(100), nullable=True)
     production_line = Column(String(50), nullable=True)
+    # production | on_hold | development — On Hold is excluded from PM overdue
+    lifecycle_status = Column(String(20), nullable=False, default="production", server_default="production")
+    # When on_hold: warehouse | pm | n_a
+    hold_reason = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
     # PM paused = fixture out of service (spare, down, sent out); excluded from overdue counts
     pm_paused = Column(Boolean, nullable=False, default=False, server_default="false")

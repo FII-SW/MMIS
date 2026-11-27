@@ -12,6 +12,12 @@ import { pmTypeLabel } from "../components/maintenance/pmTypes";
 import { PM_STATE_RANK, describeDue } from "../components/maintenance/pmStatus";
 import PMStatusBadge from "../components/maintenance/PMStatusBadge";
 import PMPauseControl from "../components/maintenance/PMPauseControl";
+import {
+  holdReasonLabel,
+  isOnHold,
+  lifecycleBadgeClass,
+  lifecycleLabel,
+} from "../utils/fixtureLifecycle";
 import PMIssuesList from "../components/maintenance/PMIssuesList";
 import PMAssignmentCard from "../components/maintenance/PMAssignmentCard";
 import { FIXTURE_MAINTENANCE_TITLE, MAINTENANCE_PROJECTS_URL, fixtureListUrl, testAreaUrl } from "../components/maintenance/links";
@@ -218,6 +224,16 @@ export default function MaintenanceFixtureDetailPage() {
               {fixture.fixture_serial_number || "—"}
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${lifecycleBadgeClass(
+                  fixture.lifecycle_status
+                )}`}
+              >
+                {lifecycleLabel(fixture.lifecycle_status)}
+                {isOnHold(fixture.lifecycle_status) && fixture.hold_reason
+                  ? ` · ${holdReasonLabel(fixture.hold_reason)}`
+                  : ""}
+              </span>
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
                 {fixture.production_line || "Line not set"}
               </span>

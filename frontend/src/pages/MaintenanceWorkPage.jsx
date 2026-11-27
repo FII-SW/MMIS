@@ -27,6 +27,7 @@ import {
   padSequenceNumber,
   sequenceSearchToken,
 } from "../utils/fixtureSequence";
+import { LIFECYCLE_OPTIONS } from "../utils/fixtureLifecycle";
 
 const PAGE_SIZES = [25, 50, 100];
 const PM_TYPE_ORDER = Object.keys(PM_TYPE_LABELS);
@@ -112,23 +113,28 @@ export default function MaintenanceWorkPage() {
   const [sortKey, setSortKey] = useStickyState("mmis:pm-work:sort", "urgency");
   const [sortDir, setSortDir] = useStickyState("mmis:pm-work:sort-dir", "asc");
   const [lineFilter, setLineFilter] = useState("all");
+  const [lifecycleFilter, setLifecycleFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useStickyState("mmis:pm-work:page-size", PAGE_SIZES[0]);
   const [bulkEditing, setBulkEditing] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const isAdmin = isAdminUser();
 
-  const handleBulkSaved = (updates) => {
-    const byId = Object.fromEntries(updates.map((u) => [u.fixture_id, u]));
-    setFixtures((prev) =>
-      prev.map((fx) =>
-        byId[fx.fixture_id]
-          ? { ...fx, ...byId[fx.fixture_id] }
-          : fx
-      )
-    );
+  const handleBulkSaved = async (updates) => {
     setBulkEditing(false);
     setSavedMessage(`Saved fixture info for ${updates.length} fixture${updates.length === 1 ? "" : "s"}.`);
+    // Reload so On Hold fixtures drop out of overdue / due-soon PM states.
+    try {
+      const query = allMode ? { pm_only: true } : { project };
+      if (testArea) query.test_area = testArea;
+      const res = await API.get("/maintenance/overview", { params: query });
+      setFixtures(res.data?.fixtures || []);
+    } catch {
+      const byId = Object.fromEntries(updates.map((u) => [u.fixture_id, u]));
+      setFixtures((prev) =>
+        prev.map((fx) => (byId[fx.fixture_id] ? { ...fx, ...byId[fx.fixture_id] } : fx))
+      );
+    }
   };
   const [error, setError] = useState("");
 
@@ -175,6 +181,8 @@ export default function MaintenanceWorkPage() {
     const q = search.trim().toLowerCase();
     const filtered = fixtures.filter((fx) => {
       if (stateFilter !== "all" && fx.pm.state !== stateFilter) return false;
+      const life = fx.lifecycle_status || "production";
+      if (lifecycleFilter !== "all" && life !== lifecycleFilter) return false;
       if (lineFilter === "none" && fx.production_line) return false;
       if (lineFilter !== "all" && lineFilter !== "none" && fx.production_line !== lineFilter) return false;
       if (!q) return true;
@@ -192,7 +200,7 @@ export default function MaintenanceWorkPage() {
     const sorted = [...filtered].sort(compare);
     if (sortDir === "desc") sorted.reverse();
     return sorted;
-  }, [fixtures, search, stateFilter, lineFilter, sortKey, sortDir]);
+  }, [fixtures, search, stateFilter, lifecycleFilter, lineFilter, sortKey, sortDir]);
 
   const pmTypeColumns = useMemo(() => {
     const present = new Set(fixtures.flatMap((fx) => fx.pm?.pm_types || []));
@@ -207,6 +215,7 @@ export default function MaintenanceWorkPage() {
   const searchMissingNumber = (n) => {
     setSearch(sequenceSearchToken(n, sequenceGaps.width));
     setStateFilter("all");
+    setLifecycleFilter("all");
     setLineFilter("all");
     setSortKey("name");
     setSortDir("asc");
@@ -214,7 +223,7 @@ export default function MaintenanceWorkPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, stateFilter, lineFilter, sortKey, sortDir, pageSize]);
+  }, [search, stateFilter, lifecycleFilter, lineFilter, sortKey, sortDir, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(visibleFixtures.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -237,10 +246,12 @@ export default function MaintenanceWorkPage() {
     navigate(fixtureDetailUrl(target, pmType ? { tab: pmType } : {}));
   };
 
-  const filtersActive = Boolean(search.trim()) || lineFilter !== "all" || stateFilter !== "all";
+  const filtersActive =
+    Boolean(search.trim()) || lineFilter !== "all" || stateFilter !== "all" || lifecycleFilter !== "all";
   const clearFilters = () => {
     setSearch("");
     setLineFilter("all");
+    setLifecycleFilter("all");
     setStateFilter("all");
   };
 
@@ -343,6 +354,19 @@ export default function MaintenanceWorkPage() {
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
+                <select
+                  value={lifecycleFilter}
+                  onChange={(e) => setLifecycleFilter(e.target.value)}
+                  aria-label="Filter by fixture status"
+                  className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                >
+                  <option value="all">All statuses</option>
+                  {LIFECYCLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
                 {lines.length > 0 && (
                   <select
                     value={lineFilter}
@@ -383,7 +407,7 @@ export default function MaintenanceWorkPage() {
                     }}
                     className="rounded-lg border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-300 dark:hover:bg-gray-700"
                   >
-                    Edit asset, serial, line
+                    Edit status &amp; info
                   </button>
                 )}
               </div>

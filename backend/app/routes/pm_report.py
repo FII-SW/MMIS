@@ -13,6 +13,7 @@ from ..database import get_db
 from ..utils.auth_deps import get_current_user
 from ..utils.roles import is_admin
 from ..utils.pm_checklists import PM_COVERS, PM_TYPE_LABELS, get_pm_types
+from ..utils.fixture_lifecycle import pm_active_sql_filter
 from ..utils.pm_schedule import pm_due_at
 from .maintenance import (
     _active_records,
@@ -309,7 +310,7 @@ def get_pm_report(
         r["parts"] = parts.get(r["pm_id"], [])
 
     # ----- PM pairs that can be overdue -----
-    fixture_query = db.query(models.Fixture).filter(_pm_test_area_filter(), models.Fixture.pm_paused.is_(False))
+    fixture_query = db.query(models.Fixture).filter(_pm_test_area_filter(), pm_active_sql_filter(models.Fixture))
     if project:
         fixture_query = fixture_query.filter(models.Fixture.project_name == project)
     if test_area:

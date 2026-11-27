@@ -8,7 +8,7 @@ import { pmTypesForArea } from "../components/maintenance/pmTypes";
 import { getMaintenanceTestAreas, soleTestAreaForProject } from "../utils/testAreas";
 
 function emptyCounts() {
-  return { fixtures: 0, overdue: 0, due_soon: 0, never: 0, ok: 0, paused: 0 };
+  return { fixtures: 0, overdue: 0, due_soon: 0, never: 0, ok: 0, paused: 0, on_hold: 0, development: 0 };
 }
 
 export default function MaintenanceTestAreaPage() {

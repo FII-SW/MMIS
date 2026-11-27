@@ -8,7 +8,7 @@ import { assignedByText } from "./assignment";
 import { PM_STATE_META, PM_STATE_RANK, describeDue } from "./pmStatus";
 import { pmTypeLabel } from "./pmTypes";
 
-const STATE_FILTERS = ["overdue", "due_soon", "never", "ok", "paused"];
+const STATE_FILTERS = ["overdue", "due_soon", "never", "ok", "paused", "on_hold", "development"];
 const NEW_FOR_DAYS = 7;
 const ASSIGNMENT_KINDS = ["pm_assignment", "pm_unassignment", "pm_weekly"];
 

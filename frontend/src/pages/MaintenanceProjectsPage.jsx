@@ -8,7 +8,7 @@ import { getProjects } from "../utils/projects";
 import { projectRequiresTestArea } from "../utils/inventoryRules";
 import { soleTestAreaForProject } from "../utils/testAreas";
 
-const COUNT_FIELDS = ["fixtures", "overdue", "due_soon", "never", "ok", "paused"];
+const COUNT_FIELDS = ["fixtures", "overdue", "due_soon", "never", "ok", "paused", "on_hold", "development"];
 
 export default function MaintenanceProjectsPage() {
   const navigate = useNavigate();

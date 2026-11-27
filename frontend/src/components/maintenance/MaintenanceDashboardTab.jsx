@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../../api";
 import { isViewerUser } from "../../utils/auth";
+import { AnimatedNumber, HealthRing, LiveOpsClock } from "../DashboardMissionControl";
 import DashboardFilters from "./DashboardFilters";
 import PMActivityChart from "./PMActivityChart";
 import PMStatusBadge from "./PMStatusBadge";
@@ -14,15 +15,16 @@ import useStickyState from "./useStickyState";
 
 const DEFAULT_FILTERS = { project: "", testArea: "", pmType: "all", preset: "7d", from: "", to: "" };
 const BAR_ORDER = ["ok", "due_soon", "overdue", "never"];
+
 function upToDatePct(counts) {
   const active = activePMCount(counts);
-  return active ? Math.round(((counts.ok + counts.due_soon) / active) * 100) : null;
+  return active ? Math.round((((counts.ok || 0) + (counts.due_soon || 0)) / active) * 100) : null;
 }
 
 function StatusBar({ counts, className = "h-1.5" }) {
   const total = counts ? BAR_ORDER.reduce((sum, state) => sum + (counts[state] || 0), 0) : 0;
   return (
-    <div className={`flex w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700 ${className}`}>
+    <div className={`flex w-full overflow-hidden bg-slate-200/80 dark:bg-slate-700 ${className}`}>
       {total > 0 &&
         BAR_ORDER.map((state) =>
           counts[state] > 0 ? (
@@ -38,33 +40,22 @@ function StatusBar({ counts, className = "h-1.5" }) {
   );
 }
 
-function KpiTile({ icon, label, value, sublabel, className, onClick }) {
-  const Tag = onClick ? "button" : "div";
+function Panel({ title, subtitle, action, children, delay = 0 }) {
   return (
-    <Tag
-      type={onClick ? "button" : undefined}
-      onClick={onClick}
-      className={`rounded-xl border p-3 text-left transition ${className} ${
-        onClick ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-md" : ""
-      }`}
+    <div
+      className="mmis-pm-panel mmis-pm-stat overflow-hidden rounded-2xl"
+      style={{ animationDelay: `${delay}ms` }}
     >
-      <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide opacity-80">
-        {icon && <span aria-hidden>{icon}</span>}
-        {label}
-      </p>
-      <p className="mt-0.5 text-2xl font-bold">{value ?? "—"}</p>
-      {sublabel && <p className="text-[11px] opacity-80">{sublabel}</p>}
-    </Tag>
-  );
-}
-
-function Panel({ title, subtitle, action, children }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-2.5 dark:border-gray-700">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-4 py-2.5 dark:border-slate-700/80">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{title}</p>
-          {subtitle && <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">{subtitle}</p>}
+          <p className="mmis-pm-font-display text-sm font-bold tracking-tight text-slate-900 dark:text-slate-50">
+            {title}
+          </p>
+          {subtitle && (
+            <p className="mmis-pm-font-mono truncate text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {subtitle}
+            </p>
+          )}
         </div>
         {action}
       </div>
@@ -73,24 +64,69 @@ function Panel({ title, subtitle, action, children }) {
   );
 }
 
-function SectionTitle({ title, hint }) {
-  return (
-    <div className="flex flex-wrap items-baseline gap-x-2">
-      <h2 className="text-base font-bold text-gray-800 dark:text-gray-100">{title}</h2>
-      {hint && <span className="text-xs text-gray-500 dark:text-gray-400">{hint}</span>}
-    </div>
-  );
-}
-
 function EmptyNote({ children }) {
-  return <p className="px-4 py-5 text-center text-xs text-gray-500 dark:text-gray-400">{children}</p>;
+  return <p className="px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">{children}</p>;
 }
 
 function LinkButton({ onClick, children }) {
   return (
-    <button type="button" onClick={onClick} className="text-[11px] font-semibold text-blue-600 hover:underline dark:text-blue-400">
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-[11px] font-semibold text-teal-700 hover:underline dark:text-teal-300"
+    >
       {children}
     </button>
+  );
+}
+
+function HeroStat({ label, value, tone = "default", onClick, delay = 0 }) {
+  const tones = {
+    default: "text-white",
+    danger: "text-orange-300",
+    warn: "text-amber-200",
+    ok: "text-teal-200",
+  };
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={`mmis-pm-stat rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left backdrop-blur-sm transition hover:bg-white/10 ${
+        onClick ? "cursor-pointer" : ""
+      }`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <p className="mmis-pm-font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-100/70">
+        {label}
+      </p>
+      <p className={`mmis-pm-font-display mt-0.5 text-2xl font-extrabold tabular-nums ${tones[tone]}`}>
+        {value == null ? "—" : <AnimatedNumber value={value} />}
+      </p>
+    </Tag>
+  );
+}
+
+function ActivityKpi({ label, value, sub, accent, onClick, delay = 0 }) {
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={`mmis-pm-panel mmis-pm-stat group relative overflow-hidden rounded-2xl p-3 text-left ${
+        onClick ? "cursor-pointer transition hover:-translate-y-0.5" : ""
+      }`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className={`absolute inset-x-0 top-0 h-1 ${accent}`} />
+      <p className="mmis-pm-font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+        {label}
+      </p>
+      <p className="mmis-pm-font-display mt-1 text-3xl font-extrabold tabular-nums text-slate-900 dark:text-white">
+        {value == null ? "—" : <AnimatedNumber value={value} />}
+      </p>
+      {sub && <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{sub}</p>}
+    </Tag>
   );
 }
 
@@ -181,6 +217,8 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
 
   const status = data?.status;
   const activity = data?.activity;
+  const totals = status?.totals;
+  const healthPct = upToDatePct(totals || {});
   const passRate = activity?.completed ? Math.round((activity.passed / activity.completed) * 100) : null;
   const rangeLabel = formatRange(range.from, range.to);
   const pmTypeEntries = Object.entries(status?.by_pm_type || {}).sort(
@@ -188,11 +226,68 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
   );
   const selectedTypeMissing =
     stored.pmType !== "all" && data?.options?.pm_types?.some((t) => t.value === stored.pmType && !t.configured);
+  const attention = status?.attention || [];
+  const ringColor =
+    healthPct == null ? "#94a3b8" : healthPct >= 90 ? "#2dd4bf" : healthPct >= 70 ? "#fbbf24" : "#fb923c";
 
   const openLocation = (loc) => navigate(fixtureListUrl(loc.project_name, loc.test_area));
 
   return (
     <div className="space-y-5">
+      {/* Hero — floor ops command */}
+      <section className="mmis-pm-hero relative rounded-2xl px-4 py-5 text-white sm:px-6 sm:py-6">
+        <div className="mmis-pm-scan" aria-hidden />
+        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 space-y-3">
+            <p className="mmis-pm-font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-200/80">
+              MMIS · Preventive maintenance
+            </p>
+            <h1 className="mmis-pm-font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Floor ops board
+            </h1>
+            <p className="max-w-xl text-sm text-teal-50/75">
+              Live compliance across fixtures. Filter the board, then jump into overdue work or open a line.
+            </p>
+            <LiveOpsClock />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <HealthRing
+              value={healthPct ?? 0}
+              size={128}
+              stroke={11}
+              color={ringColor}
+              label="Up to date"
+              sublabel="active PM"
+              tone="onDark"
+            />
+            <div className="grid min-w-[11rem] grid-cols-2 gap-2 sm:min-w-[14rem]">
+              <HeroStat
+                label="Overdue"
+                value={totals?.overdue}
+                tone="danger"
+                delay={80}
+                onClick={() => onOpenTab("todo", "overdue")}
+              />
+              <HeroStat
+                label="Due soon"
+                value={totals?.due_soon}
+                tone="warn"
+                delay={140}
+                onClick={() => onOpenTab("todo", "due_soon")}
+              />
+              <HeroStat label="Fixtures" value={totals?.fixtures} delay={200} />
+              <HeroStat
+                label="On hold"
+                value={(totals?.on_hold || 0) + (totals?.development || 0) + (totals?.paused || 0)}
+                tone="ok"
+                delay={260}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <DashboardFilters
         options={data?.options}
         filters={filters}
@@ -202,65 +297,103 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
       />
 
       {customInvalid && (
-        <p className="rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+        <p className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
           Pick both a <b>From</b> and a <b>To</b> date/time, with From before To.
         </p>
       )}
       {selectedTypeMissing && (
-        <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
-          {pmTypeLabel(stored.pmType)} has no checklist set up yet, so no fixture has this PM. Send the checklist and
-          the test areas it applies to, and it will start tracking here.
+        <p className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-100">
+          {pmTypeLabel(stored.pmType)} has no checklist set up yet, so no fixture has this PM.
         </p>
       )}
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <div className={`space-y-5 transition-opacity ${loading && data ? "opacity-60" : ""}`}>
-        {/* ---------- activity in range ---------- */}
         <section className="space-y-2">
-          <SectionTitle title="PM activity" hint={rangeLabel} />
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <h2 className="mmis-pm-font-display text-lg font-bold text-slate-900 dark:text-white">Pulse</h2>
+            <span className="mmis-pm-font-mono text-[10px] uppercase tracking-wider text-slate-500">{rangeLabel}</span>
+          </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-            <KpiTile
-              icon="🛠"
-              label="PMs completed"
+            <ActivityKpi
+              label="Completed"
               value={activity?.completed}
-              sublabel={activity ? `${activity.fixtures_serviced} fixtures serviced` : null}
-              className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+              sub={activity ? `${activity.fixtures_serviced} fixtures serviced` : null}
+              accent="bg-teal-500"
+              delay={40}
               onClick={activity ? () => onOpenTab("completed") : undefined}
             />
-            <KpiTile
-              icon="👍"
+            <ActivityKpi
               label="Passed"
               value={activity?.passed}
-              sublabel={passRate == null ? null : `${passRate}% pass rate`}
-              className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300"
+              sub={passRate == null ? null : `${passRate}% pass rate`}
+              accent="bg-emerald-500"
+              delay={90}
             />
-            <KpiTile
-              icon="❌"
-              label="With failed tasks"
+            <ActivityKpi
+              label="Failed tasks"
               value={activity?.failed}
-              sublabel="Needed repair or follow-up"
-              className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"
+              sub="Needed repair or follow-up"
+              accent="bg-orange-500"
+              delay={140}
             />
-            <KpiTile
-              icon="🔎"
+            <ActivityKpi
               label="Issues found"
               value={activity?.issues_opened}
-              sublabel={activity ? `${activity.issues_resolved} fixed in this range` : null}
-              className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300"
+              sub={activity ? `${activity.issues_resolved} fixed in range` : null}
+              accent="bg-amber-500"
+              delay={190}
+              onClick={() => onOpenTab("issues")}
             />
-            <KpiTile
-              icon="👷"
-              label="Users completed PM"
+            <ActivityKpi
+              label="Techs active"
               value={activity?.technicians}
-              sublabel={activity?.top_technicians?.[0] ? `Top user: ${activity.top_technicians[0].name}` : null}
-              className="border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+              sub={activity?.top_technicians?.[0] ? `Top: ${activity.top_technicians[0].name}` : null}
+              accent="bg-slate-500"
+              delay={240}
             />
           </div>
         </section>
 
+        {attention.length > 0 && (
+          <Panel title="Needs attention now" subtitle={`${status?.attention_total || attention.length} fixtures`} delay={80}>
+            <ul className="divide-y divide-slate-100 dark:divide-slate-700/80">
+              {attention.slice(0, 8).map((item) => (
+                <li key={`${item.fixture_id}-${item.pm_type}`}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(fixtureDetailUrl(item, { tab: item.pm_type }))}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-orange-50/80 dark:hover:bg-slate-800/80"
+                  >
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${
+                        item.entry?.state === "overdue" ? "bg-orange-500" : "bg-amber-400"
+                      }`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {item.fixture_name}
+                      </span>
+                      <span className="mmis-pm-font-mono block truncate text-[10px] uppercase tracking-wide text-slate-500">
+                        {item.project_name} · {item.test_area} · {pmTypeLabel(item.pm_type)}
+                      </span>
+                    </span>
+                    <PMStatusBadge state={item.entry?.state} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {(status?.attention_total || 0) > attention.length && (
+              <div className="border-t border-slate-100 px-4 py-2 dark:border-slate-700/80">
+                <LinkButton onClick={() => onOpenTab("todo", "overdue")}>Open full to-do list</LinkButton>
+              </div>
+            )}
+          </Panel>
+        )}
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
-            <Panel title="PMs completed" subtitle={rangeLabel}>
+            <Panel title="Completions" subtitle={rangeLabel} delay={100}>
               {activity ? (
                 activity.completed === 0 ? (
                   <EmptyNote>No PMs were completed in this range.</EmptyNote>
@@ -276,7 +409,8 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
                 <EmptyNote>Loading…</EmptyNote>
               )}
             </Panel>
-            <Panel title="By project & test area" subtitle="Click a row to open its fixtures">
+
+            <Panel title="By project & test area" subtitle="Click a row to open fixtures" delay={160}>
               {!status ? (
                 <EmptyNote>Loading…</EmptyNote>
               ) : status.locations.length === 0 ? (
@@ -284,54 +418,68 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50 text-left text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:bg-gray-900/50 dark:text-gray-400">
-                      <tr>
-                        <th className="px-4 py-2">Project</th>
-                        <th className="px-3 py-2">Test area</th>
-                        <th className="px-3 py-2 text-right">Fixtures</th>
-                        <th className="w-40 px-3 py-2">Up to date</th>
-                        <th className="px-3 py-2 text-right text-red-600 dark:text-red-400">Overdue</th>
-                        <th className="px-3 py-2 text-right text-yellow-700 dark:text-yellow-400">Due soon</th>
-                        <th className="hidden px-3 py-2 text-right sm:table-cell">Never</th>
+                    <thead className="bg-slate-50/80 text-left dark:bg-slate-900/40">
+                      <tr className="mmis-pm-font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        <th className="px-4 py-2.5">Project</th>
+                        <th className="px-3 py-2.5">Test area</th>
+                        <th className="px-3 py-2.5 text-right">Fx</th>
+                        <th className="w-44 px-3 py-2.5">Health</th>
+                        <th className="px-3 py-2.5 text-right text-orange-600 dark:text-orange-400">OD</th>
+                        <th className="px-3 py-2.5 text-right text-amber-600 dark:text-amber-400">Soon</th>
+                        <th className="hidden px-3 py-2.5 text-right sm:table-cell">Never</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/80">
                       {status.locations.map((loc) => {
                         const locPct = upToDatePct(loc);
                         return (
                           <tr
                             key={`${loc.project_name}-${loc.test_area}`}
                             onClick={() => openLocation(loc)}
-                            className="cursor-pointer hover:bg-blue-50/60 dark:hover:bg-gray-700/50"
+                            className="cursor-pointer transition hover:bg-teal-50/70 dark:hover:bg-teal-950/30"
                           >
-                            <td className="px-4 py-2 font-semibold text-gray-800 dark:text-gray-100">{loc.project_name || "—"}</td>
-                            <td className="px-3 py-2 text-gray-700 dark:text-gray-300">{loc.test_area || "—"}</td>
-                            <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{loc.fixtures}</td>
-                            <td className="px-3 py-2">
+                            <td className="px-4 py-2.5 font-semibold text-slate-900 dark:text-slate-100">
+                              {loc.project_name || "—"}
+                            </td>
+                            <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300">{loc.test_area || "—"}</td>
+                            <td className="mmis-pm-font-mono px-3 py-2.5 text-right text-slate-700 dark:text-slate-300">
+                              {loc.fixtures}
+                            </td>
+                            <td className="px-3 py-2.5">
                               <div className="flex items-center gap-2">
                                 <StatusBar counts={loc} className="h-1.5 flex-1" />
                                 <span
-                                  className={`w-9 text-right text-xs font-bold ${
+                                  className={`mmis-pm-font-mono w-9 text-right text-xs font-bold ${
                                     locPct == null
-                                      ? "text-gray-400"
+                                      ? "text-slate-400"
                                       : locPct >= 90
-                                        ? "text-green-600 dark:text-green-400"
+                                        ? "text-teal-600 dark:text-teal-300"
                                         : locPct >= 70
-                                          ? "text-yellow-600 dark:text-yellow-400"
-                                          : "text-red-600 dark:text-red-400"
+                                          ? "text-amber-600 dark:text-amber-300"
+                                          : "text-orange-600 dark:text-orange-300"
                                   }`}
                                 >
                                   {locPct == null ? "—" : `${locPct}%`}
                                 </span>
                               </div>
                             </td>
-                            <td className={`px-3 py-2 text-right font-semibold ${loc.overdue ? "text-red-600 dark:text-red-400" : "text-gray-400"}`}>
+                            <td
+                              className={`mmis-pm-font-mono px-3 py-2.5 text-right font-semibold ${
+                                loc.overdue ? "text-orange-600 dark:text-orange-400" : "text-slate-400"
+                              }`}
+                            >
                               {loc.overdue}
                             </td>
-                            <td className={`px-3 py-2 text-right font-semibold ${loc.due_soon ? "text-yellow-700 dark:text-yellow-400" : "text-gray-400"}`}>
+                            <td
+                              className={`mmis-pm-font-mono px-3 py-2.5 text-right font-semibold ${
+                                loc.due_soon ? "text-amber-600 dark:text-amber-400" : "text-slate-400"
+                              }`}
+                            >
                               {loc.due_soon}
                             </td>
-                            <td className="hidden px-3 py-2 text-right text-gray-500 dark:text-gray-400 sm:table-cell">{loc.never}</td>
+                            <td className="mmis-pm-font-mono hidden px-3 py-2.5 text-right text-slate-500 sm:table-cell">
+                              {loc.never}
+                            </td>
                           </tr>
                         );
                       })}
@@ -343,7 +491,7 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
           </div>
 
           <div className="space-y-4">
-            <Panel title="By PM type" subtitle={`Status now · completed in ${rangeLabel}`}>
+            <Panel title="By PM type" subtitle={`Now · ${rangeLabel}`} delay={120}>
               {!status ? (
                 <EmptyNote>Loading…</EmptyNote>
               ) : pmTypeEntries.length === 0 ? (
@@ -353,16 +501,20 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
                   {pmTypeEntries.map(([type, counts]) => (
                     <li key={type}>
                       <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                        <span className="font-semibold text-gray-700 dark:text-gray-200">{counts.label}</span>
-                        <span className="text-gray-500 dark:text-gray-400">
-                          {counts.fixtures ? `${counts.ok + counts.due_soon}/${activePMCount(counts)} up to date` : "No fixtures"}
+                        <span className="font-semibold text-slate-800 dark:text-slate-100">{counts.label}</span>
+                        <span className="mmis-pm-font-mono text-[10px] text-slate-500">
+                          {counts.fixtures
+                            ? `${(counts.ok || 0) + (counts.due_soon || 0)}/${activePMCount(counts)} UT`
+                            : "None"}
                         </span>
                       </div>
                       <StatusBar counts={counts} className="h-2" />
-                      <div className="mt-1 flex flex-wrap gap-1">
+                      <div className="mt-1.5 flex flex-wrap gap-1">
                         {counts.overdue > 0 && <PMStatusBadge state="overdue" label={`${counts.overdue} overdue`} />}
-                        {counts.due_soon > 0 && <PMStatusBadge state="due_soon" label={`${counts.due_soon} due soon`} />}
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                        {counts.due_soon > 0 && (
+                          <PMStatusBadge state="due_soon" label={`${counts.due_soon} due soon`} />
+                        )}
+                        <span className="rounded-md bg-teal-100 px-2 py-0.5 text-[10px] font-semibold text-teal-800 dark:bg-teal-900/50 dark:text-teal-200">
                           {counts.completed} done{counts.failed ? ` · ${counts.failed} failed` : ""}
                         </span>
                       </div>
@@ -372,26 +524,33 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
               )}
             </Panel>
 
-            <Panel title="Top users · PMs completed" subtitle={rangeLabel}>
+            <Panel title="Top techs" subtitle={rangeLabel} delay={180}>
               {!activity ? (
                 <EmptyNote>Loading…</EmptyNote>
               ) : activity.top_technicians.length === 0 ? (
                 <EmptyNote>No PMs in this range.</EmptyNote>
               ) : (
-                <ul className="space-y-2 px-4 py-3">
+                <ul className="space-y-2.5 px-4 py-3">
                   {activity.top_technicians.map((tech, index) => {
                     const share = activity.completed ? (tech.count / activity.completed) * 100 : 0;
                     return (
                       <li key={`${tech.name}-${index}`} className="text-sm">
                         <div className="flex items-center gap-2">
-                          <span className="w-4 text-xs font-bold text-gray-400">{index + 1}</span>
-                          <span className="flex-1 truncate text-gray-800 dark:text-gray-100">{tech.name}</span>
-                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                            {tech.count} PM{tech.count === 1 ? "" : "s"}
+                          <span className="mmis-pm-font-mono w-5 text-xs font-bold text-teal-600 dark:text-teal-300">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
+                          <span className="flex-1 truncate font-medium text-slate-900 dark:text-slate-100">
+                            {tech.name}
+                          </span>
+                          <span className="mmis-pm-font-mono text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                            {tech.count}
                           </span>
                         </div>
-                        <div className="ml-6 mt-1 h-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
-                          <div className="h-full bg-blue-500" style={{ width: `${share}%` }} />
+                        <div className="ml-7 mt-1 h-1 overflow-hidden bg-slate-100 dark:bg-slate-700">
+                          <div
+                            className="mmis-kpi-bar h-full bg-gradient-to-r from-teal-600 to-teal-400"
+                            style={{ width: `${share}%`, animationDelay: `${index * 80}ms` }}
+                          />
                         </div>
                       </li>
                     );
@@ -403,23 +562,28 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
             <Panel
               title="Recent PMs"
               subtitle={rangeLabel}
-              action={activity?.recent?.length ? <LinkButton onClick={() => onOpenTab("completed")}>View all</LinkButton> : null}
+              delay={220}
+              action={
+                activity?.recent?.length ? (
+                  <LinkButton onClick={() => onOpenTab("completed")}>View all</LinkButton>
+                ) : null
+              }
             >
               {!activity ? (
                 <EmptyNote>Loading…</EmptyNote>
               ) : activity.recent.length === 0 ? (
                 <EmptyNote>No PMs in this range.</EmptyNote>
               ) : (
-                <ul className="max-h-80 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700">
+                <ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-700/80">
                   {activity.recent.map((record) => (
                     <li key={record.pm_id}>
                       <button
                         type="button"
                         onClick={() => navigate(fixtureDetailUrl(record, { tab: "history" }))}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                        className="w-full px-4 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
                       >
                         <span className="flex items-center justify-between gap-2">
-                          <span className="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
+                          <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                             {record.fixture_name || `Fixture #${record.fixture_id}`}
                           </span>
                           <PMStatusBadge
@@ -427,8 +591,8 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
                             label={record.overall_result === "failed" ? "Failed" : "Passed"}
                           />
                         </span>
-                        <span className="block truncate text-[11px] text-gray-500 dark:text-gray-400">
-                          {pmTypeLabel(record.pm_type)} · Completed by {record.performed_by || "Unknown"} ·{" "}
+                        <span className="mmis-pm-font-mono mt-0.5 block truncate text-[10px] uppercase tracking-wide text-slate-500">
+                          {pmTypeLabel(record.pm_type)} · {record.performed_by || "Unknown"} ·{" "}
                           {formatDateTime(record.performed_at)}
                         </span>
                       </button>
@@ -440,19 +604,21 @@ export default function MaintenanceDashboardTab({ onOpenTab }) {
           </div>
         </div>
 
-        <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20 sm:flex-row sm:items-center">
+        <div className="mmis-pm-panel flex flex-col items-start justify-between gap-3 rounded-2xl p-4 sm:flex-row sm:items-center">
           <div>
-            <p className="font-semibold text-blue-900 dark:text-blue-100">
-              {viewOnly ? "Look up a fixture" : "Ready to do a PM?"}
+            <p className="mmis-pm-font-display font-bold text-slate-900 dark:text-white">
+              {viewOnly ? "Look up a fixture" : "Ready to run a PM?"}
             </p>
-            <p className="text-sm text-blue-800 dark:text-blue-300">Pick the project, test area and fixture step by step.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Project → test area → fixture, or jump from the attention list above.
+            </p>
           </div>
           <button
             type="button"
             onClick={() => navigate(MAINTENANCE_PROJECTS_URL)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
+            className="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-teal-600"
           >
-            Fixtures →
+            Open fixtures
           </button>
         </div>
       </div>
